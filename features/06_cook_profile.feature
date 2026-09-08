@@ -41,3 +41,11 @@ Feature: Cook profile
     Given the ingredient "Mussarela" is unavailable in stock
     When he accesses the Kitchen Panel
     Then no item that depends on "Mussarela" must appear in either queue
+
+  Scenario: Cook cancels the preparation of a dish already started
+    Given the dish "Parmegiana de Frango" is in the kitchen queue with status "Pending"
+    And he starts the preparation of the dish "Parmegiana de Frango"
+    When he cancels the preparation of the dish "Parmegiana de Frango" informing the reason "Customer gave up"
+    Then the dish "Parmegiana de Frango" must leave the kitchen queue and the order
+    And the cancellation reason must be recorded in the order history
+    And the order as a whole must remain "Open"

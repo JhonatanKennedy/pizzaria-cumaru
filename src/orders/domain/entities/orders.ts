@@ -135,6 +135,32 @@ export class Order {
     }
 
     item.cancel(reason);
+    this.recordCancellation(itemId, reason, cancelledAt);
+  }
+
+  cancelPreparationItem(
+    itemId: string,
+    reason: string,
+    cancelledAt: Date,
+  ): void {
+    if (this.status === EOrderStatus.CLOSED) {
+      throw new Error('Cannot change a closed order');
+    }
+
+    const item = this.items.find((entry) => entry.getId() === itemId);
+    if (!item) {
+      throw new Error('Item not found');
+    }
+
+    item.cancelPreparation(reason);
+    this.recordCancellation(itemId, reason, cancelledAt);
+  }
+
+  private recordCancellation(
+    itemId: string,
+    reason: string,
+    cancelledAt: Date,
+  ): void {
     this.items = this.items.filter((entry) => entry.getId() !== itemId);
     this.cancellationHistory.push({ itemId, reason, cancelledAt });
   }

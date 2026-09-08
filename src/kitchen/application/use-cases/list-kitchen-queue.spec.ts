@@ -119,6 +119,23 @@ describe('ListKitchenQueueUseCase', () => {
     expect(queue.local[0].tableId).toBe('3');
   });
 
+  it('should expose the order item id per line, distinct for repeated catalog items', async () => {
+    const order = makeOrder('table-3', EOrderType.LOCAL, BASE_TIME, '3');
+    order.addItem(makePizza('table-3', 'line-1'));
+    order.addItem(makePizza('table-3', 'line-2'));
+
+    const queue = await makeUseCase(
+      [order],
+      [makePizzaCatalogItem()],
+      [makeIngredient(true)],
+    ).execute();
+
+    expect(queue.local[0].items.map((item) => item.orderItemId)).toEqual([
+      'line-1',
+      'line-2',
+    ]);
+  });
+
   it('should order each queue by arrival, earliest first', async () => {
     const earlier = makeOrder('table-3', EOrderType.LOCAL, BASE_TIME, '3');
     earlier.addItem(makePizza('table-3'));

@@ -1,10 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
-import { UpdateItemStatusDto } from '../dtos/update-item-status.dto.js';
 import { CancelItemDto } from '../dtos/cancel-item.dto.js';
 import { CreateOrderDto } from '../dtos/create-order.dto.js';
 import { AddItemToOrderDto } from '../dtos/add-item-to-order.dto.js';
-import { StartItemPreparationUseCase } from '../../application/use-cases/start-item-preparation.js';
-import { FinishItemPreparationUseCase } from '../../application/use-cases/finish-item-preparation.js';
 import { CancelItemFromOrderUseCase } from '../../application/use-cases/cancel-item-from-order.js';
 import { CreateOrderUseCase } from '../../application/use-cases/create-order.js';
 import { AddItemToOrderUseCase } from '../../application/use-cases/add-item-to-order.js';
@@ -26,8 +23,6 @@ const PAYMENT_TYPE_BY_VALUE: Record<string, EPaymentType> = {
 @Controller('/orders')
 export class OrdersController {
   constructor(
-    private readonly startItemPreparationUseCase: StartItemPreparationUseCase,
-    private readonly finishItemPreparationUseCase: FinishItemPreparationUseCase,
     private readonly cancelItemFromOrderUseCase: CancelItemFromOrderUseCase,
     private readonly createOrderUseCase: CreateOrderUseCase,
     private readonly addItemToOrderUseCase: AddItemToOrderUseCase,
@@ -77,19 +72,6 @@ export class OrdersController {
       orderId,
       status: dto.status,
     });
-  }
-
-  @Roles({ roles: [EUserRole.COOK, EUserRole.MANAGER] })
-  @Patch(':orderId/items/:itemId/status')
-  updateItemStatus(
-    @Param('orderId') orderId: string,
-    @Param('itemId') itemId: string,
-    @Body() dto: UpdateItemStatusDto,
-  ) {
-    if (dto.status === 'Preparing') {
-      return this.startItemPreparationUseCase.execute({ orderId, itemId });
-    }
-    return this.finishItemPreparationUseCase.execute({ orderId, itemId });
   }
 
   @Roles({ roles: [EUserRole.WAITER, EUserRole.MANAGER] })

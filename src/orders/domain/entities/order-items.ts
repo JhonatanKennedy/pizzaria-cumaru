@@ -98,6 +98,21 @@ export class OrderItems {
     }
   }
 
+  /**
+   * Validates that an item in preparation can have its preparation cancelled
+   * by the kitchen. Removal from the order and history recording are
+   * performed by `Order.cancelPreparationItem`, the only caller.
+   */
+  cancelPreparation(reason: string): void {
+    if (!reason.trim()) {
+      throw new Error('Cancellation reason is required');
+    }
+
+    if (this.status !== EOrderItemStatus.PREPARING) {
+      throw new Error('Cannot cancel an item not in preparation');
+    }
+  }
+
   increaseQuantity(quantity: number): void {
     if (quantity <= 0) {
       throw new Error('Quantity must be greater than zero');

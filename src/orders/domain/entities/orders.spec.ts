@@ -181,6 +181,61 @@ describe('Order', () => {
     expect(order.getCancellationHistory()).toHaveLength(1);
   });
 
+  it('should cancel an item in preparation and leave the rest of the order untouched', () => {
+    const order = makeOrder();
+    const pizza = makeItem(PIZZA_PRICE);
+    const drink = makeDrink();
+    order.addItem(pizza);
+    order.addItem(drink);
+    pizza.startPreparation();
+
+    order.cancelPreparationItem(
+      pizza.getId(),
+      'Wrong dish started',
+      CANCELLED_AT,
+    );
+
+    expect(order.getItems()).toHaveLength(1);
+    expect(order.getItems()[0].getId()).toBe(drink.getId());
+    expect(order.getCancellationHistory()).toEqual([
+      {
+        itemId: pizza.getId(),
+        reason: 'Wrong dish started',
+        cancelledAt: CANCELLED_AT,
+      },
+    ]);
+    expect(order.getStatus()).toBe(EOrderStatus.OPEN);
+    expect(order.totalPrice).toBe(WATER_PRICE);
+  });
+
+  it('should refuse cancelling the preparation of an item of a closed order', () => {
+    const order = makeOrder();
+    const pizza = makeItem(PIZZA_PRICE);
+    order.addItem(pizza);
+    pizza.startPreparation();
+    order.close(EPaymentType.CASH, CANCELLED_AT);
+
+    expect(() =>
+      order.cancelPreparationItem(
+        pizza.getId(),
+        'Wrong dish started',
+        CANCELLED_AT,
+      ),
+    ).toThrow('Cannot change a closed order');
+  });
+
+  it('should throw when cancelling the preparation of an item that is not in the order', () => {
+    const order = makeOrder();
+
+    expect(() =>
+      order.cancelPreparationItem(
+        'unknown-item',
+        'Wrong dish started',
+        CANCELLED_AT,
+      ),
+    ).toThrow('Item not found');
+  });
+
   it('should refuse cancelling an item of a closed order', () => {
     const order = makeOrder();
     const pizza = makeItem(PIZZA_PRICE);

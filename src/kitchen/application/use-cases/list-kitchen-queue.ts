@@ -10,6 +10,10 @@ import type { OrderItems } from '../../../orders/domain/entities/order-items.js'
 import type { Item } from '../../../catalog/domain/entities/items.js';
 
 export interface IKitchenQueueItem {
+  // Id of the order item this row represents - the value the kitchen's
+  // start/finish endpoints act on. Distinct per line, even for repeated
+  // catalog items.
+  orderItemId: string;
   itemId: string;
   name: string;
   quantity: number;
@@ -86,6 +90,7 @@ export class ListKitchenQueueUseCase {
       )
       .sort((a, b) => a.getCreatedAt().getTime() - b.getCreatedAt().getTime())
       .map((item) => ({
+        orderItemId: item.getId(),
         itemId: item.getItemId(),
         name: itemById.get(item.getItemId())?.getName() ?? 'Unknown item',
         quantity: item.getQuantity(),

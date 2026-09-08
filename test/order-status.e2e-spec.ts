@@ -10,12 +10,14 @@ const MANAGER_PASSWORD_HASH = bcrypt.hashSync('SenhaSegura123', 4);
 
 const LOCAL_ORDER_ID = 'order-local-1';
 const PIZZA_ITEM_ID = 'order-item-pizza-1';
+const SECOND_PIZZA_ITEM_ID = 'order-item-pizza-2';
 const CREATED_AT = new Date('2026-09-07T12:00:00Z');
 
 describe('Order status and kitchen queue (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let authToken = '';
+  let calabresaItemId = '';
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -46,6 +48,7 @@ describe('Order status and kitchen queue (e2e)', () => {
         ingredients: { create: [{ ingredientId: mussarela.id }] },
       },
     });
+    calabresaItemId = calabresa.id;
     await prisma.item.create({
       data: {
         name: 'Água',
@@ -113,11 +116,9 @@ describe('Order status and kitchen queue (e2e)', () => {
 
   it('should start an item and show it with the Preparing badge in the kitchen queue', async () => {
     await request(app.getHttpServer())
-      .patch(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/status`)
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
       .set('Authorization', `Bearer ${authToken}`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .send({ status: 'Preparing' })
-      .expect(200);
+      .expect(201);
 
     const response = await request(app.getHttpServer())
       .get('/kitchen/queue')
@@ -134,17 +135,13 @@ describe('Order status and kitchen queue (e2e)', () => {
 
   it('should finish an item and remove it from the kitchen queue', async () => {
     await request(app.getHttpServer())
-      .patch(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/status`)
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
       .set('Authorization', `Bearer ${authToken}`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .send({ status: 'Preparing' })
-      .expect(200);
+      .expect(201);
     await request(app.getHttpServer())
-      .patch(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/status`)
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/finish`)
       .set('Authorization', `Bearer ${authToken}`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .send({ status: 'Ready' })
-      .expect(200);
+      .expect(201);
 
     const response = await request(app.getHttpServer())
       .get('/kitchen/queue')
@@ -153,6 +150,53 @@ describe('Order status and kitchen queue (e2e)', () => {
       .expect(200);
 
     expect(response.body.local).toHaveLength(0);
+  });
+
+  it('should show identical dishes as distinct rows and prepare one without affecting the other', async () => {
+    await prisma.orderItem.create({
+      data: {
+        id: SECOND_PIZZA_ITEM_ID,
+        orderId: LOCAL_ORDER_ID,
+        itemId: calabresaItemId,
+        unitPrice: 45,
+        quantity: 1,
+        status: 'Pending',
+        requiresPreparation: true,
+        createdAt: new Date('2026-09-07T12:05:00Z'),
+      },
+    });
+
+    const queue = await request(app.getHttpServer())
+      .get('/kitchen/queue')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+
+    expect(queue.body.local[0].items).toHaveLength(2);
+    expect(
+      queue.body.local[0].items.map(
+        (row: { orderItemId: string }) => row.orderItemId,
+      ),
+    ).toEqual([PIZZA_ITEM_ID, SECOND_PIZZA_ITEM_ID]);
+
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/finish`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+
+    const remaining = await request(app.getHttpServer())
+      .get('/kitchen/queue')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+
+    expect(remaining.body.local[0].items).toHaveLength(1);
+    expect(remaining.body.local[0].items[0].orderItemId).toBe(
+      SECOND_PIZZA_ITEM_ID,
+    );
+    expect(remaining.body.local[0].items[0].status).toBe('Pending');
   });
 
   it('should hide queue items when an ingredient becomes unavailable', async () => {
@@ -193,22 +237,38 @@ describe('Order status and kitchen queue (e2e)', () => {
 
   it('should return 400 with the domain message on an invalid transition', async () => {
     const response = await request(app.getHttpServer())
-      .patch(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/status`)
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/finish`)
       .set('Authorization', `Bearer ${authToken}`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .send({ status: 'Ready' })
       .expect(400);
 
     expect(response.body.message).toBe('Item is not in preparation');
   });
 
-  it('should return 400 when the status value is not allowed', async () => {
-    await request(app.getHttpServer())
-      .patch(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/status`)
+  it('should refuse a Waiter starting an item preparation', async () => {
+    await prisma.user.upsert({
+      where: { email: 'joao.garcom' },
+      update: { role: 'Waiter', passwordHash: MANAGER_PASSWORD_HASH },
+      create: {
+        email: 'joao.garcom',
+        name: 'Joao Garcom',
+        role: 'Waiter',
+        passwordHash: MANAGER_PASSWORD_HASH,
+      },
+    });
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
       .set('Authorization', `Bearer ${authToken}`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .send({ status: 'Banana' })
-      .expect(400);
+      .send({ login: 'joao.garcom', password: 'SenhaSegura123' })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
+      .set('Authorization', `Bearer ${loginResponse.body.token}`)
+      .expect(403);
+
+    expect(response.body.message).toBe(
+      'Access not authorized for your profile',
+    );
   });
 
   it('should return 400 when cancelling without a reason', async () => {
@@ -222,12 +282,121 @@ describe('Order status and kitchen queue (e2e)', () => {
 
   it('should return 400 with the domain message for a nonexistent order', async () => {
     const response = await request(app.getHttpServer())
-      .patch('/orders/none/items/none/status')
+      .post('/kitchen/orders/none/items/none/start')
       .set('Authorization', `Bearer ${authToken}`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .send({ status: 'Preparing' })
       .expect(400);
 
     expect(response.body.message).toBe('Order not found');
+  });
+
+  it('should let a Cook cancel one of two identical dishes, keeping the other Preparing', async () => {
+    await prisma.orderItem.create({
+      data: {
+        id: SECOND_PIZZA_ITEM_ID,
+        orderId: LOCAL_ORDER_ID,
+        itemId: calabresaItemId,
+        unitPrice: 45,
+        quantity: 1,
+        status: 'Pending',
+        requiresPreparation: true,
+        createdAt: new Date('2026-09-07T12:05:00Z'),
+      },
+    });
+    await prisma.user.upsert({
+      where: { email: 'carlos.cozinha' },
+      update: { role: 'Cook', passwordHash: MANAGER_PASSWORD_HASH },
+      create: {
+        email: 'carlos.cozinha',
+        name: 'Carlos Cozinha',
+        role: 'Cook',
+        passwordHash: MANAGER_PASSWORD_HASH,
+      },
+    });
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ login: 'carlos.cozinha', password: 'SenhaSegura123' })
+      .expect(201);
+    const cookToken = loginResponse.body.token as string;
+
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
+      .set('Authorization', `Bearer ${cookToken}`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(
+        `/kitchen/orders/${LOCAL_ORDER_ID}/items/${SECOND_PIZZA_ITEM_ID}/start`,
+      )
+      .set('Authorization', `Bearer ${cookToken}`)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/cancel`)
+      .set('Authorization', `Bearer ${cookToken}`)
+      .send({ reason: 'Wrong dish started' })
+      .expect(201);
+
+    const queue = await request(app.getHttpServer())
+      .get('/kitchen/queue')
+      .set('Authorization', `Bearer ${cookToken}`)
+      .expect(200);
+
+    expect(queue.body.local[0].items).toHaveLength(1);
+    expect(queue.body.local[0].items[0].orderItemId).toBe(SECOND_PIZZA_ITEM_ID);
+    expect(queue.body.local[0].items[0].status).toBe('Preparing');
+
+    const order = await prisma.order.findUnique({
+      where: { id: LOCAL_ORDER_ID },
+      include: { cancellations: true },
+    });
+    expect(order?.cancellations).toHaveLength(1);
+    expect(order?.cancellations[0].reason).toBe('Wrong dish started');
+    expect(order?.status).toBe('Open');
+  });
+
+  it('should refuse a Waiter cancelling an item in preparation from the kitchen', async () => {
+    await prisma.user.upsert({
+      where: { email: 'joao.garcom' },
+      update: { role: 'Waiter', passwordHash: MANAGER_PASSWORD_HASH },
+      create: {
+        email: 'joao.garcom',
+        name: 'Joao Garcom',
+        role: 'Waiter',
+        passwordHash: MANAGER_PASSWORD_HASH,
+      },
+    });
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ login: 'joao.garcom', password: 'SenhaSegura123' })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/cancel`)
+      .set('Authorization', `Bearer ${loginResponse.body.token}`)
+      .send({ reason: 'Wrong dish started' })
+      .expect(403);
+
+    expect(response.body.message).toBe(
+      'Access not authorized for your profile',
+    );
+  });
+
+  it('should keep refusing the order-side cancellation of an item in preparation', async () => {
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/cancellation`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ reason: 'Customer gave up' })
+      .expect(400);
+
+    expect(response.body.message).toBe('Cannot cancel an item in preparation');
   });
 });

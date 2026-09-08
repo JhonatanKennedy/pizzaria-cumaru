@@ -3,6 +3,7 @@ import { OrdersController } from './presentation/controllers/orders.controller.j
 import { StartItemPreparationUseCase } from './application/use-cases/start-item-preparation.js';
 import { FinishItemPreparationUseCase } from './application/use-cases/finish-item-preparation.js';
 import { CancelItemFromOrderUseCase } from './application/use-cases/cancel-item-from-order.js';
+import { CancelItemPreparationUseCase } from './application/use-cases/cancel-item-preparation.js';
 import { CreateOrderUseCase } from './application/use-cases/create-order.js';
 import { AddItemToOrderUseCase } from './application/use-cases/add-item-to-order.js';
 import { UpdateDeliveryOrderStatusUseCase } from './application/use-cases/update-delivery-order-status.js';
@@ -20,6 +21,7 @@ import { CatalogModule } from '../catalog/catalog.module.js';
   providers: [
     StartItemPreparationUseCase,
     FinishItemPreparationUseCase,
+    CancelItemPreparationUseCase,
     CancelItemFromOrderUseCase,
     CreateOrderUseCase,
     AddItemToOrderUseCase,
@@ -29,6 +31,11 @@ import { CatalogModule } from '../catalog/catalog.module.js';
     GetDailyEarningsReportUseCase,
     { provide: ORDERS_REPOSITORY, useClass: PrismaOrdersRepository },
   ],
-  exports: [ORDERS_REPOSITORY],
+  exports: [
+    ORDERS_REPOSITORY,
+    StartItemPreparationUseCase,
+    FinishItemPreparationUseCase,
+    CancelItemPreparationUseCase,
+  ],
 })
 export class OrdersModule {}

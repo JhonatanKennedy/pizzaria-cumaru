@@ -133,6 +133,48 @@ describe('OrderItems', () => {
     expect(() => drink.cancel('Customer gave up')).not.toThrow();
   });
 
+  it('should allow cancelling the preparation of an item in preparation', () => {
+    const item = makePreparedItem();
+    item.startPreparation();
+
+    expect(() => item.cancelPreparation('Wrong dish started')).not.toThrow();
+  });
+
+  it('should refuse cancelPreparation while the item is Pending', () => {
+    const item = makePreparedItem();
+
+    expect(() => item.cancelPreparation('Wrong dish started')).toThrow(
+      'Cannot cancel an item not in preparation',
+    );
+  });
+
+  it('should refuse cancelPreparation once the item is Ready', () => {
+    const item = makePreparedItem();
+    item.startPreparation();
+    item.finishPreparation();
+
+    expect(() => item.cancelPreparation('Wrong dish started')).toThrow(
+      'Cannot cancel an item not in preparation',
+    );
+  });
+
+  it('should refuse cancelPreparation on a non-prepared item', () => {
+    const drink = makeDrink();
+
+    expect(() => drink.cancelPreparation('Wrong dish started')).toThrow(
+      'Cannot cancel an item not in preparation',
+    );
+  });
+
+  it('should refuse cancelPreparation without a reason', () => {
+    const item = makePreparedItem();
+    item.startPreparation();
+
+    expect(() => item.cancelPreparation('   ')).toThrow(
+      'Cancellation reason is required',
+    );
+  });
+
   it('should keep the creation timestamp supplied by the caller', () => {
     const item = makePreparedItem();
 
