@@ -1,10 +1,30 @@
+import { IsIn, IsInt, IsOptional, IsString } from 'class-validator';
 import { EOrderType } from '../../domain/enums/order-type.js';
-import { EPaymentType } from '../../domain/enums/payment-type.js';
 
 export class CreateOrderDto {
-  userId: string;
+  @IsInt()
+  userId: number;
+
+  @IsIn([EOrderType.LOCAL, EOrderType.DELIVERY])
   type: EOrderType;
-  paymentType: EPaymentType;
+
+  @IsOptional()
+  @IsString()
   tableId?: string;
+
+  @IsOptional()
+  @IsString()
+  customerName?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 }
