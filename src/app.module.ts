@@ -1,10 +1,13 @@
-import { Module } from '@nestjs/common';
+import { Module, ValidationPipe } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
-import { OrdersController } from './orders/presentation/controllers/orders.controller.js';
+import { OrdersModule } from './orders/orders.module.js';
+import { KitchenModule } from './kitchen/kitchen.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ConfigModule } from '@nestjs/config';
+import { DomainErrorFilter } from './common/filters/domain-error.filter.js';
+import { RolesGuard } from './common/guards/roles.guard.js';
+import { UsersModule } from './users/users.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -12,15 +15,24 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
   imports: [
     // Distributed tracing, auto-correlated logs, request/job metrics, error
     // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.local' }),
     ObserveModule.forRoot({
       appKey: 'YOUR_APP_KEY',
       appSecret: 'YOUR_APP_SECRET',
       serviceId: 'pizzaria-cumaru-backend',
     }),
     PrismaModule,
+    OrdersModule,
+    KitchenModule,
+    UsersModule,
   ],
-  controllers: [AppController, OrdersController],
-  providers: [AppService],
+  providers: [
+    { provide: APP_FILTER, useClass: DomainErrorFilter },
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({ whitelist: true, transform: true }),
+    },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class AppModule {}

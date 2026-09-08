@@ -25,11 +25,13 @@ Feature: Cook profile
 
   Scenario: Cook confirms that a dish is finished
     Given the dish "Parmegiana de Carne" is in the kitchen queue with status "Pending"
+    And he starts the preparation of the dish "Parmegiana de Carne"
     When he confirms that the dish "Parmegiana de Carne" is finished
     Then the status of this dish must change to "Ready"
 
   Scenario: Finishing a dish does not finish the whole order nor the other items
     Given the order of table "3" contains a pizza "Calabresa" and a dish "Parmegiana de Frango", both "Pending"
+    And he starts the preparation of the dish "Parmegiana de Frango"
     When he confirms that the dish "Parmegiana de Frango" is finished
     Then the dish "Parmegiana de Frango" must stay with status "Ready"
     And the pizza "Calabresa" must remain with status "Pending"

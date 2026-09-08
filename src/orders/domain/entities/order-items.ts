@@ -1,12 +1,20 @@
 import { EOrderItemStatus } from '../enums/order-item-status.js';
 
+const MINIMUM_ITEM_QUANTITY = 1;
+
 export interface CreateOrderItemParams {
   id: string;
   orderId: string;
   itemId: string;
   unitPrice: number;
   quantity: number;
+  requiresPreparation: boolean;
+  createdAt: Date;
+  flavors?: string[];
+  notes?: string;
 }
+
+export type TOrderItemStatus = EOrderItemStatus | undefined;
 
 export class OrderItems {
   private constructor(
@@ -15,7 +23,11 @@ export class OrderItems {
     private readonly itemId: string,
     private readonly unitPrice: number,
     private quantity: number,
-    private status: EOrderItemStatus,
+    private status: TOrderItemStatus,
+    private readonly requiresPreparation: boolean,
+    private readonly createdAt: Date,
+    private readonly flavors: string[],
+    private readonly notes?: string,
   ) {}
 
   static create(params: CreateOrderItemParams): OrderItems {
@@ -33,8 +45,57 @@ export class OrderItems {
       params.itemId,
       params.unitPrice,
       params.quantity,
-      EOrderItemStatus.PENDING,
+      params.requiresPreparation ? EOrderItemStatus.PENDING : undefined,
+      params.requiresPreparation,
+      params.createdAt,
+      params.flavors ?? [],
+      params.notes,
     );
+  }
+
+  static restore(
+    params: CreateOrderItemParams & { status?: EOrderItemStatus },
+  ): OrderItems {
+    return new OrderItems(
+      params.id,
+      params.orderId,
+      params.itemId,
+      params.unitPrice,
+      params.quantity,
+      params.status,
+      params.requiresPreparation,
+      params.createdAt,
+      params.flavors ?? [],
+      params.notes,
+    );
+  }
+
+  startPreparation(): void {
+    if (this.status !== EOrderItemStatus.PENDING) {
+      throw new Error('Item is not waiting for preparation');
+    }
+    this.status = EOrderItemStatus.PREPARING;
+  }
+
+  finishPreparation(): void {
+    if (this.status !== EOrderItemStatus.PREPARING) {
+      throw new Error('Item is not in preparation');
+    }
+    this.status = EOrderItemStatus.READY;
+  }
+
+  /**
+   * Validates that this item can be cancelled. Removal from the order and
+   * history recording are performed by `Order.cancelItem`, the only caller.
+   */
+  cancel(reason: string): void {
+    if (!reason.trim()) {
+      throw new Error('Cancellation reason is required');
+    }
+
+    if (this.requiresPreparation && this.status !== EOrderItemStatus.PENDING) {
+      throw new Error('Cannot cancel an item in preparation');
+    }
   }
 
   increaseQuantity(quantity: number): void {
@@ -50,15 +111,11 @@ export class OrderItems {
       throw new Error('Quantity must be greater than zero');
     }
 
-    if (this.quantity - quantity < 1) {
+    if (this.quantity - quantity < MINIMUM_ITEM_QUANTITY) {
       throw new Error('Quantity cannot be less than one');
     }
 
     this.quantity -= quantity;
-  }
-
-  changeStatus(status: EOrderItemStatus): void {
-    this.status = status;
   }
 
   get totalPrice(): number {
@@ -67,6 +124,10 @@ export class OrderItems {
 
   getId(): string {
     return this.id;
+  }
+
+  getOrderId(): string {
+    return this.orderId;
   }
 
   getItemId(): string {
@@ -81,7 +142,23 @@ export class OrderItems {
     return this.unitPrice;
   }
 
-  getStatus(): EOrderItemStatus {
+  getStatus(): TOrderItemStatus {
     return this.status;
+  }
+
+  getRequiresPreparation(): boolean {
+    return this.requiresPreparation;
+  }
+
+  getCreatedAt(): Date {
+    return this.createdAt;
+  }
+
+  getFlavors(): ReadonlyArray<string> {
+    return this.flavors;
+  }
+
+  getNotes(): string {
+    return this.notes ?? '';
   }
 }

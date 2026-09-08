@@ -23,6 +23,7 @@ Feature: Manager profile
 
   Scenario: Manager confirms a dish as the cook would
     Given there is a dish "Parmegiana de Carne" in the kitchen queue with status "Pending"
+    And she starts the preparation of the dish "Parmegiana de Carne"
     When she confirms that the dish is finished
     Then the status of the dish must change to "Ready"
 
