@@ -1,5 +1,5 @@
-import { getRoleLabel } from '../../../../../../pages/auth/business/role';
-import { Card } from '../../../../../../components/Card';
+import { getRoleLabel } from '@pages/auth/business/role';
+import { Card } from '@components/Card';
 
 const SEEDED_PROFILES = [
   { login: 'ana.gerente', role: 'Manager' },

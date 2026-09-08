@@ -1,15 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
-import { useAuth } from '../../../../../../pages/auth/use-auth';
+import { useAuth } from '@pages/auth/use-auth';
 import {
   loginFormSchema,
   type TLoginFormValues,
-} from '../../../../../../pages/auth/business/auth.schemas';
-import { roleHomePath } from '../../../../../../pages/auth/business/role';
-import { Button } from '../../../../../../components/Button';
-import { TextField } from '../../../../../../components/TextField';
-import { toErrorMessage } from '../../../../../../lib/errors';
+} from '@pages/auth/business/auth.schemas';
+import { roleHomePath } from '@pages/auth/business/role';
+import { Button } from '@components/Button';
+import { TextField } from '@components/TextField';
+import { toErrorMessage } from '@lib/errors';
 
 export function LoginForm(): React.ReactNode {
   const { login } = useAuth();

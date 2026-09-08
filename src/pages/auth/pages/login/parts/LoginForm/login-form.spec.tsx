@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { ApiError } from '../../../../../../api/http-client';
+import { ApiError } from '@api/http-client';
 import { LoginForm } from './index';
 
 const { loginMock } = vi.hoisted(() => ({ loginMock: vi.fn() }));

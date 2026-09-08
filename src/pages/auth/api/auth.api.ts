@@ -1,4 +1,4 @@
-import { apiRequest } from '../../../api/http-client';
+import { apiRequest } from '@api/http-client';
 import {
   loginResponseSchema,
   type TLoginResponse,

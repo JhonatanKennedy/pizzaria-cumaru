@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Card } from '../../../../components/Card';
+import { Card } from '@components/Card';
 
 interface AccessDeniedProps {
   homePath: string;
