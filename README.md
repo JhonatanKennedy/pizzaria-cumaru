@@ -70,11 +70,20 @@ All other endpoints require `Authorization: Bearer <token>`. Seeded users:
 | `PATCH /orders/:id/status` | advance delivery cycle (`Preparing` → `Out for delivery` → `Delivered`) | ✓ | | ✓ |
 | `POST /orders/:id/close` | close with payment, optional `splitInto` | | | ✓ |
 | `GET /kitchen/queue` | the two kitchen queues | | ✓ | ✓ |
+| `POST /kitchen/orders/:orderId/items/:itemId/cancel` | cancel the preparation of a started dish (reason in body) | | ✓ | ✓ |
 | `GET /orders` | day's orders with waiter name | ✓ | | ✓ |
 | `GET /reports/daily-earnings` | day's earnings (`?type=Local\|Delivery`) | | | ✓ |
 | `GET /items` / `GET /ingredients` | menu / stock listings | ✓ | | ✓ |
-| `PATCH /ingredients/:id/stock` | mark ingredient available/unavailable | | | ✓ |
+| `POST /items` | create menu item | | | ✓ |
+| `PATCH /items/:id` | rename item / change description | | | ✓ |
 | `PATCH /items/:id/price` | update item price | | | ✓ |
+| `POST /items/:id/ingredients` | link ingredient to item | | | ✓ |
+| `DELETE /items/:id/ingredients/:ingredientId` | unlink ingredient from item | | | ✓ |
+| `DELETE /items/:id` | remove item from menu | | | ✓ |
+| `POST /ingredients` | register ingredient | | | ✓ |
+| `PATCH /ingredients/:id` | rename ingredient | | | ✓ |
+| `PATCH /ingredients/:id/stock` | mark ingredient available/unavailable | | | ✓ |
+| `DELETE /ingredients/:id` | remove ingredient | | | ✓ |
 
 Error conventions: business refusals return `400` with the spec message (`{"message": "Cannot cancel an item in preparation"}`); missing/invalid tokens return `401`; role denials return `403` with `"Access not authorized for your profile"` (or the specific message, e.g. `"Only the manager can close the order"`).
 
