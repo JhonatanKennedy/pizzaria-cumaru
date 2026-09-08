@@ -1,8 +1,8 @@
-import { ApiError } from '../api/http-client';
+import { ApiError } from '@api/http-client';
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     return error.message;
   }
-  return 'Unexpected error. Try again.';
+  return 'Algo deu errado. Tente novamente!';
 }

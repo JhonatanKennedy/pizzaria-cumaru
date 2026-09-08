@@ -5,9 +5,9 @@ import {
   WAITER_PANEL_ROLES,
   getRoleLabel,
   type UserRole,
-} from '../../../pages/auth/business/role';
-import { Button } from '../../../components/Button';
-import { useAuth } from '../../../pages/auth/use-auth';
+} from '@pages/auth/business/role';
+import { Button } from '@components/Button';
+import { useAuth } from '@pages/auth/use-auth';
 
 interface NavLinkItem {
   label: string;

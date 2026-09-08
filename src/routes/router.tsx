@@ -1,35 +1,28 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 import {
   KITCHEN_PANEL_ROLES,
   MANAGER_ROLES,
   WAITER_PANEL_ROLES,
-} from '../pages/auth/business/role';
-import { LoginPage } from '../pages/auth/pages/login/login-page';
-import { WaiterPage } from '../pages/waiter/pages/waiter-page';
-import { TablesPage } from '../pages/waiter/pages/tables-page';
-import { DeliveryPage } from '../pages/waiter/pages/delivery-page';
-import { KitchenPage } from '../pages/kitchen/pages/kitchen-page';
-import { ManagerPage } from '../pages/manager/pages/manager-page';
-import { DailyEarningsPage } from '../pages/manager/pages/daily-earnings-page';
-import { MenuPage } from '../pages/manager/pages/menu-page';
-import { NotFoundPage } from './not-found-page';
+} from '@pages/auth/business/role';
+import { LoginPage } from '@pages/auth/pages/login/login-page';
+import { GuestOnly, RequireRole } from '@pages/auth/require-role';
+import { KitchenPage } from '@pages/kitchen/pages/kitchen-page';
+import { DailyEarningsPage } from '@pages/manager/pages/daily-earnings-page';
+import { DeliveryPage } from '@pages/manager/pages/delivery-page';
+import { ManagerPage } from '@pages/manager/pages/manager-page';
+import { MenuPage } from '@pages/manager/pages/menu-page';
+import { OrderDetailPage } from '@pages/waiter/pages/order-detail';
+import { TablesPage } from '@pages/waiter/pages/tables';
 import { HomeRedirect } from './home-redirect';
 import { AppLayout } from './layout/AppLayout';
-import { GuestOnly, RequireRole } from '../pages/auth/require-role';
+import { NotFoundPage } from './not-found-page';
 
 export const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
       { index: true, element: <HomeRedirect /> },
-      {
-        path: '/waiter',
-        element: (
-          <RequireRole roles={WAITER_PANEL_ROLES}>
-            <WaiterPage />
-          </RequireRole>
-        ),
-      },
+      { path: '/waiter', element: <Navigate to="/waiter/tables" replace /> },
       {
         path: '/waiter/tables',
         element: (
@@ -39,10 +32,10 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/waiter/delivery',
+        path: '/waiter/orders/:orderId',
         element: (
           <RequireRole roles={WAITER_PANEL_ROLES}>
-            <DeliveryPage />
+            <OrderDetailPage />
           </RequireRole>
         ),
       },
@@ -67,6 +60,14 @@ export const router = createBrowserRouter([
         element: (
           <RequireRole roles={MANAGER_ROLES}>
             <MenuPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: '/manager/delivery',
+        element: (
+          <RequireRole roles={MANAGER_ROLES}>
+            <DeliveryPage />
           </RequireRole>
         ),
       },
