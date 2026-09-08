@@ -4,6 +4,7 @@ import { ICatalogRepository } from '../domain/repositories/catalog-repository.js
 import { Item } from '../domain/entities/items.js';
 import { Ingredient } from '../domain/entities/ingredients.js';
 import { EItemCategory } from '../domain/enums/item-category.js';
+import type { Prisma } from '../../prisma/generated/client.js';
 
 const ITEM_CATEGORIES = new Set<string>(Object.values(EItemCategory));
 const ITEM_WITH_INGREDIENTS = {
@@ -15,6 +16,38 @@ function parseItemCategory(value: string): EItemCategory {
     throw new Error(`Unknown item category: ${value}`);
   }
   return value as EItemCategory;
+}
+
+function itemLinksToNestedCreate(
+  item: Item,
+): Prisma.ItemIngredientUncheckedCreateWithoutItemInput[] {
+  return item.getIngredientIds().map((ingredientId) => ({ ingredientId }));
+}
+
+function itemDomainToCreate(item: Item): Prisma.ItemCreateInput {
+  return {
+    id: item.getId(),
+    name: item.getName(),
+    description: item.getDescription(),
+    price: item.getPrice(),
+    category: item.getCategory(),
+    requiresPreparation: item.getRequiresPreparation(),
+    ingredients: { create: itemLinksToNestedCreate(item) },
+  };
+}
+
+function itemDomainToUpdate(item: Item): Prisma.ItemUpdateInput {
+  return {
+    name: item.getName(),
+    description: item.getDescription(),
+    price: item.getPrice(),
+    category: item.getCategory(),
+    requiresPreparation: item.getRequiresPreparation(),
+    ingredients: {
+      deleteMany: {},
+      create: itemLinksToNestedCreate(item),
+    },
+  };
 }
 
 @Injectable()
@@ -94,29 +127,46 @@ export class PrismaCatalogRepository implements ICatalogRepository {
     });
   }
 
+  async findIngredientByName(name: string): Promise<Ingredient | null> {
+    const row = await this.prisma.ingredient.findFirst({ where: { name } });
+    if (!row) {
+      return null;
+    }
+    return Ingredient.create({
+      id: row.id,
+      name: row.name,
+      inStock: row.inStock,
+    });
+  }
+
   async saveItem(item: Item): Promise<void> {
-    await this.prisma.item.update({
+    await this.prisma.item.upsert({
       where: { id: item.getId() },
-      data: {
-        name: item.getName(),
-        description: item.getDescription(),
-        price: item.getPrice(),
-        category: item.getCategory(),
-        requiresPreparation: item.getRequiresPreparation(),
-        ingredients: {
-          deleteMany: {},
-          create: item
-            .getIngredientIds()
-            .map((ingredientId) => ({ ingredientId })),
-        },
-      },
+      update: itemDomainToUpdate(item),
+      create: itemDomainToCreate(item),
     });
   }
 
   async saveIngredient(ingredient: Ingredient): Promise<void> {
-    await this.prisma.ingredient.update({
+    await this.prisma.ingredient.upsert({
       where: { id: ingredient.getId() },
-      data: { name: ingredient.getName(), inStock: ingredient.isAvailable() },
+      update: {
+        name: ingredient.getName(),
+        inStock: ingredient.isAvailable(),
+      },
+      create: {
+        id: ingredient.getId(),
+        name: ingredient.getName(),
+        inStock: ingredient.isAvailable(),
+      },
     });
+  }
+
+  async deleteItem(id: string): Promise<void> {
+    await this.prisma.item.delete({ where: { id } });
+  }
+
+  async deleteIngredient(id: string): Promise<void> {
+    await this.prisma.ingredient.delete({ where: { id } });
   }
 }

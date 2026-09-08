@@ -35,6 +35,7 @@ export interface IAuthenticatedPayload {
 // Boundary guard enforcing the permission matrix:
 //   create orders / add items    Waiter, Manager
 //   start / finish item prep     Cook, Manager
+//   cancel preparation           Cook, Manager
 //   cancel items                 Waiter, Manager
 //   advance delivery status      Waiter, Manager
 //   close orders                 Manager (message: "Only the manager can close the order")
@@ -42,6 +43,7 @@ export interface IAuthenticatedPayload {
 //   kitchen queue                Cook, Manager
 //   menu / ingredient listings   Waiter, Manager
 //   stock and price changes      Manager
+//   create / edit / remove items and ingredients, link ingredients  Manager
 // Future endpoints MUST declare their roles here and in @Roles.
 @Injectable()
 export class RolesGuard implements CanActivate {

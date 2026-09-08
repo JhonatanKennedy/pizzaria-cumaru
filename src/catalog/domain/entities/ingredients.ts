@@ -18,6 +18,13 @@ export class Ingredient {
     return new Ingredient(params.id, params.name, params.inStock);
   }
 
+  rename(name: string): void {
+    if (!name.trim()) {
+      throw new Error('Name is required');
+    }
+    this.name = name;
+  }
+
   markOutOfStock(): void {
     this.inStock = false;
   }
