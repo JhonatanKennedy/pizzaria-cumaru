@@ -1,23 +1,31 @@
 # Project conventions
 
-## 1. Import specifiers are extensionless
+## 1. Import specifiers: aliases across folders, relative within
 
-This is a bundler project (`moduleResolution: "bundler"`), not NodeNext ESM — relative imports carry no extension. Never `./x.ts`, `./x.tsx` or `./x.js` in real imports.
+This is a bundler project (`moduleResolution: "bundler"`) — import specifiers carry no extension. Top-level folders are imported through `@` aliases (`vite.config.ts` + `tsconfig.app.json` paths): `@components/`, `@pages/`, `@api/`, `@lib/`, `@routes/`. Relative imports are reserved for files inside the same folder tree — the same context's `business/`, `hooks/`, `api/`, `components/` — where the path stays short and readable.
 
 ```ts
-// ✅
-import { LoginPage } from '../pages/auth/pages/login/login-page';
-import { useAuth } from './use-auth';
+// ✅ — cross-folder imports go through the alias
+import { Button } from '@components/Button';
+import { useAuth } from '@pages/auth/use-auth';
+import { apiRequest } from '@api/http-client';
 
-// ❌
+// ✅ — inside the same context, relative is shorter and clearer
+import { enrichOrder } from '../business/enrich';
+import { useOrders } from '../hooks/use-orders';
+
+// ❌ — relative paths that climb out of the folder tree
+import { Button } from '../../../../components/Button';
+
+// ❌ — never an extension
 import { useAuth } from './use-auth.ts';
 ```
 
-(The backend repo keeps its `.js`-suffixed NodeNext rule — that's a backend concern; don't copy it here.)
+Careful with the shared kit: `@components/` means `src/components/` only — context components (`pages/<context>/components/`) are imported relatively or via `@pages/<context>/components/`. (The backend repo keeps its `.js`-suffixed NodeNext rule — that's a backend concern; don't copy it here.)
 
 ## 2. File naming and the context skeleton
 
-The app is divided into **bounded contexts** under `src/pages/` — one folder per context (`auth`, `waiter`, `kitchen`, `manager`). Everything a context owns lives inside its folder: screens, business rules, API calls, context components and specs. Nothing from a context leaks out — cross-context code goes to the shared top-level folders (`components/`, `api/`, `lib/`), and application assembly lives in `src/infra/`. Files are bare kebab-case; `pages/auth` is the canonical context.
+The app is divided into **bounded contexts** under `src/pages/` — one folder per context (`auth`, `waiter`, `kitchen`, `manager`). Everything a context owns lives inside its folder: screens, business rules, API calls, context components and specs. Nothing from a context leaks out — cross-context code goes to the shared top-level folders (`components/`, `api/`, `lib/`), and application assembly lives in `src/routes/`. Files are bare kebab-case; `pages/auth` is the canonical context.
 
 | Kind               | Location                                            | Examples                                    |
 | ------------------ | --------------------------------------------------- | ------------------------------------------- |
@@ -30,7 +38,7 @@ The app is divided into **bounded contexts** under `src/pages/` — one folder p
 | Spec               | colocated next to the code under test                | `business/specs/role.spec.ts`, `parts/LoginForm/login-form.spec.tsx` |
 | Shared UI kit      | `src/components/`                                    | `Button/index.tsx`, `Card/index.tsx`, `TextField/index.tsx` |
 | HTTP seam          | `src/api/http-client.ts`                             | `configureApiClient`, `apiRequest`          |
-| App assembly       | `src/infra/`                                         | `router.tsx`, `app.tsx`, `layout/AppLayout/index.tsx` |
+| App assembly       | `src/routes/`                                         | `router.tsx`, `app.tsx`, `layout/AppLayout/index.tsx` |
 
 **Every component lives in a folder named after the component, and the component itself is `index.tsx`** — `components/Button/index.tsx`, not `components/button.tsx`. When a component grows, its complement files (specs, styles, sub-parts, helpers) sit beside the `index.tsx` in the same folder. This applies to every visual component — UI kit, context components, page parts and the shell. Pages (screens), providers and guards keep their own conventions (`.context.tsx`, `require-role.tsx`).
 
@@ -43,7 +51,7 @@ components/
     index.tsx
 ```
 
-One exported component per file; the context object itself lives in a plain `.ts` (`auth-context.ts`) next to its provider so both stay fast-refresh-safe. `components/`, `api/` and `lib/` import nothing from contexts — when shared code wants context code, it is not shared: move it into the context or into `infra/`.
+One exported component per file; the context object itself lives in a plain `.ts` (`auth-context.ts`) next to its provider so both stay fast-refresh-safe. `components/`, `api/` and `lib/` import nothing from contexts — when shared code wants context code, it is not shared: move it into the context or into `routes/`.
 
 ## 3. Language
 
@@ -72,7 +80,7 @@ Backend messages are surfaced to the user verbatim via `ApiError.message` (`toEr
 
 ## 6. Known debt & open questions
 
-- **The http client is the only seam.** `configureApiClient({ getToken, onUnauthorized })` is wired once in `infra/app.tsx`; nothing else in `api/` may touch auth, and no other module-level wiring should be introduced. Components depend on hooks, hooks on `*.api.ts`, api modules on `apiRequest` — tests mock at or above this seam.
+- **The http client is the only seam.** `configureApiClient({ getToken, onUnauthorized })` is wired once in `routes/app.tsx`; nothing else in `api/` may touch auth, and no other module-level wiring should be introduced. Components depend on hooks, hooks on `*.api.ts`, api modules on `apiRequest` — tests mock at or above this seam.
 - **No e2e suite yet.** The testing rules reserve ~10% for e2e; Playwright + `test/*.e2e-spec.ts` still need to be set up (or explicitly declined).
 - **Session in `localStorage`.** JWT + user are stored in `localStorage` for simplicity; it is readable by any script and survives the tab. Revisit (httpOnly cookie or in-memory + refresh) if the app ever leaves the trusted-intranet context.
 - **API contract is only validated for `POST /auth/login`.** Every other endpoint (`/orders`, `/items`, `/ingredients`, `/kitchen`, `/reports`) still needs response schemas in its context's `api/` as those modules are built.

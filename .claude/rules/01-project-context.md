@@ -9,8 +9,8 @@
 | Language         | TypeScript 6, `strict` (default), `erasableSyntaxOnly` (no TS enums / parameter properties / namespaces)            |
 | Framework        | React 19 (function components + hooks only)                                                                          |
 | Build tool       | Vite 8 (`@vitejs/plugin-react`)                                                                                      |
-| Routing          | React Router 8 — `createBrowserRouter` / `RouterProvider` in `src/infra/router.tsx`                                 |
-| Server state     | TanStack Query 5 — one `QueryClient` in `src/infra/query-client.ts`; queries revalidate via `staleTime`             |
+| Routing          | React Router 8 — `createBrowserRouter` / `RouterProvider` in `src/routes/router.tsx`                                 |
+| Server state     | TanStack Query 5 — one `QueryClient` in `src/routes/query-client.ts`; queries revalidate via `staleTime`             |
 | Forms            | React Hook Form 7 + Zod 4 via `@hookform/resolvers` (`zodResolver`)                                                 |
 | Styling          | Tailwind CSS 4 via `@tailwindcss/vite` — no `tailwind.config.js`; shared classes (`.field-input`, `.btn-primary`, `.card`) live in `src/index.css` |
 | Tests            | Vitest 5 (`globals: true`, jsdom) + Testing Library; `tsconfig.app.json` includes `vitest/globals` in `types`       |
@@ -34,9 +34,9 @@ Environment: `VITE_API_URL` (optional, default `http://localhost:3000`) — see 
 
 ## Architecture
 
-DDD-style **bounded contexts**: `src/pages/` holds one folder per context, and every context starts and ends inside its own folder — pages, business rules, API calls, components and specs of a context live together, and nothing from a context leaks out. Cross-context code (the UI kit, the HTTP seam, generic utils) lives in top-level folders, and the application assembly (router, providers, shell) lives in `src/infra/`.
+DDD-style **bounded contexts**: `src/pages/` holds one folder per context, and every context starts and ends inside its own folder — pages, business rules, API calls, components and specs of a context live together, and nothing from a context leaks out. Cross-context code (the UI kit, the HTTP seam, generic utils) lives in top-level folders, and the application assembly (router, providers, shell) lives in `src/routes/`.
 
-Dependency direction: **`infra/` → `pages/<context>` → `components/` / `api/` / `lib/`**. Contexts may use shared folders but never other contexts; shared folders import nothing from contexts.
+Dependency direction: **`routes/` → `pages/<context>` → `components/` / `api/` / `lib/`**. Contexts may use shared folders but never other contexts; shared folders import nothing from contexts.
 
 ```
 src/
@@ -50,10 +50,10 @@ src/
       api/auth.api.ts #   backend calls for this context
       components/     #   context-local views (AccessDenied/index.tsx)
       auth.context.tsx, auth-context.ts, use-auth.ts, require-role.tsx  # provider + guards
-    waiter/           # waiter context: hub + tables + delivery screens
+    waiter/           # waiter context: tables screen + order detail (business, api, hooks, components)
     kitchen/          # kitchen context: the Kitchen Panel
-    manager/          # manager context: hub + menu + daily-earnings screens
-  infra/              # application assembly (no app/ folder)
+    manager/          # manager context: hub + menu + delivery + daily-earnings screens
+  routes/              # application assembly (no app/ folder)
     app.tsx           # configureApiClient wiring + QueryClientProvider > AuthProvider > RouterProvider
     router.tsx        # createBrowserRouter — every route, with its role guard
     layout/AppLayout/index.tsx  # the app shell (nav by role, user chip, logout)
@@ -70,26 +70,27 @@ src/
 
 - **Errors** — the backend's `DomainErrorFilter` returns `{ statusCode, message }` with a non-2xx status. `apiRequest` throws `ApiError(statusCode, message)`; display `message` to the user as-is (no localization — the specs assert these exact strings, e.g. `"Invalid username or password"`, `"Account locked. Try again in 15 minutes"`).
 - **Responses are validated before use** — `apiRequest` returns `unknown`; every `*.api.ts` parses with a zod schema (`loginResponseSchema.parse(data)`). A backend shape change becomes a loud error at the point of use, not a silent bug deep in a component.
-- **401 handling** — the client knows nothing about auth. `infra/app.tsx` wires `configureApiClient({ getToken: readToken, onUnauthorized: handleUnauthorized })` once; on 401 the client calls `onUnauthorized`, which clears storage and resets the `AuthProvider` user (via the expiry handler the provider registers), and `RequireRole` redirects to `/login`.
+- **401 handling** — the client knows nothing about auth. `routes/app.tsx` wires `configureApiClient({ getToken: readToken, onUnauthorized: handleUnauthorized })` once; on 401 the client calls `onUnauthorized`, which clears storage and resets the `AuthProvider` user (via the expiry handler the provider registers), and `RequireRole` redirects to `/login`.
 
 ### Auth
 
-JWT from `POST /auth/login` (`{ login, password }` → `{ token, user: { id, login, role } }`), stored in `localStorage` (`pizzaria-cumaru.token` / `pizzaria-cumaru.user`) via `pages/auth/business/auth-storage.ts` — read back through type guards, never cast. Every request sends `Authorization: Bearer <token>`. Roles are the literal union `Waiter | Cook | Manager` (`pages/auth/business/role.ts`); role → home screen mapping lives there too (`Manager → /manager`, `Waiter → /waiter`, `Cook → /kitchen`). Route protection: `<RequireRole roles={...}>` (unauthenticated → `/login`; wrong role → `AccessDenied` with the spec'd message) and `<GuestOnly>` for `/login`.
+JWT from `POST /auth/login` (`{ login, password }` → `{ token, user: { id, login, role } }`), stored in `localStorage` (`pizzaria-cumaru.token` / `pizzaria-cumaru.user`) via `pages/auth/business/auth-storage.ts` — read back through type guards, never cast. Every request sends `Authorization: Bearer <token>`. Roles are the literal union `Waiter | Cook | Manager` (`pages/auth/business/role.ts`); role → home screen mapping lives there too (`Manager → /manager`, `Waiter → /waiter`, `Cook → /kitchen`). Route protection: `<RequireRole roles={...}>` (unauthenticated → `/login`; wrong role → `AccessDenied` with the spec'd message) and `<GuestOnly>` for `/login`. In development only (`import.meta.env.DEV`), the login page renders a `DevLogin` quick-entry that writes a fake session per role without calling the backend — data screens still need the real backend.
 
 ### Routes
 
 | Route                     | Roles            | Feature file               | Status              |
 | ------------------------- | ---------------- | -------------------------- | ------------------- |
 | `/login`                  | public           | `01_authentication`        | ✅ working          |
-| `/waiter`                 | Waiter, Manager  | `05_waiter_profile`        | placeholder         |
-| `/waiter/tables`          | Waiter, Manager  | `03_table_order`           | placeholder         |
-| `/waiter/delivery`        | Waiter, Manager  | `04_delivery_order`        | placeholder         |
+| `/waiter`                 | Waiter, Manager  | `05_waiter_profile`        | redirects to `/waiter/tables` |
+| `/waiter/tables`          | Waiter, Manager  | `03_table_order`           | ✅ working          |
+| `/waiter/orders/:orderId` | Waiter, Manager  | `03_table_order`, `09`     | ✅ working          |
 | `/kitchen`                | Cook, Manager    | `06_cook_profile`          | placeholder         |
-| `/manager`                | Manager          | `07_manager_profile`       | placeholder         |
+| `/manager`                | Manager          | `07_manager_profile`       | placeholder (hub)   |
 | `/manager/menu`           | Manager          | `02_menu_and_stock`        | placeholder         |
+| `/manager/delivery`       | Manager          | `04_delivery_order`        | placeholder         |
 | `/reports/daily-earnings` | Manager          | `07_manager_profile`       | placeholder         |
 
-The role matrix mirrors the backend's `RolesGuard`: waiters and managers share the order flows; cooks and managers share the kitchen; manager-only for management and reports.
+The role matrix mirrors the backend's `RolesGuard`: waiters and managers share the order flows; cooks and managers share the kitchen; manager-only for management and reports. Delivery is a manager-only flow by product decision (the Gherkin specs still describe it in the waiter's hands — to be reconciled).
 
 ### Feature-file mapping
 
@@ -99,12 +100,12 @@ One context per product area — the folder is the context, and each screen name
 | ----------------------------- | ------------------------------ | --------------------------------------------------------------------------------------- |
 | `01_authentication.feature`   | `pages/auth`                   | Login form (RHF + Zod), role-based redirect, logout, guards. Implemented — the canonical context. |
 | `02_menu_and_stock.feature`   | `pages/manager`                | Manager CRUD for items and ingredients, price, stock toggles, link/unlink.              |
-| `03_table_order.feature`      | `pages/waiter`                 | Open order per table, add items with flavors and notes, follow preparation status.      |
-| `04_delivery_order.feature`   | `pages/waiter`                 | WhatsApp-style delivery orders; status cycle to Delivered.                              |
-| `05_waiter_profile.feature`   | `pages/waiter`                 | Hub that hosts the table-order and delivery-order screens; waiter cannot close orders.  |
+| `03_table_order.feature`      | `pages/waiter`                 | Tables screen, order detail, add items with flavors and notes. Implemented.             |
+| `04_delivery_order.feature`   | `pages/manager`                | Delivery orders; status cycle to Delivered. Placeholder.                                |
+| `05_waiter_profile.feature`   | `pages/waiter`                 | Tables screen with preparation-status follow-up; waiter cannot close orders.            |
 | `06_cook_profile.feature`     | `pages/kitchen`                | Two queues by arrival order; start/finish/cancel preparation.                           |
 | `07_manager_profile.feature`  | `pages/manager`                | Manager hub, daily-earnings report, close-order flow with payment type.                 |
-| `09_cancellation_and_payment.feature` | `pages/waiter` + `pages/manager` | No screen of its own — cancel item lives in the waiter order screens, split bill in the manager close-order flow. |
+| `09_cancellation_and_payment.feature` | `pages/waiter` + `pages/manager` | Item cancellation with reason implemented in the waiter order detail; split bill remains in the manager close-order flow. |
 
 ## Feature specs
 

@@ -30,4 +30,4 @@ The backend must be running (`npm run start:dev` there) for any real data. Seede
 
 ## Structure and conventions
 
-Screens trace back to the Gherkin specs in `features/`. The app is divided into bounded contexts under `src/pages/` — each context owns its screens, business rules, API calls and specs; shared UI lives in `src/components/`, assembly in `src/infra/`. The full architecture, route table and coding rules live in [CLAUDE.md](CLAUDE.md) and `.claude/rules/`.
+Screens trace back to the Gherkin specs in `features/`. The app is divided into bounded contexts under `src/pages/` — each context owns its screens, business rules, API calls and specs; shared UI lives in `src/components/`, assembly in `src/routes/`. The full architecture, route table and coding rules live in [CLAUDE.md](CLAUDE.md) and `.claude/rules/`.
