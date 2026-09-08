@@ -1,4 +1,5 @@
-import { Card } from '../../../../components/Card';
+import { Card } from '@components/Card';
+import { DevLogin } from './parts/DevLogin';
 import { LoginForm } from './parts/LoginForm';
 import { SeededProfiles } from './parts/SeededProfiles';
 
@@ -13,6 +14,7 @@ export function LoginPage(): React.ReactNode {
           <LoginForm />
         </Card>
         <SeededProfiles />
+        <DevLogin />
       </div>
     </div>
   );

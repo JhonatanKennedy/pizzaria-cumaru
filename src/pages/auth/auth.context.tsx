@@ -5,6 +5,7 @@ import {
   writeSession,
 } from './business/auth-storage';
 import { registerSessionExpiryHandler } from './business/handle-unauthorized';
+import type { UserRole } from './business/role';
 import { authenticate, revokeToken } from './api/auth.api';
 import { AuthContext, type AuthUser } from './auth-context';
 
@@ -25,6 +26,12 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
     return result.user;
   }, []);
 
+  const loginAsDev = useCallback((role: UserRole) => {
+    const devUser: AuthUser = { id: 0, login: 'dev', role };
+    writeSession('dev-token', devUser);
+    setUser(devUser);
+  }, []);
+
   const logout = useCallback(async () => {
     await revokeToken().catch(() => undefined);
     clearSession();
@@ -32,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, loginAsDev, logout }}>
       {children}
     </AuthContext.Provider>
   );
