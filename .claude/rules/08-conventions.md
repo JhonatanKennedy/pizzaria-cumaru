@@ -16,13 +16,14 @@ import { OrderItems } from './order-items.ts';
 
 ## 2. File naming
 
-| Kind | Pattern | Examples |
-| --- | --- | --- |
-| Entity | bare kebab, one class per file | `orders.ts`, `order-items.ts`, `items.ts` |
-| Enum | bare kebab | `order-status.ts`, `payment-type.ts` |
-| Controller | `*.controller.ts` | `orders.controller.ts` |
-| DTO | `*.dto.ts` | `create-order.dto.ts` |
-| Module | `*.module.ts` | `orders.module.ts` |
+| Kind       | Pattern                        | Examples                                  |
+| ---------- | ------------------------------ | ----------------------------------------- |
+| Entity     | bare kebab, one class per file | `orders.ts`, `order-items.ts`, `items.ts` |
+| Enum       | bare kebab                     | `order-status.ts`, `payment-type.ts`      |
+| Controller | `*.controller.ts`              | `orders.controller.ts`                    |
+| DTO        | `*.dto.ts`                     | `create-order.dto.ts`                     |
+| Use-case   | bare kebab, one class per file | `create-order.ts`, `close-order.ts`       |
+| Module     | `*.module.ts`                  | `orders.module.ts`                        |
 
 ## 3. Language
 
@@ -34,18 +35,23 @@ Prettier (`singleQuote: true`, `trailingComma: "all"`) and oxlint are configured
 
 ## 5. Error messages
 
-Domain errors are short, capitalized, human-readable strings thrown via `throw new Error(...)`: `'Order is closed'`, `'Name is required'`, `'Quantity must be greater than zero'`. They will surface to API responses later, so write them for a user, not a developer.
+Domain errors are short, capitalized, human-readable strings thrown via `throw new Error(...)`: `'Cannot change a closed order'`, `'Name is required'`, `'Quantity must be greater than zero'`, `'Item not found'`. They surface to API responses as `400` bodies through the global `DomainErrorFilter` (see [05-nestjs.md](05-nestjs.md#1-thin-controllers)), so write them for a user, not a developer.
 
 ## 6. Observability
 
 `app.module.ts` exports `{ ObserveModule, ObserveInstrument }` from `@nestjs/observe`, configured with placeholder `YOUR_APP_KEY` / `YOUR_APP_SECRET`. `main.ts` passes `instrument: ObserveInstrument` to `NestFactory.create`. Leave as-is unless asked.
 
-## 7. Open questions — resolve before building features
+## 7. Known debt & open questions
 
-Current files may be moved, renamed, or deleted:
+Resolved since the scaffold (not listed here anymore): the duplicated `restaurant/` context and the `ingridients.ts` typo are gone, repository interfaces are implemented, the `/orders` stub endpoints were replaced by real use-cases, and global error handling, DTO validation, and JWT auth now exist.
 
-- `src/catalog/` and `src/restaurant/` are exact duplicates. Which context owns `Item`/`Ingredient`? `restaurant` was presumably meant for tables/local-ordering concerns (the `LOCAL` order type / `tableId`), not a copy of the catalog.
-- `ingridients.ts` is a consistent typo for "ingredients" — decide whether to keep it (as the canonical name) or fix it everywhere.
-- Repository interface files (`domain/repositories/*`) are all empty across contexts.
-- `OrdersController` and the `/orders` use cases are commented-out stubs returning `'teste'`.
-- No global error handling, validation pipe, auth, or users module yet (`users/` only has empty domain files).
+Open today — revisit before building on the affected code:
+
+- **DTO validation duplicates enum values as literals.** `CloseOrderDto` and `UpdateDeliveryOrderStatusDto` hard-code `@IsIn(['Cash', 'CreditCard', 'Pix'])`-style lists that mirror `EPaymentType` / `EOrderStatus`; `OrdersController.PAYMENT_TYPE_BY_VALUE` and the `?type=` filter in `ReportsController` repeat `EPaymentType` / `EOrderType` values again. `CreateOrderDto` imports the enum — standardize the rest on `@IsIn([EnumMember, …])` / `@IsEnum(...)` so each value has one source of truth.
+- **Route params are unvalidated.** `@Param('orderId')`, `@Param('itemId')`, `@Param('ingredientId')` pass through as raw strings; revisit with `ParseIntPipe`/format checks when ids need stricter guarantees.
+- **Two orders use-cases are still stubs** — `SplitBillUseCase` and `CreateDeliveryOrderUseCase` (bodies have a TODO comment). Kitchen has no domain/infrastructure of its own: it drives `OrderItems` through the orders context's exported use-cases. There is no create-user endpoint — users come from `npm run seed`.
+- **Persistence mapping is deliberately denormalized** — `Order.userId`, `OrderItem.itemId`, and `OrderCancellation.itemId` have no relations in `schema.prisma`; confirm whether FKs/relations are desired before building on them (see [07-prisma.md](07-prisma.md#4-schema-mirrors-aggregates-enums-persist-as-strings)).
+- **`EOrderStatus` mixes the order lifecycle (Open/Closed) with the delivery cycle (Preparing/Out for delivery/Delivered).** `PrismaOrdersRepository.findAllOpen` compensates with type-aware status filters; a separate delivery-state type may be cleaner as delivery reporting grows.
+- **`LoginDto` lives inline in `auth.controller.ts`** instead of `presentation/dtos/` — move it when users get more endpoints.
+- **Feature files skip `08`** (01–07 and 09 exist) — renumber or fill in when new flows are specced.
+- **`README.md` endpoint table lists a non-existent route** (`PATCH /orders/:id/items/:itemId/status`); kitchen start/finish/cancel actually live under `/kitchen/orders/...`.

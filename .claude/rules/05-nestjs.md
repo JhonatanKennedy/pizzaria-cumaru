@@ -2,13 +2,16 @@
 
 ## 1. Thin controllers
 
-Controllers translate HTTP → use-case → HTTP. No business rules, no direct Prisma calls, no string returns. The commented stubs in `OrdersController` show the intended shape:
+Controllers translate HTTP → use-case → HTTP. No business rules, no direct Prisma calls, no string returns. Every controller in the codebase (`OrdersController`, `ItemsController`, `KitchenQueueController`, `AuthController`) already follows this shape:
 
 ```ts
-// ✅ — intended shape (application/ use-cases don't exist yet)
+// ✅ — as implemented across the app
 @Controller('/orders')
 export class OrdersController {
-  constructor(private readonly createOrderUseCase: CreateOrderUseCase) {}
+  constructor(
+    private readonly createOrderUseCase: CreateOrderUseCase,
+    private readonly addItemToOrderUseCase: AddItemToOrderUseCase,
+  ) {}
 
   @Post()
   create(@Body() dto: CreateOrderDto) {
@@ -21,7 +24,7 @@ export class OrdersController {
   }
 }
 
-// ❌ — business logic and persistence in the controller
+// ❌ — business logic and persistence in the controller (never)
 @Post()
 create(@Body() dto: CreateOrderDto) {
   if (dto.paymentType === EPaymentType.PIX) { /* fee rule */ }
@@ -35,18 +38,46 @@ Each `src/<context>/` has one `<context>.module.ts` declaring its controllers an
 
 ## 3. DTOs: one class per use-case, in `presentation/dtos`
 
-Plain classes, request-shaped — never reuse a domain entity as a payload. Optional request fields are marked `?` so required-ness is explicit in the type. When real endpoints are wired, add `class-validator` decorators and a global `ValidationPipe` in `main.ts` (neither is installed/configured yet — on the roadmap, not a reason to skip DTOs):
+Plain classes with `class-validator` decorators, request-shaped — never reuse a domain entity as a payload. Optional request fields are marked `?` so required-ness is explicit in the type.
+
+A global `ValidationPipe({ whitelist: true, transform: true })` is registered as `APP_PIPE` in `app.module.ts` (not `main.ts`) and applies to every controller. Consequences:
+
+- **`whitelist: true` strips undeclared body fields** — a DTO property without decorators is silently dropped, so every required field must carry one (`@IsString`, `@IsNotEmpty`, `@IsInt`, `@Min(1)`, …).
+- **`transform: true`** converts the plain body into the DTO class instance before validation.
+- Route params (`@Param`) and query strings are **not** validated by the pipe — keep them typed as `string` and let use-cases/domain reject unknown ids.
 
 ```ts
 // ✅ — current CreateOrderDto (presentation/dtos/create-order.dto.ts)
 export class CreateOrderDto {
-  userId: string;
+  @IsInt()
+  userId: number;
+
+  @IsIn([EOrderType.LOCAL, EOrderType.DELIVERY])
   type: EOrderType;
-  paymentType: EPaymentType;
+
+  @IsOptional()
+  @IsString()
   tableId?: string;
+
+  @IsOptional()
+  @IsString()
+  customerName?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 }
 ```
+
+Enum-valued fields validate against the domain enum (as above) or with `@IsEnum(EItemCategory)` — not against re-typed literal lists (`CloseOrderDto` and `UpdateDeliveryOrderStatusDto` still hard-code literals; see known debt in [08-conventions.md](08-conventions.md)). Only exception to the `presentation/dtos/` folder: `LoginDto` is defined inline in `auth.controller.ts`.
 
 ## 4. RESTful routes
 
@@ -82,10 +113,25 @@ export class OrdersService {
 }
 ```
 
-## 6. Don't skip the application layer
+## 6. Controllers call use-cases — don't skip the application layer
 
-Controllers call use-cases (`application/`), use-cases orchestrate domain entities and repositories, repositories hit Prisma. While the app is scaffolded the layer doesn't exist yet — when it lands, use it even where it's a one-line delegate; the boundary is what keeps controllers thin and domain rules testable.
+Controllers call use-cases in `application/use-cases/`; use-cases orchestrate domain entities and repository interfaces; repositories (in `infrastructure/`) hit Prisma. Use the layer even where a use-case is a one-line delegate — the boundary is what keeps controllers thin and domain rules testable. `OrdersModule` exports its preparation use-cases so `KitchenModule` can drive them. Two orders use-cases are still unimplemented stubs (`SplitBillUseCase`, `CreateDeliveryOrderUseCase`) — fill them, don't route around them.
 
 ## 7. Config via `ConfigService`
 
-`ConfigModule.forRoot({ isGlobal: true })` is set in `AppModule` — prefer `ConfigService` in new providers. Documented exception: `PrismaService` reads `process.env.DATABASE_URL` directly today (see [07-prisma.md](07-prisma.md)); leave that unless changing the Prisma setup.
+`ConfigModule.forRoot({ isGlobal: true })` is set in `AppModule` — prefer `ConfigService` in new providers (as `UsersModule` does for the `JWT_SECRET` fed to `JwtModule.registerAsync`). Documented exception: `PrismaService` reads `process.env.DATABASE_URL` directly (see [07-prisma.md](07-prisma.md)); leave that unless changing the Prisma setup.
+
+## 8. Authorization: global `RolesGuard`, JWT without passport
+
+`RolesGuard` is registered as `APP_GUARD` in `app.module.ts` and protects every route by default. It requires an `Authorization: Bearer <JWT>` header, verifies the token against `JWT_SECRET` with `@nestjs/jwt` (no passport), rejects tokens whose `jti` is on the `DeniedToken` denylist (`POST /auth/logout` adds entries), then checks role requirements. Controllers express policy with the decorators exported from `src/common/guards/roles.guard.ts`:
+
+```ts
+@Public() // skip auth entirely — only POST /auth/login uses this
+@Roles({ roles: [EUserRole.MANAGER] }) // manager only
+@Roles({
+  roles: [EUserRole.WAITER, EUserRole.MANAGER],
+  message: 'Only the manager can close the order', // optional 403 body
+})
+```
+
+The full role/permission matrix is documented in a comment at the top of `roles.guard.ts`. Use-cases never read headers or tokens — they receive plain params.

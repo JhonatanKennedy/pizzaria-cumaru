@@ -4,7 +4,7 @@ These are language-level rules that apply to every `.ts` file in the project. Ex
 
 ## 1. No magic numbers
 
-A literal whose meaning isn't obvious from context goes into a named `const` or an enum — the name documents the *why*. The current `OrderItems.decreaseQuantity` violates this:
+A literal whose meaning isn't obvious from context goes into a named `const` or an enum — the name documents the _why_. `OrderItems.decreaseQuantity` (order-items.ts) is the model: the business minimum lives in a named constant at the top of the file, while the inline literal version is the anti-pattern:
 
 ```ts
 // ❌ — what does < 1 mean here? A business minimum, not an index.
@@ -18,7 +18,7 @@ decreaseQuantity(quantity: number): void {
   this.quantity -= quantity;
 }
 
-// ✅ — the constant says what 1 stands for
+// ✅ — the constant says what 1 stands for (order-items.ts, as-is)
 const MINIMUM_ITEM_QUANTITY = 1;
 
 decreaseQuantity(quantity: number): void {
@@ -31,6 +31,8 @@ decreaseQuantity(quantity: number): void {
   this.quantity -= quantity;
 }
 ```
+
+Applies to time math too: `24 * 60 * 60 * 1000` becomes `const MS_PER_DAY = 24 * 60 * 60 * 1000;`. The rule targets literals with business meaning — trivial `0`/`1` as indexes or loop bounds are fine. (`User` also does this: `MAX_FAILED_ATTEMPTS = 5`, `LOCKOUT_MS = 15 * 60 * 1000`.)
 
 Applies to time math too: `24 * 60 * 60 * 1000` becomes `const MS_PER_DAY = 24 * 60 * 60 * 1000;`. The rule targets literals with business meaning — trivial `0`/`1` as indexes or loop bounds are fine.
 
@@ -84,7 +86,7 @@ addItem(item: OrderItems): void {
 // ✅ — one guard, then the happy path
 addItem(item: OrderItems): void {
   if (this.status === EOrderStatus.CLOSED) {
-    throw new Error('Order is closed');
+    throw new Error('Cannot change a closed order');
   }
   this.items.push(item);
 }

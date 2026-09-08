@@ -6,11 +6,11 @@ Tests follow the **test pyramid** and the **F.I.R.S. principles** (Timely delibe
 
 More unit tests than integration tests, more integration tests than e2e tests. Target split:
 
-| Layer | Where it lives | Run with | Share of test code |
-| --- | --- | --- | --- |
-| Unit — domain entities, use-cases | colocated `*.spec.ts` | `npm test` | ~70% |
-| Integration — repositories, Prisma, module wiring | colocated `*.spec.ts` | `npm test` | ~20% |
-| E2E — full HTTP flows | `test/*.e2e-spec.ts` | `npm run test:e2e` | ~10% |
+| Layer                                             | Where it lives        | Run with           | Share of test code |
+| ------------------------------------------------- | --------------------- | ------------------ | ------------------ |
+| Unit — domain entities, use-cases                 | colocated `*.spec.ts` | `npm test`         | ~70%               |
+| Integration — repositories, Prisma, module wiring | colocated `*.spec.ts` | `npm test`         | ~20%               |
+| E2E — full HTTP flows                             | `test/*.e2e-spec.ts`  | `npm run test:e2e` | ~10%               |
 
 Rule of thumb: **every business rule gets a unit test; e2e covers only complete user journeys**, not edge cases. A closed-order rejection is a unit test on `Order` — not a 400-assertion over HTTP.
 
@@ -26,10 +26,12 @@ it('should reject items on a closed order', async () => {
 // ✅ the same rule as a unit test on the aggregate — milliseconds, no I/O
 it('should throw when adding an item to a closed order', () => {
   const order = makeOrder();
-  order.addItem(makeItem());
-  order.close();
+  order.addItem(makeItem(PIZZA_PRICE));
+  order.close(EPaymentType.CASH, CLOSED_AT);
 
-  expect(() => order.addItem(makeItem())).toThrow('Order is closed');
+  expect(() => order.addItem(makeItem(WATER_PRICE))).toThrow(
+    'Cannot change a closed order',
+  );
 });
 ```
 
@@ -45,7 +47,9 @@ Unit tests must run in milliseconds — no database, no network, no file I/O. An
 // ❌ opens a real DB connection — not a unit test
 it('should save a user', async () => {
   const prisma = new PrismaService();
-  const saved = await prisma.user.create({ data: { email: 'clerk@pizzaria.com' } });
+  const saved = await prisma.user.create({
+    data: { email: 'clerk@pizzaria.com' },
+  });
   expect(saved.id).toBeDefined();
 });
 
@@ -123,7 +127,7 @@ Assertions decide pass/fail — never `console.log` for a human to verify.
 it('closes the order', () => {
   const order = makeOrder();
   order.addItem(makeItem());
-  order.close();
+  order.close(EPaymentType.CASH, CLOSED_AT);
   console.log(order); // "looks right" is not a test
 });
 
@@ -131,8 +135,10 @@ it('closes the order', () => {
 it('closes the order', () => {
   const order = makeOrder();
   order.addItem(makeItem());
-  order.close();
-  expect(() => order.addItem(makeItem())).toThrow('Order is closed');
+  order.close(EPaymentType.CASH, CLOSED_AT);
+  expect(() => order.addItem(makeItem())).toThrow(
+    'Cannot change a closed order',
+  );
 });
 ```
 
@@ -144,7 +150,7 @@ The "T" is dropped from our F.I.R.S. on purpose: writing the test first (TDD) is
 
 - Unit/integration tests: colocated `*.spec.ts` next to the code under test. E2E: `test/*.e2e-spec.ts`.
 - Vitest `globals: true` — never import `describe`, `it`, `expect`.
-- E2E specs map to feature files: `test/order-local.e2e-spec.ts` implements scenarios from `features/03_table_order.feature`. If you can't name the scenario it covers, the test doesn't belong in e2e.
+- E2E specs map to feature files: `test/auth.e2e-spec.ts` implements scenarios from `features/01_authentication.feature`, `test/order-creation.e2e-spec.ts` and `test/orders-checkout.e2e-spec.ts` cover `features/03_table_order.feature` / `09_cancellation_and_payment.feature`. If you can't name the scenario it covers, the test doesn't belong in e2e.
 
 ## Naming
 
@@ -160,19 +166,22 @@ describe('OrderItems', () => {
 
 ## Full example — unit spec for the Order aggregate
 
-`src/orders/domain/entities/orders.spec.ts`, faithful to the current `Order`/`OrderItems` implementation. Note the named constants (see the [no-magic-numbers rule](03-javascript.md#1-no-magic-numbers)) and that the spec touches only the public API (`create`, `addItem`, `close`, `totalPrice`) — never private fields.
+`src/orders/domain/entities/orders.spec.ts`, faithful to the current `Order`/`OrderItems` implementation. Note the named constants (see the [no-magic-numbers rule](03-javascript.md#1-no-magic-numbers)), the fixed clock dates (see Repeatable above), and that the spec touches only the public API (`create`, `close`, `addItem`, `totalPrice`, getters) — never private fields. `Order.create` and `OrderItems.create` require `createdAt`, and item creation requires `requiresPreparation`.
 
 ```ts
 import { Order } from './orders.js';
 import { OrderItems } from './order-items.js';
+import { EOrderStatus } from '../enums/order-status.js';
 import { EOrderType } from '../enums/order-type.js';
 import { EPaymentType } from '../enums/payment-type.js';
 
 const PIZZA_PRICE = 45;
 const WATER_PRICE = 8;
 const ORDER_ID = 'order-1';
-const USER_ID = 'user-1';
+const USER_ID = 1;
 const CATALOG_ITEM_ID = 'catalog-item-1';
+const CREATED_AT = new Date('2026-09-07T12:00:00Z');
+const CLOSED_AT = new Date('2026-09-07T12:30:00Z');
 
 function makeOrder(): Order {
   return Order.create({
@@ -180,6 +189,7 @@ function makeOrder(): Order {
     userId: USER_ID,
     type: EOrderType.LOCAL,
     paymentType: EPaymentType.CASH,
+    createdAt: CREATED_AT,
   });
 }
 
@@ -190,6 +200,8 @@ function makeItem(unitPrice: number, quantity = 1): OrderItems {
     itemId: CATALOG_ITEM_ID,
     unitPrice,
     quantity,
+    requiresPreparation: true,
+    createdAt: CREATED_AT,
   });
 }
 
@@ -197,6 +209,7 @@ describe('Order', () => {
   it('should start OPEN with a total of zero', () => {
     const order = makeOrder();
 
+    expect(order.getStatus()).toBe(EOrderStatus.OPEN);
     expect(order.totalPrice).toBe(0);
   });
 
@@ -211,15 +224,19 @@ describe('Order', () => {
   it('should throw when adding an item to a closed order', () => {
     const order = makeOrder();
     order.addItem(makeItem(PIZZA_PRICE));
-    order.close();
+    order.close(EPaymentType.CASH, CLOSED_AT);
 
-    expect(() => order.addItem(makeItem(WATER_PRICE))).toThrow('Order is closed');
+    expect(() => order.addItem(makeItem(WATER_PRICE))).toThrow(
+      'Cannot change a closed order',
+    );
   });
 
   it('should throw when closing an order with no items', () => {
     const order = makeOrder();
 
-    expect(() => order.close()).toThrow('Order must have at least one item');
+    expect(() => order.close(EPaymentType.CASH, CLOSED_AT)).toThrow(
+      'Order must have at least one item',
+    );
   });
 });
 ```

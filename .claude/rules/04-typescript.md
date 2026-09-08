@@ -9,7 +9,11 @@ The compiler is the first reviewer — `strict: true` plus these rules keep type
 ```ts
 // ❌ — any turns off all checking downstream
 function parseOrderPayload(body: any): CreateOrderDto {
-  return { userId: body.userId, type: body.type, paymentType: body.paymentType };
+  return {
+    userId: body.userId,
+    type: body.type,
+    paymentType: body.paymentType,
+  };
 }
 
 // ✅ — unknown forces validation before use
@@ -17,13 +21,19 @@ function parseOrderPayload(body: unknown): CreateOrderDto {
   if (!isCreateOrderBody(body)) {
     throw new Error('Invalid order payload');
   }
-  return { userId: body.userId, type: body.type, paymentType: body.paymentType };
+  return {
+    userId: body.userId,
+    type: body.type,
+    paymentType: body.paymentType,
+  };
 }
 
 function isCreateOrderBody(value: unknown): value is CreateOrderDto {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Record<string, unknown>;
-  return 'userId' in candidate && 'type' in candidate && 'paymentType' in candidate;
+  return (
+    'userId' in candidate && 'type' in candidate && 'paymentType' in candidate
+  );
 }
 ```
 
@@ -32,7 +42,7 @@ function isCreateOrderBody(value: unknown): value is CreateOrderDto {
 - **`interface`** — object contracts meant to be implemented or extended (entity param contracts, repository interfaces, DTO shapes).
 - **`type`** — what interfaces can't express: unions, tuples, primitive aliases, mapped types.
 
-The codebase already follows this: `CreateOrderItemParams` is an `interface`; `TCreateOrderParams` / `TCreateItemParams` are type aliases.
+The codebase already follows this: `CreateOrderItemParams` is an `interface`; `TCreateOrderParams` / `TOrderItemStatus` are type aliases.
 
 ```ts
 // ✅ interface — the shape of an object to construct
@@ -42,15 +52,18 @@ export interface CreateOrderItemParams {
   itemId: string;
   unitPrice: number;
   quantity: number;
+  requiresPreparation: boolean;
+  createdAt: Date;
+  flavors?: string[];
+  notes?: string;
 }
 
 // ✅ type — a union, which interfaces cannot express
 export type PaymentResult =
-  | { ok: true; transactionId: string }
-  | { ok: false; reason: string };
+  { ok: true; transactionId: string } | { ok: false; reason: string };
 ```
 
-**Repo convention:** type aliases are prefixed with `T` (`TCreateOrderParams`); interfaces keep plain names.
+**Repo convention:** type aliases are prefixed with `T` (`TCreateOrderParams`, `TOrderItemStatus`, `TRestoreOrderParams`); interfaces keep plain names.
 
 ## 3. `readonly` everything that must not change
 
