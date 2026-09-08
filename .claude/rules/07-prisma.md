@@ -31,7 +31,7 @@ export class PrismaService extends PrismaClient {
 }
 ```
 
-Runtime reads `process.env.DATABASE_URL` directly, not via `@nestjs/config` (documented exception). `.env.local` (gitignored) holds the value; Postgres 16 runs via `docker-compose.yml` (user/pass `prisma`, db `meubanco`, port `5432`).
+Runtime reads `process.env.DATABASE_URL` directly, not via `@nestjs/config` (documented exception). `.env.local` (gitignored) holds the value; Postgres 16 runs via `docker-compose.yml` (user/pass `prisma`, db `pizzaria_cumaru`, port `5432`).
 
 ## 3. Inject `PrismaService` — never construct it
 

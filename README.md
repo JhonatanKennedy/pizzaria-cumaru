@@ -1,114 +1,89 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Pizzaria Cumaru — Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend of the pizzeria management system "Pizzaria Cumaru": table and delivery orders, kitchen panel, menu and stock management, checkout and daily reports, with role-based access for waiters, cooks, and managers.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Stack
 
-## Description
+- **TypeScript** (strict, ES2023) + **NestJS 12**, native ESM
+- **Prisma 7** with `@prisma/adapter-pg` + **PostgreSQL 16** (Docker Compose)
+- **Vitest** (unit + e2e), **supertest**, **oxlint**, **Prettier**
+- Product specs: Gherkin files in `features/` (English)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Setup
 
 ```bash
-$ npm install
+npm install
+docker compose up -d          # PostgreSQL on :5432 (user/pass: prisma)
+
+# .env.local (gitignored) needs the connection string:
+#   DATABASE_URL="postgresql://prisma:prisma@localhost:5432/pizzaria_cumaru"
+#   TEST_DATABASE_URL="postgresql://prisma:prisma@localhost:5432/pizzaria_cumaru_test"
+#   JWT_SECRET="<change-me>"
+# Create the test database once (integration/e2e tests use it):
+#   docker exec pizzaria-cumaru-backend-db-1 psql -U prisma -d postgres \
+#     -c 'CREATE DATABASE pizzaria_cumaru_test;'
+
+npx prisma migrate dev        # applies migrations to the dev DB
+npx prisma migrate deploy     # applies migrations to the test DB (point DATABASE_URL at it)
+npm run seed                  # creates the three profile users
 ```
 
-## Compile and run the project
+## Running
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run start:dev   # watch mode
+npm run build       # compile to dist/
+npm test            # unit + integration tests
+npm run test:e2e    # HTTP journeys against the test DB
+npm run lint        # oxlint
 ```
 
-## Run tests
+## Testing the API
+
+1. Seed the users (`npm run seed`).
+2. Start the server.
+3. Log in and copy the token:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+curl -X POST localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"login":"ana.gerente","password":"SenhaSegura123"}'
+# -> { "token": "...", "user": { "id": 1, "login": "ana.gerente", "role": "Manager" } }
 ```
 
-## Deployment
+All other endpoints require `Authorization: Bearer <token>`. Seeded users:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+| Login | Role | Password |
+| --- | --- | --- |
+| `ana.gerente` | Manager | `SenhaSegura123` |
+| `joao.garcom` | Waiter | `SenhaSegura123` |
+| `carlos.cozinha` | Cook | `SenhaSegura123` |
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Endpoints and roles
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+| Endpoint | Action | Waiter | Cook | Manager |
+| --- | --- | :-: | :-: | :-: |
+| `POST /orders` | create local / delivery order | ✓ | | ✓ |
+| `POST /orders/:id/items` | add item (flavors, notes) | ✓ | | ✓ |
+| `PATCH /orders/:id/items/:itemId/status` | start / finish preparation (`Preparing`, `Ready`) | | ✓ | ✓ |
+| `POST /orders/:id/items/:itemId/cancellation` | cancel item with reason | ✓ | | ✓ |
+| `PATCH /orders/:id/status` | advance delivery cycle (`Preparing` → `Out for delivery` → `Delivered`) | ✓ | | ✓ |
+| `POST /orders/:id/close` | close with payment, optional `splitInto` | | | ✓ |
+| `GET /kitchen/queue` | the two kitchen queues | | ✓ | ✓ |
+| `GET /orders` | day's orders with waiter name | ✓ | | ✓ |
+| `GET /reports/daily-earnings` | day's earnings (`?type=Local\|Delivery`) | | | ✓ |
+| `GET /items` / `GET /ingredients` | menu / stock listings | ✓ | | ✓ |
+| `PATCH /ingredients/:id/stock` | mark ingredient available/unavailable | | | ✓ |
+| `PATCH /items/:id/price` | update item price | | | ✓ |
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Error conventions: business refusals return `400` with the spec message (`{"message": "Cannot cancel an item in preparation"}`); missing/invalid tokens return `401`; role denials return `403` with `"Access not authorized for your profile"` (or the specific message, e.g. `"Only the manager can close the order"`).
 
-## Observability
+## Architecture
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+Modular monolith with bounded contexts under `src/` (`orders`, `kitchen`, `catalog`, `users`), each in domain → application → presentation layers with repository interfaces in `domain/repositories/` and Prisma implementations in `infrastructure/`. Feature specs live in `features/*.feature`; capability specs (normative system behavior) live in `openspec/specs/`. Domain rules are pure TypeScript with unit tests; e2e tests map to feature scenarios.
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+## Known gaps
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- No catalog seed yet — `GET /items` is empty until menu items/ingredients are created (ask for a seed script if you want one).
+- `JWT_SECRET` ships with a development placeholder in `.env.local` — change it for any real deployment.
+- `supertest` is pinned to `7.1.4` (7.2.x removed the `.set()` method used by the e2e specs).

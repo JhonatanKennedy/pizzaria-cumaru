@@ -11,7 +11,7 @@
 | Framework | NestJS 12 |
 | ORM | Prisma 7 with driver adapters (`@prisma/adapter-pg` + `pg`) |
 | Database | PostgreSQL 16 (local via Docker Compose) |
-| Config | `@nestjs/config` (`ConfigModule.forRoot({ isGlobal: true })`) |
+| Config | `@nestjs/config` (`ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.local' })`) |
 | Observability | `@nestjs/observe` (tracing/logs/metrics) — placeholder keys for now |
 | Tests | Vitest (`globals: true`) + supertest, configured separately for unit vs e2e |
 | Lint | oxlint (`oxlint.json`) |
