@@ -25,7 +25,7 @@ docker compose up -d          # PostgreSQL on :5432 (user/pass: prisma)
 
 npx prisma migrate dev        # applies migrations to the dev DB
 npx prisma migrate deploy     # applies migrations to the test DB (point DATABASE_URL at it)
-npm run seed                  # creates the three profile users
+npm run seed                  # seeds profile users and the menu catalog (refuses in production)
 ```
 
 ## Running
@@ -40,7 +40,7 @@ npm run lint        # oxlint
 
 ## Testing the API
 
-1. Seed the users (`npm run seed`).
+1. Seed users and the catalog (`npm run seed`).
 2. Start the server.
 3. Log in and copy the token:
 
@@ -93,6 +93,5 @@ Modular monolith with bounded contexts under `src/` (`orders`, `kitchen`, `catal
 
 ## Known gaps
 
-- No catalog seed yet — `GET /items` is empty until menu items/ingredients are created (ask for a seed script if you want one).
 - `JWT_SECRET` ships with a development placeholder in `.env.local` — change it for any real deployment.
 - `supertest` is pinned to `7.1.4` (7.2.x removed the `.set()` method used by the e2e specs).
