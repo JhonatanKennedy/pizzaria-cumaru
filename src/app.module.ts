@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { ConfigModule } from '@nestjs/config';
 import { DomainErrorFilter } from './common/filters/domain-error.filter.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
+import { isProduction, validateEnv } from './config/env.validation.js';
 import { UsersModule } from './users/users.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -15,7 +16,12 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
   imports: [
     // Distributed tracing, auto-correlated logs, request/job metrics, error
     // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.local' }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env.local',
+      ignoreEnvFile: isProduction(process.env.NODE_ENV),
+      validate: validateEnv,
+    }),
     ObserveModule.forRoot({
       appKey: 'YOUR_APP_KEY',
       appSecret: 'YOUR_APP_SECRET',
