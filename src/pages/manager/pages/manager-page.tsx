@@ -27,6 +27,13 @@ export function ManagerPage(): React.ReactNode {
             features/07_manager_profile.feature
           </p>
         </Link>
+        <Link to="/manager/delivery" className="card hover:border-red-300">
+          <h2 className="font-semibold text-stone-900">Pedidos de entrega</h2>
+          <p className="mt-1 text-sm text-stone-600">
+            Pedidos de entrega recebidos pelo WhatsApp. Spec:
+            features/04_delivery_order.feature
+          </p>
+        </Link>
       </div>
     </div>
   );

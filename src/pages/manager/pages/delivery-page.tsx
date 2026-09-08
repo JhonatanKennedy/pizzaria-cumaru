@@ -1,4 +1,4 @@
-import { FeaturePlaceholder } from '../../../components/FeaturePlaceholder';
+import { FeaturePlaceholder } from '@components/FeaturePlaceholder';
 
 export function DeliveryPage(): React.ReactNode {
   return (
