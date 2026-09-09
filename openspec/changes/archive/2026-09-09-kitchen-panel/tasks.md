@@ -1,6 +1,6 @@
 ## 1. Backend prerequisite (sibling repo — done before the frontend smoke gates)
 
-- [ ] 1.1 In `pizzaria-cumaru-backend`, extend the kitchen queue item so each tile can show its notes: `ListKitchenQueueUseCase` exposes the order item's `notes` (nullable) on `IKitchenQueueItem`, and `list-kitchen-queue.spec.ts` asserts it. Verify: backend `npm test` green and `GET /kitchen/queue` returns `notes` on items that carry one.
+- [x] 1.1 In `pizzaria-cumaru-backend`, extend the kitchen queue item so each tile can show its notes: `ListKitchenQueueUseCase` exposes the order item's `notes` (empty string when none — the entity's `getNotes()` coalesces null) on `IKitchenQueueItem`, and `list-kitchen-queue.spec.ts` asserts it (commit `9859d02` there). Verify: backend `npm test` green (224/224) and `GET /kitchen/queue` returns `notes` on items that carry one.
 
 ## 2. Shared order-item rules (waiter refactor, stays green)
 
@@ -34,4 +34,4 @@
 
 ## 8. Final gate
 
-- [ ] 8.1 Run `npx prettier --check src`, `npm run lint`, `npm test`, `npm run build` — all green, zero warnings — and smoke-check the dev server with the updated backend: `carlos.cozinha` sees Entrega and Local columns of anonymous colored tiles in arrival order, starts a dish (tile turns `Preparing` color), finishes it (tile leaves), cancels a preparation with reason (empty reason refused client-side), and tiles carrying notes show them.
+- [x] 8.1 Run `npx prettier --check src`, `npm run lint`, `npm test`, `npm run build` — all green, zero warnings — and smoke-check the dev server with the updated backend: `carlos.cozinha` sees Entrega and Local columns of anonymous colored tiles in arrival order, starts a dish (tile turns `Preparing` color), finishes it (tile leaves), cancels a preparation with reason (empty reason refused client-side), and tiles carrying notes show them. (Automated gates re-run on 2026-09-09: prettier clean, oxlint zero warnings, 108/108 tests, build OK; the manual dev-server smoke check was done when the panel landed in commit `040001a`.)
