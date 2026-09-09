@@ -31,9 +31,12 @@ describe('Order status and kitchen queue (e2e)', () => {
     await prisma.orderItem.deleteMany();
     await prisma.orderCancellation.deleteMany();
     await prisma.order.deleteMany();
+    await prisma.table.deleteMany();
     await prisma.itemIngredient.deleteMany();
     await prisma.item.deleteMany();
     await prisma.ingredient.deleteMany();
+
+    await prisma.table.create({ data: { id: '3', number: 3 } });
 
     const mussarela = await prisma.ingredient.create({
       data: { name: 'Mussarela', inStock: true },
@@ -398,5 +401,148 @@ describe('Order status and kitchen queue (e2e)', () => {
       .expect(400);
 
     expect(response.body.message).toBe('Cannot cancel an item in preparation');
+  });
+
+  it('should cancel a whole order, drop it from the kitchen queue and free the table', async () => {
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/orders/${LOCAL_ORDER_ID}/cancellation`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ reason: 'Customer gave up' })
+      .expect(201);
+
+    const order = await prisma.order.findUnique({
+      where: { id: LOCAL_ORDER_ID },
+      include: { items: true },
+    });
+    expect(order?.status).toBe('Cancelled');
+    expect(order?.cancelledReason).toBe('Customer gave up');
+    expect(order?.cancelledAt).not.toBeNull();
+    expect(order?.items).toHaveLength(0);
+
+    const queue = await request(app.getHttpServer())
+      .get('/kitchen/queue')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+    expect(queue.body.local).toHaveLength(0);
+
+    const refusedAdd = await request(app.getHttpServer())
+      .post(`/orders/${LOCAL_ORDER_ID}/items`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ itemId: calabresaItemId })
+      .expect(400);
+    expect(refusedAdd.body.message).toBe('Cannot change a cancelled order');
+
+    await request(app.getHttpServer())
+      .post('/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ userId: 1, type: 'Local', tableId: '3' })
+      .expect(201);
+  });
+
+  it('should return 400 when cancelling a whole order without a reason', async () => {
+    await request(app.getHttpServer())
+      .post(`/orders/${LOCAL_ORDER_ID}/cancellation`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({})
+      .expect(400);
+  });
+
+  it('should adjust quantities, including an item already in preparation', async () => {
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/quantity`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ quantity: 2 })
+      .expect(200);
+
+    const queue = await request(app.getHttpServer())
+      .get('/kitchen/queue')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+    expect(queue.body.local[0].items[0].orderItemId).toBe(PIZZA_ITEM_ID);
+    expect(queue.body.local[0].items[0].quantity).toBe(2);
+
+    await request(app.getHttpServer())
+      .patch(`/orders/${LOCAL_ORDER_ID}/items/order-item-drink-1/quantity`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ quantity: 5 })
+      .expect(200);
+
+    const lowered = await request(app.getHttpServer())
+      .patch(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/quantity`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ quantity: 1 })
+      .expect(200);
+
+    const drink = await prisma.orderItem.findUnique({
+      where: { id: 'order-item-drink-1' },
+    });
+    expect(drink?.quantity).toBe(5);
+    const pizza = await prisma.orderItem.findUnique({
+      where: { id: PIZZA_ITEM_ID },
+    });
+    expect(pizza?.quantity).toBe(1);
+    expect(lowered.status).toBe(200);
+  });
+
+  it('should refuse a quantity adjustment of a closed order', async () => {
+    await request(app.getHttpServer())
+      .post(`/orders/${LOCAL_ORDER_ID}/close`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ paymentType: 'Cash' })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .patch(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/quantity`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ quantity: 2 })
+      .expect(400);
+
+    expect(response.body.message).toBe('Cannot change a closed order');
+  });
+
+  it('should refuse a Cook cancelling an order or adjusting quantities', async () => {
+    await prisma.user.upsert({
+      where: { email: 'carlos.cozinha' },
+      update: { role: 'Cook', passwordHash: MANAGER_PASSWORD_HASH },
+      create: {
+        email: 'carlos.cozinha',
+        name: 'Carlos Cozinha',
+        role: 'Cook',
+        passwordHash: MANAGER_PASSWORD_HASH,
+      },
+    });
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ login: 'carlos.cozinha', password: 'SenhaSegura123' })
+      .expect(201);
+    const cookToken = loginResponse.body.token as string;
+
+    const cancellation = await request(app.getHttpServer())
+      .post(`/orders/${LOCAL_ORDER_ID}/cancellation`)
+      .set('Authorization', `Bearer ${cookToken}`)
+      .send({ reason: 'Customer gave up' })
+      .expect(403);
+    expect(cancellation.body.message).toBe(
+      'Access not authorized for your profile',
+    );
+
+    const quantity = await request(app.getHttpServer())
+      .patch(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/quantity`)
+      .set('Authorization', `Bearer ${cookToken}`)
+      .send({ quantity: 2 })
+      .expect(403);
+    expect(quantity.body.message).toBe(
+      'Access not authorized for your profile',
+    );
   });
 });

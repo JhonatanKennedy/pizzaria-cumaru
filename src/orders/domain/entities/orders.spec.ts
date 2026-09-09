@@ -304,6 +304,108 @@ describe('Order', () => {
   });
 });
 
+describe('Order cancellation', () => {
+  it('should cancel an open order, cascading over items of every status', () => {
+    const order = makeOrder();
+    const pendingPizza = makeItem(PIZZA_PRICE);
+    const preparingPizza = makeItem(PIZZA_PRICE);
+    const readyDish = makeItem(WATER_PRICE);
+    const drink = makeDrink();
+    order.addItem(pendingPizza);
+    order.addItem(preparingPizza);
+    order.addItem(readyDish);
+    order.addItem(drink);
+    preparingPizza.startPreparation();
+    readyDish.startPreparation();
+    readyDish.finishPreparation();
+
+    order.cancelOrder('Customer gave up', CANCELLED_AT);
+
+    expect(order.getStatus()).toBe(EOrderStatus.CANCELLED);
+    expect(order.getItems()).toHaveLength(0);
+    expect(order.totalPrice).toBe(0);
+    expect(order.getCancelledReason()).toBe('Customer gave up');
+    expect(order.getCancelledAt()).toBe(CANCELLED_AT);
+  });
+
+  it('should cancel an empty open order and keep the reason', () => {
+    const order = makeOrder();
+
+    order.cancelOrder('Customer left', CANCELLED_AT);
+
+    expect(order.getStatus()).toBe(EOrderStatus.CANCELLED);
+    expect(order.getCancelledReason()).toBe('Customer left');
+  });
+
+  it('should refuse cancelling an open order without a reason', () => {
+    const order = makeOrder();
+
+    expect(() => order.cancelOrder('   ', CANCELLED_AT)).toThrow(
+      'Cancellation reason is required',
+    );
+    expect(order.getStatus()).toBe(EOrderStatus.OPEN);
+  });
+
+  it('should refuse cancelling a closed order', () => {
+    const order = makeOrder();
+    order.addItem(makeItem(PIZZA_PRICE));
+    order.close(EPaymentType.CASH, CANCELLED_AT);
+
+    expect(() => order.cancelOrder('Customer gave up', CANCELLED_AT)).toThrow(
+      'Cannot change a closed order',
+    );
+    expect(order.getStatus()).toBe(EOrderStatus.CLOSED);
+  });
+
+  it('should refuse cancelling an order that is not open', () => {
+    const order = makeDeliveryOrder();
+    order.startDeliveryPreparation();
+    order.sendOutForDelivery();
+
+    expect(() => order.cancelOrder('Customer gave up', CANCELLED_AT)).toThrow(
+      'Only open orders can be cancelled',
+    );
+    expect(order.getStatus()).toBe(EOrderStatus.OUT_FOR_DELIVERY);
+  });
+
+  it('should refuse cancelling an order that is already cancelled', () => {
+    const order = makeOrder();
+    order.cancelOrder('Customer gave up', CANCELLED_AT);
+
+    expect(() =>
+      order.cancelOrder('Customer gave up again', CANCELLED_AT),
+    ).toThrow('Only open orders can be cancelled');
+  });
+
+  it('should freeze a cancelled order against item mutations and closing', () => {
+    const order = makeOrder();
+    const pizza = makeItem(PIZZA_PRICE);
+    order.addItem(pizza);
+    pizza.startPreparation();
+    order.cancelOrder('Customer gave up', CANCELLED_AT);
+
+    expect(() => order.addItem(makeItem(WATER_PRICE))).toThrow(
+      'Cannot change a cancelled order',
+    );
+    expect(() => order.removeItem(pizza.getId())).toThrow(
+      'Cannot change a cancelled order',
+    );
+    expect(() =>
+      order.cancelItem(pizza.getId(), 'Wrong order', CANCELLED_AT),
+    ).toThrow('Cannot change a cancelled order');
+    expect(() =>
+      order.cancelPreparationItem(
+        pizza.getId(),
+        'Wrong dish started',
+        CANCELLED_AT,
+      ),
+    ).toThrow('Cannot change a cancelled order');
+    expect(() => order.close(EPaymentType.CASH, CANCELLED_AT)).toThrow(
+      'Cannot close a cancelled order',
+    );
+  });
+});
+
 describe('Order delivery cycle', () => {
   it('should walk the full delivery cycle and record the delivery time', () => {
     const order = makeDeliveryOrder();

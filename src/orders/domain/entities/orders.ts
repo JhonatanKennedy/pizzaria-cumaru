@@ -4,7 +4,7 @@ import { EPaymentType } from '../enums/payment-type.js';
 import { OrderItems } from './order-items.js';
 
 export type TCreateOrderParams = {
-  id: string; //TODO will be removed
+  id: string;
   userId: number;
   type: EOrderType;
   paymentType?: EPaymentType;
@@ -36,6 +36,8 @@ export interface TRestoreOrderParams {
   status: EOrderStatus;
   deliveredAt?: Date;
   closedAt?: Date;
+  cancelledReason?: string;
+  cancelledAt?: Date;
   items: OrderItems[];
   cancellationHistory: ICancellationHistoryEntry[];
 }
@@ -57,6 +59,8 @@ export class Order {
     private notes?: string,
     private deliveredAt?: Date,
     private closedAt?: Date,
+    private cancelledReason?: string,
+    private cancelledAt?: Date,
   ) {}
 
   static create(params: TCreateOrderParams): Order {
@@ -85,6 +89,8 @@ export class Order {
       params.notes,
       undefined,
       undefined,
+      undefined,
+      undefined,
     );
   }
 
@@ -105,29 +111,53 @@ export class Order {
       params.notes,
       params.deliveredAt,
       params.closedAt,
+      params.cancelledReason,
+      params.cancelledAt,
     );
   }
 
-  addItem(item: OrderItems): void {
+  cancelOrder(reason: string, cancelledAt: Date): void {
+    if (!reason.trim()) {
+      throw new Error('Cancellation reason is required');
+    }
     if (this.status === EOrderStatus.CLOSED) {
       throw new Error('Cannot change a closed order');
     }
+    if (this.status !== EOrderStatus.OPEN) {
+      throw new Error('Only open orders can be cancelled');
+    }
+
+    // A customer who gives up leaves no hostage: every item leaves the order,
+    // whatever its preparation status — the order-level reason is the audit.
+    this.items = [];
+    this.status = EOrderStatus.CANCELLED;
+    this.cancelledReason = reason;
+    this.cancelledAt = cancelledAt;
+  }
+
+  private assertNotFrozen(): void {
+    if (this.status === EOrderStatus.CLOSED) {
+      throw new Error('Cannot change a closed order');
+    }
+    if (this.status === EOrderStatus.CANCELLED) {
+      throw new Error('Cannot change a cancelled order');
+    }
+  }
+
+  addItem(item: OrderItems): void {
+    this.assertNotFrozen();
 
     this.items.push(item);
   }
 
   removeItem(itemId: string): void {
-    if (this.status === EOrderStatus.CLOSED) {
-      throw new Error('Cannot change a closed order');
-    }
+    this.assertNotFrozen();
 
     this.items = this.items.filter((item) => item.getId() !== itemId);
   }
 
   cancelItem(itemId: string, reason: string, cancelledAt: Date): void {
-    if (this.status === EOrderStatus.CLOSED) {
-      throw new Error('Cannot change a closed order');
-    }
+    this.assertNotFrozen();
 
     const item = this.items.find((entry) => entry.getId() === itemId);
     if (!item) {
@@ -143,9 +173,7 @@ export class Order {
     reason: string,
     cancelledAt: Date,
   ): void {
-    if (this.status === EOrderStatus.CLOSED) {
-      throw new Error('Cannot change a closed order');
-    }
+    this.assertNotFrozen();
 
     const item = this.items.find((entry) => entry.getId() === itemId);
     if (!item) {
@@ -199,6 +227,9 @@ export class Order {
   close(paymentType: EPaymentType, closedAt: Date): void {
     if (this.status === EOrderStatus.CLOSED) {
       throw new Error('Order is already closed');
+    }
+    if (this.status === EOrderStatus.CANCELLED) {
+      throw new Error('Cannot close a cancelled order');
     }
     if (this.items.length === 0) {
       throw new Error('Order must have at least one item');
@@ -263,6 +294,14 @@ export class Order {
 
   getClosedAt(): Date | undefined {
     return this.closedAt;
+  }
+
+  getCancelledReason(): string | undefined {
+    return this.cancelledReason;
+  }
+
+  getCancelledAt(): Date | undefined {
+    return this.cancelledAt;
   }
 
   getNotes(): string {

@@ -37,6 +37,8 @@ export interface IAuthenticatedPayload {
 //   start / finish item prep     Cook, Manager
 //   cancel preparation           Cook, Manager
 //   cancel items                 Waiter, Manager
+//   cancel a whole order         Waiter, Manager
+//   adjust item quantities       Waiter, Manager
 //   advance delivery status      Waiter, Manager
 //   close orders                 Manager (message: "Only the manager can close the order")
 //   daily earnings report        Manager

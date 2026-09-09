@@ -5,7 +5,7 @@ Feature: Table orders (local service)
 
   Background:
     Given the waiter "joao.garcom" is authenticated
-    And table "5" is free
+    And table "5" is registered and free
 
   Scenario: Open a new order for a table
     When the waiter opens an order for table "5"
@@ -48,5 +48,29 @@ Feature: Table orders (local service)
       | table_a | table_b |
       | 5       | 6       |
       | 2       | 9       |
+
+  Scenario: Adjust the quantity of an item in the course of the service
+    Given there is an open order for table "5" with an "Água"
+    When the waiter increases the quantity of the "Água" from "1" to "3"
+    Then the order of table "5" must record the "Água" with quantity "3"
+    And when the waiter decreases the quantity of the "Água" to "1"
+    Then the order of table "5" must record the "Água" with quantity "1"
+
+  Scenario: Adjust the quantity of an item that is in preparation
+    Given there is an open order for table "5" with a pizza "Calabresa" that the kitchen is preparing
+    When the waiter increases the quantity of the pizza "Calabresa" from "1" to "2"
+    Then the order of table "5" must record the pizza "Calabresa" with quantity "2"
+
+  Scenario: It is not possible to adjust items of a closed order
+    Given the order of table "5" has status "Closed"
+    When the waiter tries to change the quantity of an item of the order of table "5"
+    Then the system must refuse the operation
+    And the message "Cannot change a closed order" must be displayed
+
+  Scenario: Open a new order for a table whose order was cancelled
+    Given there is an open order for table "5"
+    When the waiter cancels the order of table "5" informing the reason "Customer gave up"
+    And opens a new order for table "5"
+    Then an order of type "Local" linked to table "5" must be created
 
   # The closing of the table order is done by the Manager — see 07_manager_profile.feature

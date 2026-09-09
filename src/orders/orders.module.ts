@@ -7,6 +7,8 @@ import { CancelItemPreparationUseCase } from './application/use-cases/cancel-ite
 import { CreateOrderUseCase } from './application/use-cases/create-order.js';
 import { AddItemToOrderUseCase } from './application/use-cases/add-item-to-order.js';
 import { UpdateDeliveryOrderStatusUseCase } from './application/use-cases/update-delivery-order-status.js';
+import { CancelOrderUseCase } from './application/use-cases/cancel-order.js';
+import { UpdateOrderItemQuantityUseCase } from './application/use-cases/update-order-item-quantity.js';
 import { CloseOrderUseCase } from './application/use-cases/close-order.js';
 import { ListOrdersUseCase } from './application/use-cases/list-orders.js';
 import { GetDailyEarningsReportUseCase } from './application/use-cases/get-daily-earnings-report.js';
@@ -23,6 +25,8 @@ import { CatalogModule } from '../catalog/catalog.module.js';
     FinishItemPreparationUseCase,
     CancelItemPreparationUseCase,
     CancelItemFromOrderUseCase,
+    CancelOrderUseCase,
+    UpdateOrderItemQuantityUseCase,
     CreateOrderUseCase,
     AddItemToOrderUseCase,
     UpdateDeliveryOrderStatusUseCase,
@@ -36,6 +40,8 @@ import { CatalogModule } from '../catalog/catalog.module.js';
     StartItemPreparationUseCase,
     FinishItemPreparationUseCase,
     CancelItemPreparationUseCase,
+    CancelOrderUseCase,
+    UpdateOrderItemQuantityUseCase,
   ],
 })
 export class OrdersModule {}

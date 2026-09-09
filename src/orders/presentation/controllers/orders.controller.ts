@@ -1,8 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { CancelItemDto } from '../dtos/cancel-item.dto.js';
+import { CancelOrderDto } from '../dtos/cancel-order.dto.js';
+import { UpdateOrderItemQuantityDto } from '../dtos/update-order-item-quantity.dto.js';
 import { CreateOrderDto } from '../dtos/create-order.dto.js';
 import { AddItemToOrderDto } from '../dtos/add-item-to-order.dto.js';
 import { CancelItemFromOrderUseCase } from '../../application/use-cases/cancel-item-from-order.js';
+import { CancelOrderUseCase } from '../../application/use-cases/cancel-order.js';
+import { UpdateOrderItemQuantityUseCase } from '../../application/use-cases/update-order-item-quantity.js';
 import { CreateOrderUseCase } from '../../application/use-cases/create-order.js';
 import { AddItemToOrderUseCase } from '../../application/use-cases/add-item-to-order.js';
 import { UpdateDeliveryOrderStatusUseCase } from '../../application/use-cases/update-delivery-order-status.js';
@@ -24,6 +28,8 @@ const PAYMENT_TYPE_BY_VALUE: Record<string, EPaymentType> = {
 export class OrdersController {
   constructor(
     private readonly cancelItemFromOrderUseCase: CancelItemFromOrderUseCase,
+    private readonly cancelOrderUseCase: CancelOrderUseCase,
+    private readonly updateOrderItemQuantityUseCase: UpdateOrderItemQuantityUseCase,
     private readonly createOrderUseCase: CreateOrderUseCase,
     private readonly addItemToOrderUseCase: AddItemToOrderUseCase,
     private readonly updateDeliveryOrderStatusUseCase: UpdateDeliveryOrderStatusUseCase,
@@ -57,6 +63,15 @@ export class OrdersController {
   }
 
   @Roles({ roles: [EUserRole.WAITER, EUserRole.MANAGER] })
+  @Post(':orderId/cancellation')
+  cancelOrder(@Param('orderId') orderId: string, @Body() dto: CancelOrderDto) {
+    return this.cancelOrderUseCase.execute({
+      orderId,
+      reason: dto.reason,
+    });
+  }
+
+  @Roles({ roles: [EUserRole.WAITER, EUserRole.MANAGER] })
   @Post(':orderId/items')
   addItem(@Param('orderId') orderId: string, @Body() dto: AddItemToOrderDto) {
     return this.addItemToOrderUseCase.execute({ orderId, ...dto });
@@ -71,6 +86,20 @@ export class OrdersController {
     return this.updateDeliveryOrderStatusUseCase.execute({
       orderId,
       status: dto.status,
+    });
+  }
+
+  @Roles({ roles: [EUserRole.WAITER, EUserRole.MANAGER] })
+  @Patch(':orderId/items/:itemId/quantity')
+  updateOrderItemQuantity(
+    @Param('orderId') orderId: string,
+    @Param('itemId') itemId: string,
+    @Body() dto: UpdateOrderItemQuantityDto,
+  ) {
+    return this.updateOrderItemQuantityUseCase.execute({
+      orderId,
+      orderItemId: itemId,
+      quantity: dto.quantity,
     });
   }
 

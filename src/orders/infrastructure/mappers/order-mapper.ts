@@ -62,6 +62,8 @@ export function orderRowToDomain(row: TOrderRow): Order {
     status: parseOrderStatus(row.status),
     deliveredAt: row.deliveredAt ?? undefined,
     closedAt: row.closedAt ?? undefined,
+    cancelledReason: row.cancelledReason ?? undefined,
+    cancelledAt: row.cancelledAt ?? undefined,
     items: row.items
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
       .map((item) =>
@@ -117,7 +119,13 @@ function notesOrNull(order: Order): string | null {
   return notes.length > 0 ? notes : null;
 }
 
-export function orderDomainToCreate(order: Order): Prisma.OrderCreateInput {
+// Unchecked input on purpose: once Order has the `table` relation, the checked
+// OrderCreateInput drops the raw tableId scalar, and `table: { connect }` would
+// raise P2025/P2018 instead of the P2003 the repository translates to
+// 'Table not found'. The raw scalar lets the FK violation surface as P2003.
+export function orderDomainToCreate(
+  order: Order,
+): Prisma.OrderUncheckedCreateInput {
   return {
     id: order.getId(),
     userId: order.getUserId(),
@@ -132,6 +140,8 @@ export function orderDomainToCreate(order: Order): Prisma.OrderCreateInput {
     createdAt: order.getCreatedAt(),
     deliveredAt: order.getDeliveredAt() ?? null,
     closedAt: order.getClosedAt() ?? null,
+    cancelledReason: order.getCancelledReason() ?? null,
+    cancelledAt: order.getCancelledAt() ?? null,
     items: { create: itemsToNestedCreate(order) },
     cancellations: { create: cancellationsToNestedCreate(order) },
   };
@@ -144,6 +154,8 @@ export function orderDomainToUpdate(order: Order): Prisma.OrderUpdateInput {
     notes: notesOrNull(order),
     deliveredAt: order.getDeliveredAt() ?? null,
     closedAt: order.getClosedAt() ?? null,
+    cancelledReason: order.getCancelledReason() ?? null,
+    cancelledAt: order.getCancelledAt() ?? null,
     items: {
       deleteMany: {},
       create: itemsToNestedCreate(order),
