@@ -11,6 +11,7 @@ export interface IItemListingEntry {
   category: EItemCategory;
   requiresPreparation: boolean;
   available: boolean;
+  ingredientIds: string[];
 }
 
 // List menu items for the new-order screen, flagging items as unavailable
@@ -43,6 +44,7 @@ export class ListItemsUseCase {
       available: item
         .getIngredientIds()
         .every((ingredientId) => available.get(ingredientId) === true),
+      ingredientIds: [...item.getIngredientIds()],
     }));
   }
 }

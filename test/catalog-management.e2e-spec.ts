@@ -224,6 +224,7 @@ describe('Catalog management (e2e)', () => {
         category: 'PIZZA',
         requiresPreparation: true,
         available: true,
+        ingredientIds: [mussarela.id],
       }),
     );
 
@@ -354,6 +355,15 @@ describe('Catalog management (e2e)', () => {
         (entry: { id: string }) => entry.id === parmegiana.id,
       ).available;
     };
+    const ingredientIdsOf = async (): Promise<string[]> => {
+      const listing = await request(app.getHttpServer())
+        .get('/items')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+      return listing.body.find(
+        (entry: { id: string }) => entry.id === parmegiana.id,
+      ).ingredientIds;
+    };
 
     await request(app.getHttpServer())
       .patch(`/ingredients/${mussarela.id}/stock`)
@@ -361,6 +371,7 @@ describe('Catalog management (e2e)', () => {
       .send({ available: false })
       .expect(200);
     expect(await availabilityOf()).toBe(true);
+    expect(await ingredientIdsOf()).toEqual([]);
 
     await request(app.getHttpServer())
       .post(`/items/${parmegiana.id}/ingredients`)
@@ -368,6 +379,7 @@ describe('Catalog management (e2e)', () => {
       .send({ ingredientId: mussarela.id })
       .expect(201);
     expect(await availabilityOf()).toBe(false);
+    expect(await ingredientIdsOf()).toEqual([mussarela.id]);
 
     await request(app.getHttpServer())
       .patch(`/ingredients/${mussarela.id}/stock`)
@@ -386,6 +398,7 @@ describe('Catalog management (e2e)', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .expect(200);
     expect(await availabilityOf()).toBe(true);
+    expect(await ingredientIdsOf()).toEqual([]);
   });
 
   it('should rename an ingredient without changing dependent availability', async () => {

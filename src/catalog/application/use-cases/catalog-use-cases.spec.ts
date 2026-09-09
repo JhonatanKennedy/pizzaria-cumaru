@@ -143,6 +143,7 @@ describe('ListItemsUseCase', () => {
         category: EItemCategory.PIZZA,
         requiresPreparation: true,
         available: true,
+        ingredientIds: [INGREDIENT_ID],
       },
     ]);
   });
@@ -154,6 +155,17 @@ describe('ListItemsUseCase', () => {
     const listing = await useCase.execute();
 
     expect(listing[0].available).toBe(false);
+  });
+
+  it('should list an item without ingredient links as available with no ingredientIds', async () => {
+    const repository = makeRepository([], [makePizza([])]);
+    const useCase = new ListItemsUseCase(repository);
+
+    const listing = await useCase.execute();
+
+    expect(listing[0]).toEqual(
+      expect.objectContaining({ available: true, ingredientIds: [] }),
+    );
   });
 });
 
