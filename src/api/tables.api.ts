@@ -24,3 +24,24 @@ export async function listTables(): Promise<TTableListing> {
   const data = await apiRequest('/tables');
   return tableListingSchema.parse(data);
 }
+
+export async function createTable(number: number): Promise<void> {
+  await apiRequest('/tables', {
+    method: 'POST',
+    body: JSON.stringify({ number }),
+  });
+}
+
+export async function renameTable(
+  tableId: string,
+  number: number,
+): Promise<void> {
+  await apiRequest(`/tables/${tableId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ number }),
+  });
+}
+
+export async function deleteTable(tableId: string): Promise<void> {
+  await apiRequest(`/tables/${tableId}`, { method: 'DELETE' });
+}

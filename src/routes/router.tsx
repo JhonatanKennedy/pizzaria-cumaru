@@ -12,6 +12,7 @@ import { DeliveryDetailPage } from '@pages/manager/pages/delivery/delivery-detai
 import { DeliveryPage } from '@pages/manager/pages/delivery/delivery-page';
 import { ManagerPage } from '@pages/manager/pages/manager-page';
 import { MenuPage } from '@pages/manager/pages/menu/menu-page';
+import { TablesPage as ManagerTablesPage } from '@pages/manager/pages/tables/tables-page';
 import { TablesPage } from '@pages/waiter/pages/tables';
 import { HomeRedirect } from './home-redirect';
 import { OrderDetailRoute } from './order-detail-route';
@@ -77,6 +78,14 @@ export const router = createBrowserRouter([
         element: (
           <RequireRole roles={MANAGER_ROLES}>
             <DeliveryDetailPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: '/manager/tables',
+        element: (
+          <RequireRole roles={MANAGER_ROLES}>
+            <ManagerTablesPage />
           </RequireRole>
         ),
       },

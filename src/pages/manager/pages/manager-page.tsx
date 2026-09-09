@@ -34,6 +34,13 @@ export function ManagerPage(): React.ReactNode {
             features/04_delivery_order.feature
           </p>
         </Link>
+        <Link to="/manager/tables" className="card hover:border-red-300">
+          <h2 className="font-semibold text-stone-900">Gerenciar mesas</h2>
+          <p className="mt-1 text-sm text-stone-600">
+            Cadastre, renumere e remova as mesas do salão. Spec:
+            features/10_table_management.feature
+          </p>
+        </Link>
       </div>
     </div>
   );
