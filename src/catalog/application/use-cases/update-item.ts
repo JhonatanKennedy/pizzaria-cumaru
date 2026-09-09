@@ -6,11 +6,15 @@ export interface IUpdateItemParams {
   itemId: string;
   name?: string;
   description?: string;
+  price?: number;
+  requiresPreparation?: boolean;
+  ingredientIds?: string[];
 }
 
-// Rename an item and/or change its description; the new values show wherever
-// the item is read (menu listing, kitchen queue, orders). The category is
-// fixed at creation and has no setter here.
+// Update an item in a single request: name, description, price, preparation
+// flag and ingredient links (replaced wholesale when given). The new values
+// show wherever the item is read (menu listing, kitchen queue, orders). The
+// category is fixed at creation and has no setter here.
 // Feature: 02_menu_and_stock.feature.
 @Injectable()
 export class UpdateItemUseCase {
@@ -40,6 +44,22 @@ export class UpdateItemUseCase {
         throw new Error('Description is required');
       }
       item.changeDescription(params.description);
+    }
+    if (params.price !== undefined) {
+      item.changePrice(params.price);
+    }
+    if (params.requiresPreparation !== undefined) {
+      item.changeRequiresPreparation(params.requiresPreparation);
+    }
+    if (params.ingredientIds !== undefined) {
+      for (const ingredientId of params.ingredientIds) {
+        const ingredient =
+          await this.catalogRepository.findIngredientById(ingredientId);
+        if (!ingredient) {
+          throw new Error('Ingredient not found');
+        }
+      }
+      item.replaceIngredients(params.ingredientIds);
     }
 
     await this.catalogRepository.saveItem(item);

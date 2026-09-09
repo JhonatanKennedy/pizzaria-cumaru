@@ -126,13 +126,13 @@ describe('Catalog management (e2e)', () => {
     expect(restoredQueue.body.local).toHaveLength(1);
   });
 
-  it('should update an item price and have new orders snapshot it', async () => {
+  it('should update an item price through the item update and have new orders snapshot it', async () => {
     const calabresa = await prisma.item.findFirstOrThrow({
       where: { name: 'Calabresa' },
     });
 
     await request(app.getHttpServer())
-      .patch(`/items/${calabresa.id}/price`)
+      .patch(`/items/${calabresa.id}`)
       .set('Authorization', `Bearer ${authToken}`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({ price: 55 })
@@ -155,19 +155,60 @@ describe('Catalog management (e2e)', () => {
     expect(stored.unitPrice).toBe(55);
   });
 
+  it('should change everything in one request, keeping the category fixed at creation', async () => {
+    const calabresa = await prisma.item.findFirstOrThrow({
+      where: { name: 'Calabresa' },
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/items/${calabresa.id}`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        name: 'Calabresa Premium',
+        description: 'Calabresa com borda recheada',
+        price: 48,
+        requiresPreparation: false,
+        ingredientIds: [],
+        category: 'DRINK', // the update contract never accepts a category
+      })
+      .expect(200);
+
+    const listing = await request(app.getHttpServer())
+      .get('/items')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+    expect(listing.body).toEqual([
+      expect.objectContaining({
+        name: 'Calabresa Premium',
+        description: 'Calabresa com borda recheada',
+        price: 48,
+        requiresPreparation: false,
+        available: true,
+        ingredientIds: [],
+        category: 'PIZZA',
+      }),
+    ]);
+  });
+
   it('should refuse a negative price with the domain message', async () => {
     const calabresa = await prisma.item.findFirstOrThrow({
       where: { name: 'Calabresa' },
     });
 
     const response = await request(app.getHttpServer())
-      .patch(`/items/${calabresa.id}/price`)
+      .patch(`/items/${calabresa.id}`)
       .set('Authorization', `Bearer ${authToken}`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({ price: -5 })
       .expect(400);
 
     expect(response.body.message).toBe('Price cannot be negative');
+
+    const after = await request(app.getHttpServer())
+      .get('/items')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+    expect(after.body[0].price).toBe(40);
   });
 
   it('should list ingredients with their availability', async () => {
@@ -327,7 +368,7 @@ describe('Catalog management (e2e)', () => {
     expect(queueNames).toContain('Calabresa Reforçada');
   });
 
-  it('should link an ingredient so the item follows its stock and release it on unlink', async () => {
+  it('should replace ingredient links wholesale so the item follows their stock', async () => {
     const mussarela = await prisma.ingredient.findFirstOrThrow({
       where: { name: 'Mussarela' },
     });
@@ -374,10 +415,10 @@ describe('Catalog management (e2e)', () => {
     expect(await ingredientIdsOf()).toEqual([]);
 
     await request(app.getHttpServer())
-      .post(`/items/${parmegiana.id}/ingredients`)
+      .patch(`/items/${parmegiana.id}`)
       .set('Authorization', `Bearer ${authToken}`)
-      .send({ ingredientId: mussarela.id })
-      .expect(201);
+      .send({ ingredientIds: [mussarela.id] })
+      .expect(200);
     expect(await availabilityOf()).toBe(false);
     expect(await ingredientIdsOf()).toEqual([mussarela.id]);
 
@@ -394,11 +435,19 @@ describe('Catalog management (e2e)', () => {
       .send({ available: false })
       .expect(200);
     await request(app.getHttpServer())
-      .delete(`/items/${parmegiana.id}/ingredients/${mussarela.id}`)
+      .patch(`/items/${parmegiana.id}`)
       .set('Authorization', `Bearer ${authToken}`)
+      .send({ ingredientIds: [] })
       .expect(200);
     expect(await availabilityOf()).toBe(true);
     expect(await ingredientIdsOf()).toEqual([]);
+
+    const refused = await request(app.getHttpServer())
+      .patch(`/items/${parmegiana.id}`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ ingredientIds: ['unknown-ingredient'] })
+      .expect(400);
+    expect(refused.body.message).toBe('Ingredient not found');
   });
 
   it('should rename an ingredient without changing dependent availability', async () => {
@@ -549,15 +598,6 @@ describe('Catalog management (e2e)', () => {
     const writeRoutes = [
       { method: 'post', path: '/items', body: { name: 'X', price: 1 } },
       { method: 'patch', path: `/items/${calabresa.id}`, body: { name: 'Y' } },
-      {
-        method: 'post',
-        path: `/items/${calabresa.id}/ingredients`,
-        body: { ingredientId: mussarela.id },
-      },
-      {
-        method: 'delete',
-        path: `/items/${calabresa.id}/ingredients/${mussarela.id}`,
-      },
       { method: 'delete', path: `/items/${calabresa.id}` },
       { method: 'post', path: '/ingredients', body: { name: 'Z' } },
       {

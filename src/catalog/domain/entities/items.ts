@@ -17,7 +17,7 @@ export class Item {
     private description: string,
     private price: number,
     private readonly category: EItemCategory,
-    private readonly requiresPreparation: boolean,
+    private requiresPreparation: boolean,
     private ingredientIds: string[],
   ) {}
 
@@ -59,15 +59,14 @@ export class Item {
     this.description = description;
   }
 
-  linkIngredient(ingredientId: string): void {
-    if (this.ingredientIds.includes(ingredientId)) {
-      return;
-    }
-    this.ingredientIds.push(ingredientId);
+  changeRequiresPreparation(requiresPreparation: boolean): void {
+    this.requiresPreparation = requiresPreparation;
   }
 
-  unlinkIngredient(ingredientId: string): void {
-    this.ingredientIds = this.ingredientIds.filter((id) => id !== ingredientId);
+  // The update contract replaces the ingredient links wholesale; the caller
+  // validates that every id names a real ingredient.
+  replaceIngredients(ingredientIds: string[]): void {
+    this.ingredientIds = [...ingredientIds];
   }
 
   getId(): string {

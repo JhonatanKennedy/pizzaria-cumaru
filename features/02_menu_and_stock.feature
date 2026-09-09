@@ -35,9 +35,9 @@ Feature: Menu and ingredient stock management
     When the manager "ana.gerente" marks the ingredient "Mussarela" as available again
     Then the items that depend on "Mussarela" must appear normally again for the waiter and for the kitchen
 
-  Scenario: Manager updates the price of a menu item
+  Scenario: Manager updates the price of a menu item through the item update
     Given the manager "ana.gerente" is authenticated
-    When she changes the price of the pizza "Calabresa" to "R$ 45.00"
+    When she updates the pizza "Calabresa" with the price "R$ 45.00"
     Then new orders with the pizza "Calabresa" must consider the value "R$ 45.00"
 
   Scenario: Manager adds a new item to the menu
@@ -51,21 +51,32 @@ Feature: Menu and ingredient stock management
     Then the system must refuse the operation
     And the message "Item name already in use" must be displayed
 
-  Scenario: Manager edits a menu item
-    When the manager "ana.gerente" renames the pizza "Calabresa" to "Calabresa Reforçada"
-    Then the menu must show "Calabresa Reforçada"
-    And the kitchen queue must display "Calabresa Reforçada" for that item
+  Scenario: The system refuses a negative price
+    When the manager "ana.gerente" tries to update the pizza "Calabresa" with the price "-R$ 5.00"
+    Then the system must refuse the operation
+    And the message "Price cannot be negative" must be displayed
 
-  Scenario: Manager links an ingredient to a dish
+  Scenario: Manager changes everything about an item in one request
+    Given the manager "ana.gerente" is authenticated
+    When she updates the pizza "Calabresa" changing its name to "Calabresa Reforçada", its description, its price to "R$ 48.00" and its preparation flag at once
+    Then the menu must show "Calabresa Reforçada" with the new description, price and preparation flag
+    And the kitchen queue must display "Calabresa Reforçada" for that item
+    And new orders with the pizza "Calabresa Reforçada" must consider the value "R$ 48.00"
+
+  Scenario: An item keeps the category it was created with
+    When the manager "ana.gerente" tries to update the pizza "Calabresa" with the category "Drink"
+    Then the pizza "Calabresa" must remain in the menu as a pizza
+
+  Scenario: Manager makes a dish depend on a new ingredient with a single update
     Given the dish "Parmegiana de Frango" does not depend on "Mussarela"
-    When the manager "ana.gerente" links the ingredient "Mussarela" to the dish "Parmegiana de Frango"
+    When the manager "ana.gerente" updates the dish "Parmegiana de Frango" making it depend on the ingredients "Mussarela"
     Then the dish "Parmegiana de Frango" must be unavailable whenever "Mussarela" is unavailable
     And it must become available again when "Mussarela" is restored
 
-  Scenario: Manager unlinks an ingredient from a dish
+  Scenario: Manager releases a dish from an ingredient with a single update
     Given the ingredient "Mussarela" is unavailable in stock
     And the dish "Parmegiana de Frango" depends on "Mussarela"
-    When the manager "ana.gerente" unlinks the ingredient "Mussarela" from the dish "Parmegiana de Frango"
+    When the manager "ana.gerente" updates the dish "Parmegiana de Frango" with no ingredients
     Then the dish "Parmegiana de Frango" must become available again
 
   Scenario: Manager removes an item from the menu

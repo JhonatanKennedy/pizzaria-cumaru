@@ -1,13 +1,10 @@
 import { MarkIngredientOutOfStockUseCase } from './mark-ingredient-out-of-stock.js';
 import { MarkIngredientInStockUseCase } from './mark-ingredient-in-stock.js';
-import { UpdateItemPriceUseCase } from './update-item-price.js';
 import { ListItemsUseCase } from './list-items.js';
 import { ListIngredientsUseCase } from './list-ingredients.js';
 import { CreateItemUseCase } from './create-item.js';
 import { UpdateItemUseCase } from './update-item.js';
 import { RemoveItemUseCase } from './remove-item.js';
-import { LinkIngredientToItemUseCase } from './link-ingredient-to-item.js';
-import { UnlinkIngredientFromItemUseCase } from './unlink-ingredient-from-item.js';
 import { CreateIngredientUseCase } from './create-ingredient.js';
 import { RenameIngredientUseCase } from './rename-ingredient.js';
 import { RemoveIngredientUseCase } from './remove-ingredient.js';
@@ -90,38 +87,6 @@ describe('MarkIngredientInStockUseCase', () => {
 
     expect(ingredient.isAvailable()).toBe(true);
     expect(repository.saveIngredient).toHaveBeenCalledWith(ingredient);
-  });
-});
-
-describe('UpdateItemPriceUseCase', () => {
-  it('should update the price and persist the item', async () => {
-    const item = makePizza();
-    const repository = makeRepository([], [], null, item);
-    const useCase = new UpdateItemPriceUseCase(repository);
-
-    await useCase.execute({ itemId: ITEM_ID, price: 48 });
-
-    expect(item.getPrice()).toBe(48);
-    expect(repository.saveItem).toHaveBeenCalledWith(item);
-  });
-
-  it('should refuse a negative price with the domain message', async () => {
-    const repository = makeRepository([], [], null, makePizza());
-    const useCase = new UpdateItemPriceUseCase(repository);
-
-    await expect(
-      useCase.execute({ itemId: ITEM_ID, price: -5 }),
-    ).rejects.toThrow('Price cannot be negative');
-    expect(repository.saveItem).not.toHaveBeenCalled();
-  });
-
-  it('should refuse an unknown item', async () => {
-    const repository = makeRepository([], [], null, null);
-    const useCase = new UpdateItemPriceUseCase(repository);
-
-    await expect(
-      useCase.execute({ itemId: 'unknown', price: 48 }),
-    ).rejects.toThrow('Item not found');
   });
 });
 
@@ -351,6 +316,91 @@ describe('UpdateItemUseCase', () => {
     ).rejects.toThrow('Description is required');
     expect(repository.saveItem).not.toHaveBeenCalled();
   });
+
+  it('should update the price and persist the item', async () => {
+    const item = makePizza();
+    const repository = makeRepository([], [], null, item);
+    const useCase = new UpdateItemUseCase(repository);
+
+    await useCase.execute({ itemId: ITEM_ID, price: 48 });
+
+    expect(item.getPrice()).toBe(48);
+    expect(item.getName()).toBe('Calabresa');
+    expect(repository.saveItem).toHaveBeenCalledWith(item);
+  });
+
+  it('should refuse a negative price with the domain message', async () => {
+    const item = makePizza();
+    const repository = makeRepository([], [], null, item);
+    const useCase = new UpdateItemUseCase(repository);
+
+    await expect(
+      useCase.execute({ itemId: ITEM_ID, price: -5 }),
+    ).rejects.toThrow('Price cannot be negative');
+    expect(item.getPrice()).toBe(45);
+    expect(repository.saveItem).not.toHaveBeenCalled();
+  });
+
+  it('should change the preparation flag', async () => {
+    const item = makePizza();
+    const repository = makeRepository([], [], null, item);
+    const useCase = new UpdateItemUseCase(repository);
+
+    await useCase.execute({ itemId: ITEM_ID, requiresPreparation: false });
+
+    expect(item.getRequiresPreparation()).toBe(false);
+    expect(repository.saveItem).toHaveBeenCalledWith(item);
+  });
+
+  it('should replace the ingredient links wholesale when ingredientIds is given', async () => {
+    const item = makePizza([INGREDIENT_ID]);
+    const ingredient = makeIngredient(true);
+    const repository = makeRepository([], [], ingredient, item);
+    const useCase = new UpdateItemUseCase(repository);
+
+    await useCase.execute({ itemId: ITEM_ID, ingredientIds: [] });
+
+    expect(item.getIngredientIds()).toEqual([]);
+    expect(repository.saveItem).toHaveBeenCalledWith(item);
+  });
+
+  it('should refuse an unknown ingredient id in the list', async () => {
+    const item = makePizza();
+    const repository = makeRepository([], [], null, item);
+    const useCase = new UpdateItemUseCase(repository);
+
+    await expect(
+      useCase.execute({
+        itemId: ITEM_ID,
+        ingredientIds: ['unknown-ingredient'],
+      }),
+    ).rejects.toThrow('Ingredient not found');
+    expect(repository.saveItem).not.toHaveBeenCalled();
+  });
+
+  it('should change everything in one request and keep the category fixed at creation', async () => {
+    const item = makePizza([INGREDIENT_ID]);
+    const ingredient = makeIngredient(true);
+    const repository = makeRepository([], [], ingredient, item);
+    const useCase = new UpdateItemUseCase(repository);
+
+    await useCase.execute({
+      itemId: ITEM_ID,
+      name: 'Calabresa Reforçada',
+      description: 'Calabresa com borda recheada',
+      price: 55,
+      requiresPreparation: true,
+      ingredientIds: [INGREDIENT_ID],
+    });
+
+    expect(item.getName()).toBe('Calabresa Reforçada');
+    expect(item.getDescription()).toBe('Calabresa com borda recheada');
+    expect(item.getPrice()).toBe(55);
+    expect(item.getRequiresPreparation()).toBe(true);
+    expect(item.getIngredientIds()).toEqual([INGREDIENT_ID]);
+    expect(item.getCategory()).toBe(EItemCategory.PIZZA);
+    expect(repository.saveItem).toHaveBeenCalledWith(item);
+  });
 });
 
 describe('RemoveItemUseCase', () => {
@@ -369,63 +419,6 @@ describe('RemoveItemUseCase', () => {
 
     await expect(useCase.execute('unknown')).rejects.toThrow('Item not found');
     expect(repository.deleteItem).not.toHaveBeenCalled();
-  });
-});
-
-describe('LinkIngredientToItemUseCase', () => {
-  it('should add the ingredient link and persist the item', async () => {
-    const item = makePizza([]);
-    const ingredient = makeIngredient(true);
-    const repository = makeRepository([], [], ingredient, item);
-    const useCase = new LinkIngredientToItemUseCase(repository);
-
-    await useCase.execute({ itemId: ITEM_ID, ingredientId: INGREDIENT_ID });
-
-    expect(item.getIngredientIds()).toEqual([INGREDIENT_ID]);
-    expect(repository.saveItem).toHaveBeenCalledWith(item);
-  });
-
-  it('should refuse an unknown item', async () => {
-    const repository = makeRepository([], [], makeIngredient(true), null);
-    const useCase = new LinkIngredientToItemUseCase(repository);
-
-    await expect(
-      useCase.execute({ itemId: 'unknown', ingredientId: INGREDIENT_ID }),
-    ).rejects.toThrow('Item not found');
-    expect(repository.saveItem).not.toHaveBeenCalled();
-  });
-
-  it('should refuse an unknown ingredient', async () => {
-    const repository = makeRepository([], [], null, makePizza());
-    const useCase = new LinkIngredientToItemUseCase(repository);
-
-    await expect(
-      useCase.execute({ itemId: ITEM_ID, ingredientId: 'unknown' }),
-    ).rejects.toThrow('Ingredient not found');
-    expect(repository.saveItem).not.toHaveBeenCalled();
-  });
-});
-
-describe('UnlinkIngredientFromItemUseCase', () => {
-  it('should remove the ingredient link and persist the item', async () => {
-    const item = makePizza([INGREDIENT_ID]);
-    const repository = makeRepository([], [], null, item);
-    const useCase = new UnlinkIngredientFromItemUseCase(repository);
-
-    await useCase.execute({ itemId: ITEM_ID, ingredientId: INGREDIENT_ID });
-
-    expect(item.getIngredientIds()).toEqual([]);
-    expect(repository.saveItem).toHaveBeenCalledWith(item);
-  });
-
-  it('should refuse an unknown item', async () => {
-    const repository = makeRepository([], [], null, null);
-    const useCase = new UnlinkIngredientFromItemUseCase(repository);
-
-    await expect(
-      useCase.execute({ itemId: 'unknown', ingredientId: INGREDIENT_ID }),
-    ).rejects.toThrow('Item not found');
-    expect(repository.saveItem).not.toHaveBeenCalled();
   });
 });
 
