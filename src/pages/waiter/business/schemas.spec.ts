@@ -1,6 +1,5 @@
 import {
   addItemFormSchema,
-  cancellationReasonFormSchema,
   orderListingSchema,
   tableOrderFormSchema,
 } from './schemas';
@@ -61,21 +60,6 @@ describe('addItemFormSchema', () => {
     expect(
       addItemFormSchema.safeParse({ quantity: 0, flavors: '', notes: '' })
         .success,
-    ).toBe(false);
-  });
-});
-
-describe('cancellationReasonFormSchema', () => {
-  it('should accept a reason', () => {
-    expect(
-      cancellationReasonFormSchema.safeParse({ reason: 'Cliente desistiu' })
-        .success,
-    ).toBe(true);
-  });
-
-  it('should reject a blank reason', () => {
-    expect(
-      cancellationReasonFormSchema.safeParse({ reason: ' ' }).success,
     ).toBe(false);
   });
 });

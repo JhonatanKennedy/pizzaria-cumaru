@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import {
   cancellationReasonFormSchema,
   type TCancellationReasonFormValues,
-} from '../../business/schemas';
+} from '@lib/cancellation';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
 import { TextField } from '@components/TextField';

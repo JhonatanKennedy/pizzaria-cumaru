@@ -7,19 +7,6 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
   Delivered: 'Entregue',
 };
 
-export const ITEM_STATUS_LABELS: Record<string, string> = {
-  Pending: 'Pendente',
-  Preparing: 'Preparando',
-  Ready: 'Pronto',
-};
-
 export function orderStatusLabel(status: string): string {
   return ORDER_STATUS_LABELS[status] ?? status;
-}
-
-export function itemStatusLabel(status: string | null): string {
-  if (!status) {
-    return '';
-  }
-  return ITEM_STATUS_LABELS[status] ?? status;
 }
