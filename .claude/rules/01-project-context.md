@@ -52,7 +52,14 @@ src/
       auth.context.tsx, auth-context.ts, use-auth.ts, require-role.tsx  # provider + guards
     waiter/           # waiter context: tables screen + order detail (business, api, hooks, components)
     kitchen/          # kitchen context: the Kitchen Panel (api, hooks, components, screen)
-    manager/          # manager context: hub + menu + delivery + daily-earnings screens
+    manager/          # manager context: hub + menu + delivery + day reports (one screen:
+                      #   daily-earnings shows the earnings totals + the "Vendas do Dia" sales list)
+                      #   (business/ labels, enrich-sales + filter-sales rules, delivery-status +
+                      #   delivery-schemas; api/ reports + daily-sales + delivery-orders;
+                      #   hooks/use-catalog + use-day-sales + use-orders + use-advance-delivery-status;
+                      #   pages/daily-earnings has parts/ SalesFilters, CategoryStrip, SaleCard;
+                      #   pages/delivery/ has the delivery list + detail with parts/
+                      #   DeliveryOrderCard, CreateDeliveryOrderDialog, AddItemsPanel)
   routes/              # application assembly (no app/ folder)
     app.tsx           # configureApiClient wiring + QueryClientProvider > AuthProvider > RouterProvider
     router.tsx        # createBrowserRouter — every route, with its role guard
@@ -63,8 +70,11 @@ src/
                       # api/catalog.api.ts — shared catalog contract (schemas, endpoints,
                       # query keys) consumed by the waiter and manager contexts
                       # api/tables.api.ts — shared tables contract (floor listing + query key)
-  lib/                # toErrorMessage, formatBRL, catalog.ts (shared menu contract),
-                      # cancellation.ts (reason form rule), item-labels.ts (item status labels)
+                      # api/orders.api.ts — shared orders listing contract (schemas, listOrders,
+                      # query key) consumed by the waiter order screens and the manager delivery screens
+  lib/                # toErrorMessage, formatBRL + formatTime, catalog.ts (shared menu contract),
+                      # cancellation.ts (reason form rule), item-labels.ts (item status labels),
+                      # order-labels.ts (order status labels), order-enrich.ts (order + menu join)
                       # — shared when a second context consumes the rule
   main.tsx            # bootstrap
   index.css           # Tailwind import + shared component classes + first @theme tokens (item status fills)
@@ -88,12 +98,13 @@ JWT from `POST /auth/login` (`{ login, password }` → `{ token, user: { id, log
 | `/login`                  | public           | `01_authentication`        | ✅ working          |
 | `/waiter`                 | Waiter, Manager  | `05_waiter_profile`        | redirects to `/waiter/tables` |
 | `/waiter/tables`          | Waiter, Manager  | `03_table_order`           | ✅ working          |
-| `/waiter/orders/:orderId` | Waiter, Manager  | `03_table_order`, `09`     | ✅ working          |
+| `/waiter/orders/:orderId` | Waiter, Manager  | `03_table_order`, `09`     | ✅ working (manager-only "Fechar conta") |
 | `/kitchen`                | Cook, Manager    | `06_cook_profile`          | ✅ working          |
 | `/manager`                | Manager          | `07_manager_profile`       | placeholder (hub)   |
 | `/manager/menu`           | Manager          | `02_menu_and_stock`        | ✅ working          |
-| `/manager/delivery`       | Manager          | `04_delivery_order`        | placeholder         |
-| `/reports/daily-earnings` | Manager          | `07_manager_profile`       | placeholder         |
+| `/manager/delivery`       | Manager          | `04_delivery_order`        | ✅ working          |
+| `/manager/delivery/:orderId` | Manager       | `04_delivery_order`        | ✅ working (advance to Delivered) |
+| `/reports/daily-earnings` | Manager          | `07_manager_profile`       | ✅ working (earnings totals + the day's sales list with filters) |
 
 The role matrix mirrors the backend's `RolesGuard`: waiters and managers share the order flows; cooks and managers share the kitchen; manager-only for management and reports. Delivery is a manager-only flow by product decision (the Gherkin specs still describe it in the waiter's hands — to be reconciled).
 
@@ -104,14 +115,14 @@ One context per product area — the folder is the context, and each screen name
 | Feature file                  | Context                        | Notes                                                                                   |
 | ----------------------------- | ------------------------------ | --------------------------------------------------------------------------------------- |
 | `01_authentication.feature`   | `pages/auth`                   | Login form (RHF + Zod), role-based redirect, logout, guards. Implemented — the canonical context. |
-| `02_menu_and_stock.feature`   | `pages/manager`                | Items and ingredients tabs implemented (create/edit/price/delete, stock toggles). Link/unlink ingredient↔item deferred — `GET /items` does not expose `ingredientIds`. |
+| `02_menu_and_stock.feature`   | `pages/manager`                | Items and ingredients tabs implemented (create/edit/price/delete, stock toggles) plus the item↔ingredient relationship: an "Ingredientes" fieldset on item registration and a per-item manage dialog linking/unlinking ingredients (`GET /items` exposes `ingredientIds`); marking a linked ingredient out of stock flips the item unavailable across the catalog, waiter and delivery surfaces. |
 | `03_table_order.feature`      | `pages/waiter`                 | Floor view (free/occupied tables from `GET /tables`), order detail, add items with flavors and notes, per-row quantity adjustment (`+`/`−`, works while the item is in preparation), whole-order cancellation with reason. Implemented. |
 | `10_table_management.feature` | `pages/waiter` + `pages/manager` | Floor view implemented; the manager's table CRUD screen (register/renumber/remove) is still pending. |
-| `04_delivery_order.feature`   | `pages/manager`                | Delivery orders; status cycle to Delivered. Placeholder.                                |
+| `04_delivery_order.feature`   | `pages/manager`                | Delivery orders implemented as a manager-only flow: list of today's deliveries from `GET /orders` (filtered `type === 'Delivery'`), create dialog (name/phone/address, no local required rules — the backend's exact rejections surface verbatim), detail with items, flavors/notes while open, and a single advance action per step (Iniciar preparo / Saiu para entrega / Marcar como entregue) until Delivered ("Entregue às"). Order contracts/labels/enrich shared from `@api/orders.api` + `@lib` since the waiter flow hoisted them. |
 | `05_waiter_profile.feature`   | `pages/waiter`                 | Tables screen with preparation-status follow-up; waiter cannot close orders.            |
 | `06_cook_profile.feature`     | `pages/kitchen`                | Kitchen Panel implemented: anonymous item tiles in the server's arrival order (Entrega/Local from `GET /kitchen/queue`), per-status color tokens (`@theme`), start/finish/cancel-preparation verbs, 15s auto-refresh + Atualizar. |
-| `07_manager_profile.feature`  | `pages/manager`                | Manager hub, daily-earnings report, close-order flow with payment type.                 |
-| `09_cancellation_and_payment.feature` | `pages/waiter` + `pages/manager` | Item and whole-order cancellation with reason implemented in the waiter order detail (a cancelled order renders read-only as "Cancelado" and frees its table); split bill remains in the manager close-order flow. |
+| `07_manager_profile.feature`  | `pages/manager`                | Manager hub; daily report screen implemented — earnings totals from `GET /reports/daily-earnings` (the order-type filter re-keys the totals) plus the "Vendas do Dia" sales list from `GET /reports/daily-sales` (joined with the menu catalog, filterable by type/payment/category, with sold quantities per category); manager close-order flow with payment type implemented on the shared order detail; split bill still pending. |
+| `09_cancellation_and_payment.feature` | `pages/waiter` + `pages/manager` | Item and whole-order cancellation with reason implemented in the waiter order detail (a cancelled order renders read-only as "Cancelado" and frees its table); the manager closes orders with a payment method via "Fechar conta" (split bill remains pending). |
 
 ## Feature specs
 
