@@ -40,7 +40,7 @@ Never `new` an entity outside its file. Defaults live in the factory (`params.fa
 
 ## 2. State changes only through explicit methods
 
-No setters, no public mutable fields. Mutations are domain verbs with invariant checks: `addItem`, `removeItem`, `cancelItem`, `cancelPreparationItem`, `close`, `startDeliveryPreparation`, `sendOutForDelivery`, `markDelivered`, `startPreparation`, `finishPreparation`, `cancel`, `rename`, `changePrice`, `linkIngredient`, `markInStock`, `markOutOfStock`, `registerFailedAttempt`. Reads happen through getters — collection getters return a readonly view (see [04-typescript.md](04-typescript.md#3-readonly-everything-that-must-not-change)).
+No setters, no public mutable fields. Mutations are domain verbs with invariant checks: `addItem`, `removeItem`, `cancelItem`, `cancelPreparationItem`, `close`, `startDeliveryPreparation`, `sendOutForDelivery`, `markDelivered`, `startPreparation`, `finishPreparation`, `cancel`, `rename`, `changePrice`, `replaceIngredients`, `markInStock`, `markOutOfStock`, `registerFailedAttempt`. Reads happen through getters — collection getters return a readonly view (see [04-typescript.md](04-typescript.md#3-readonly-everything-that-must-not-change)).
 
 ## 3. Invariants enforced at every mutation point
 

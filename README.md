@@ -66,11 +66,11 @@ All other endpoints require `Authorization: Bearer <token>`. Seeded users:
 | `POST /orders` | create local / delivery order | ✓ | | ✓ |
 | `POST /orders/:id/items` | add item (flavors, notes) | ✓ | | ✓ |
 | `POST /kitchen/orders/:orderId/items/:itemId/start` / `finish` | start / finish preparation (`Preparing`, `Ready`) | | ✓ | ✓ |
-| `POST /orders/:id/items/:itemId/cancellation` | cancel item with reason | ✓ | | ✓ |
+| `POST /orders/:id/items/:itemId/cancellation` | cancel item (refused once `Preparing`) | ✓ | | ✓ |
 | `PATCH /orders/:id/status` | advance delivery cycle (`Preparing` → `Out for delivery` → `Delivered`) | ✓ | | ✓ |
-| `POST /orders/:id/close` | close with payment, optional `splitInto` | | | ✓ |
+| `POST /orders/:id/close` | close with payment, optional `splitInto` (refused while any kitchen item is still `Pending`/`Preparing`) | | | ✓ |
 | `GET /kitchen/queue` | the two kitchen queues | | ✓ | ✓ |
-| `POST /kitchen/orders/:orderId/items/:itemId/cancel` | cancel the preparation of a started dish (reason in body) | | ✓ | ✓ |
+| `POST /kitchen/orders/:orderId/items/:itemId/cancel` | cancel the preparation of a started dish | | ✓ | ✓ |
 | `GET /orders` | day's orders with waiter name | ✓ | | ✓ |
 | `GET /reports/daily-earnings` | day's earnings (`?type=Local\|Delivery`) | | | ✓ |
 | `GET /tables` | floor listing (each table with its open order summary) | ✓ | | ✓ |
@@ -79,10 +79,7 @@ All other endpoints require `Authorization: Bearer <token>`. Seeded users:
 | `DELETE /tables/:id` | remove table (refused while it has orders) | | | ✓ |
 | `GET /items` / `GET /ingredients` | menu / stock listings | ✓ | | ✓ |
 | `POST /items` | create menu item | | | ✓ |
-| `PATCH /items/:id` | rename item / change description | | | ✓ |
-| `PATCH /items/:id/price` | update item price | | | ✓ |
-| `POST /items/:id/ingredients` | link ingredient to item | | | ✓ |
-| `DELETE /items/:id/ingredients/:ingredientId` | unlink ingredient from item | | | ✓ |
+| `PATCH /items/:id` | update item (name, description, price, preparation flag, ingredient links replaced wholesale — category stays fixed at creation) | | | ✓ |
 | `DELETE /items/:id` | remove item from menu | | | ✓ |
 | `POST /ingredients` | register ingredient | | | ✓ |
 | `PATCH /ingredients/:id` | rename ingredient | | | ✓ |
