@@ -1,4 +1,4 @@
-import { orderStatusLabel } from './labels';
+import { orderStatusLabel } from './order-labels';
 
 describe('orderStatusLabel', () => {
   it('should map every known order status to its Portuguese label', () => {

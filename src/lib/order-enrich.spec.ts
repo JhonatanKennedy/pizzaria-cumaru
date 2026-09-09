@@ -1,6 +1,7 @@
 import type { TMenuListing } from '@api/catalog.api';
-import type { TOrderListing } from './schemas';
-import { REMOVED_ITEM_LABEL, enrichOrder } from './enrich';
+import type { TOrderListing } from '@api/orders.api';
+import { REMOVED_ITEM_LABEL } from './catalog';
+import { enrichOrder } from './order-enrich';
 
 const MENU: TMenuListing = [
   {
@@ -11,6 +12,7 @@ const MENU: TMenuListing = [
     category: 'PIZZA',
     requiresPreparation: true,
     available: true,
+    ingredientIds: [],
   },
 ];
 
@@ -62,5 +64,24 @@ describe('enrichOrder', () => {
     expect(
       enriched.items.every((item) => item.name === REMOVED_ITEM_LABEL),
     ).toBe(true);
+  });
+
+  it('should keep the delivery fields untouched', () => {
+    const enriched = enrichOrder(
+      {
+        ...ORDER,
+        type: 'Delivery',
+        customerName: 'Maria Souza',
+        phone: '(81) 99999-0000',
+        address: 'Rua A, 10',
+        deliveredAt: '2026-09-09T15:30:00Z',
+      },
+      MENU,
+    );
+
+    expect(enriched.customerName).toBe('Maria Souza');
+    expect(enriched.phone).toBe('(81) 99999-0000');
+    expect(enriched.address).toBe('Rua A, 10');
+    expect(enriched.deliveredAt).toBe('2026-09-09T15:30:00Z');
   });
 });

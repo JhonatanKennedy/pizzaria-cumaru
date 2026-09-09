@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ORDERS_QUERY_KEY, type IAddItemPayload } from '@api/orders.api';
 import { addItemToOrder } from '../api/orders.api';
-import type { IAddItemPayload } from '../api/orders.api';
 
 export interface IAddItemInput {
   orderId: string;
@@ -14,7 +14,7 @@ export function useAddItem() {
     mutationFn: ({ orderId, payload }: IAddItemInput) =>
       addItemToOrder(orderId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
     },
   });
 }

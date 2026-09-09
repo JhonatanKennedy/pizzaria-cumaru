@@ -1,7 +1,6 @@
-import type { TOrderListing } from './schemas';
+import type { TOrderListing } from '@api/orders.api';
 import type { TMenuListing } from '@api/catalog.api';
-
-export const REMOVED_ITEM_LABEL = 'Item removido do cardápio';
+import { catalogById, REMOVED_ITEM_LABEL } from '@lib/catalog';
 
 export interface TEnrichedOrderItem {
   id: string;
@@ -20,7 +19,7 @@ export function enrichOrder(
   order: TOrderListing,
   menu: TMenuListing,
 ): TEnrichedOrder {
-  const menuById = new Map(menu.map((item) => [item.id, item]));
+  const menuById = catalogById(menu);
 
   return {
     ...order,

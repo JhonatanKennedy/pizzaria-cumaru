@@ -1,25 +1,11 @@
 import { apiRequest } from '@api/http-client';
 import type { TPaymentType } from '@lib/payment-labels';
 import {
-  closedOrderSchema,
   createdOrderSchema,
-  orderListingArraySchema,
-  type TClosedOrder,
+  type IAddItemPayload,
   type TCreatedOrder,
-  type TOrderListing,
-} from '../business/schemas';
-
-export interface IAddItemPayload {
-  itemId: string;
-  quantity?: number;
-  flavors?: string[];
-  notes?: string;
-}
-
-export async function listOrders(): Promise<TOrderListing[]> {
-  const data = await apiRequest('/orders');
-  return orderListingArraySchema.parse(data);
-}
+} from '@api/orders.api';
+import { closedOrderSchema, type TClosedOrder } from '../business/schemas';
 
 export async function createTableOrder(
   userId: number,

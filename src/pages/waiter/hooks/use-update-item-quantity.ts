@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ORDERS_QUERY_KEY } from '@api/orders.api';
 import { updateOrderItemQuantity } from '../api/orders.api';
 
 export interface IUpdateItemQuantityInput {
@@ -18,7 +19,7 @@ export function useUpdateItemQuantity() {
     }: IUpdateItemQuantityInput) =>
       updateOrderItemQuantity(orderId, orderItemId, quantity),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
     },
   });
 }
