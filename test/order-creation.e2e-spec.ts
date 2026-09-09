@@ -41,7 +41,7 @@ describe('Order creation (e2e)', () => {
     });
     await prisma.item.create({
       data: {
-        name: 'Calabresa',
+        name: 'Calabresa G',
         description: 'Pizza de calabresa',
         price: 40,
         category: 'PIZZA',
@@ -51,7 +51,7 @@ describe('Order creation (e2e)', () => {
     });
     await prisma.item.create({
       data: {
-        name: 'Portuguesa',
+        name: 'Portuguesa G',
         description: 'Pizza portuguesa',
         price: 46,
         category: 'PIZZA',
@@ -91,21 +91,30 @@ describe('Order creation (e2e)', () => {
 
     const orderId = created.body.id as string;
     const calabresa = await prisma.item.findFirstOrThrow({
-      where: { name: 'Calabresa' },
+      where: { name: 'Calabresa G' },
     });
 
     await request(app.getHttpServer())
       .post(`/orders/${orderId}/items`)
       .set('Authorization', `Bearer ${authToken}`)
       .set('Authorization', `Bearer ${authToken}`)
-      .send({ itemId: calabresa.id, flavors: ['Calabresa', 'Portuguesa'] })
+      .send({
+        itemId: calabresa.id,
+        parts: [
+          { name: 'Calabresa G', pieces: 4 },
+          { name: 'Portuguesa G', pieces: 4 },
+        ],
+      })
       .expect(201);
 
     const stored = await prisma.orderItem.findFirstOrThrow({
       where: { orderId },
     });
     expect(stored.unitPrice).toBe(46);
-    expect(stored.flavors).toEqual(['Calabresa', 'Portuguesa']);
+    expect(stored.flavors).toEqual([
+      { name: 'Calabresa G', pieces: 4 },
+      { name: 'Portuguesa G', pieces: 4 },
+    ]);
 
     const queue = await request(app.getHttpServer())
       .get('/kitchen/queue')
@@ -113,7 +122,11 @@ describe('Order creation (e2e)', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .expect(200);
     expect(queue.body.local).toHaveLength(1);
-    expect(queue.body.local[0].items[0].name).toBe('Calabresa');
+    expect(queue.body.local[0].items[0].name).toBe('Calabresa G');
+    expect(queue.body.local[0].items[0].parts).toEqual([
+      { name: 'Calabresa G', pieces: 4 },
+      { name: 'Portuguesa G', pieces: 4 },
+    ]);
   });
 
   it('should refuse a delivery order without an address with the spec message', async () => {
@@ -161,7 +174,7 @@ describe('Order creation (e2e)', () => {
       .expect(201);
 
     const calabresa = await prisma.item.findFirstOrThrow({
-      where: { name: 'Calabresa' },
+      where: { name: 'Calabresa G' },
     });
     const response = await request(app.getHttpServer())
       .post(`/orders/${created.body.id}/items`)

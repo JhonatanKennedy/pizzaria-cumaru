@@ -152,6 +152,7 @@ describe('PrismaOrdersRepository', () => {
               quantity: 1,
               status: 'Pending',
               requiresPreparation: true,
+              flavors: [],
               createdAt: CREATED_AT,
             },
           ],

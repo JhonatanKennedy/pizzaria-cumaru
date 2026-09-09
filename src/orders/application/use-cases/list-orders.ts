@@ -1,12 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ORDERS_REPOSITORY } from '../../domain/repositories/orders-repository.js';
 import type { IOrdersRepository } from '../../domain/repositories/orders-repository.js';
+import type { TFlavorPart } from '../../domain/entities/order-items.js';
 
 export interface IOrderListingItem {
   id: string;
   itemId: string;
   quantity: number;
+  // The unit price recorded when the item was added (a composed pizza
+  // records the max-flavor price) — the SPA renders line totals from it.
+  unitPrice: number;
   status: string | null;
+  parts: TFlavorPart[];
 }
 
 export interface IOrderListingOrder {
@@ -53,7 +58,9 @@ export class ListOrdersUseCase {
         id: item.getId(),
         itemId: item.getItemId(),
         quantity: item.getQuantity(),
+        unitPrice: item.getUnitPrice(),
         status: item.getStatus() ?? null,
+        parts: [...item.getParts()],
       })),
     }));
   }

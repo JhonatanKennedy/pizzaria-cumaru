@@ -181,8 +181,18 @@ describe('OrderItems', () => {
     expect(item.getCreatedAt()).toBe(CREATED_AT);
   });
 
-  it('should default to no flavors and record them when given', () => {
+  it('should default to no parts and record a whole-canvas or composed pizza when given', () => {
     const plain = makePreparedItem();
+    const whole = OrderItems.create({
+      id: 'whole-1',
+      orderId: ORDER_ID,
+      itemId: CATALOG_ITEM_ID,
+      unitPrice: 45,
+      quantity: 1,
+      requiresPreparation: true,
+      createdAt: CREATED_AT,
+      parts: [{ name: 'Mussarela G', pieces: 8 }],
+    });
     const split = OrderItems.create({
       id: 'split-1',
       orderId: ORDER_ID,
@@ -191,11 +201,43 @@ describe('OrderItems', () => {
       quantity: 1,
       requiresPreparation: true,
       createdAt: CREATED_AT,
-      flavors: ['Calabresa', 'Portuguesa'],
+      parts: [
+        { name: 'Mussarela G', pieces: 6 },
+        { name: 'Chocolate G', pieces: 2 },
+      ],
     });
 
-    expect(plain.getFlavors()).toEqual([]);
-    expect(split.getFlavors()).toEqual(['Calabresa', 'Portuguesa']);
+    expect(plain.getParts()).toEqual([]);
+    expect(whole.getParts()).toEqual([{ name: 'Mussarela G', pieces: 8 }]);
+    expect(split.getParts()).toEqual([
+      { name: 'Mussarela G', pieces: 6 },
+      { name: 'Chocolate G', pieces: 2 },
+    ]);
+  });
+
+  it('should hand out part copies so callers cannot mutate the record', () => {
+    const split = OrderItems.create({
+      id: 'split-2',
+      orderId: ORDER_ID,
+      itemId: CATALOG_ITEM_ID,
+      unitPrice: 46,
+      quantity: 1,
+      requiresPreparation: true,
+      createdAt: CREATED_AT,
+      parts: [
+        { name: 'Mussarela G', pieces: 6 },
+        { name: 'Chocolate G', pieces: 2 },
+      ],
+    });
+
+    const parts = split.getParts();
+    parts[0] = { name: 'Tampered', pieces: 0 };
+    (parts[1] as { pieces: number }).pieces = 0;
+
+    expect(split.getParts()).toEqual([
+      { name: 'Mussarela G', pieces: 6 },
+      { name: 'Chocolate G', pieces: 2 },
+    ]);
   });
 
   it('should record and expose the item notes', () => {

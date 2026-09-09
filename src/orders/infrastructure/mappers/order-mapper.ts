@@ -4,6 +4,7 @@ import { EPaymentType } from '../../domain/enums/payment-type.js';
 import { EOrderItemStatus } from '../../domain/enums/order-item-status.js';
 import { Order } from '../../domain/entities/orders.js';
 import { OrderItems } from '../../domain/entities/order-items.js';
+import type { TFlavorPart } from '../../domain/entities/order-items.js';
 import type { Prisma } from '../../../prisma/generated/client.js';
 
 export type TOrderRow = Prisma.OrderGetPayload<{
@@ -46,6 +47,28 @@ function parseItemStatus(value: string | null): EOrderItemStatus | undefined {
   return value as EOrderItemStatus;
 }
 
+// The JSONB column holds the parts array written by this mapper and the
+// migration rewrite; anything else means corruption, so it fails loudly.
+function parseFlavorParts(value: unknown): TFlavorPart[] {
+  if (!Array.isArray(value) || !value.every(isFlavorPart)) {
+    throw new Error('Invalid flavor parts on order item');
+  }
+  return value;
+}
+
+function isFlavorPart(value: unknown): value is TFlavorPart {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.name === 'string' &&
+    typeof candidate.pieces === 'number' &&
+    Number.isInteger(candidate.pieces) &&
+    candidate.pieces > 0
+  );
+}
+
 export function orderRowToDomain(row: TOrderRow): Order {
   return Order.restore({
     id: row.id,
@@ -76,7 +99,7 @@ export function orderRowToDomain(row: TOrderRow): Order {
           requiresPreparation: item.requiresPreparation,
           createdAt: item.createdAt,
           status: parseItemStatus(item.status),
-          flavors: item.flavors,
+          parts: parseFlavorParts(item.flavors),
           notes: item.notes ?? undefined,
         }),
       ),
@@ -98,7 +121,7 @@ function itemsToNestedCreate(
     quantity: item.getQuantity(),
     status: item.getStatus() ?? null,
     requiresPreparation: item.getRequiresPreparation(),
-    flavors: [...item.getFlavors()],
+    flavors: [...item.getParts()],
     notes: item.getNotes().length > 0 ? item.getNotes() : null,
     createdAt: item.getCreatedAt(),
   }));

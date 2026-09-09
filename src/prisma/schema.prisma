@@ -58,7 +58,9 @@ model OrderItem {
   quantity            Int
   status              String?
   requiresPreparation Boolean
-  flavors             String[]
+  // Ordered pizza composition: [{ name, pieces }[]], base flavor first.
+  // Stored as JSONB; non-pizza items keep an empty array.
+  flavors             Json
   notes               String?
   createdAt           DateTime
   order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)

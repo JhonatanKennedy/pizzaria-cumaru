@@ -1,6 +1,7 @@
 import { ListOrdersUseCase } from './list-orders.js';
 import type { IOrdersRepository } from '../../domain/repositories/orders-repository.js';
 import { Order } from '../../domain/entities/orders.js';
+import { OrderItems } from '../../domain/entities/order-items.js';
 import { EOrderStatus } from '../../domain/enums/order-status.js';
 import { EOrderType } from '../../domain/enums/order-type.js';
 
@@ -13,6 +14,43 @@ function makeFakeRepository(
   return {
     findAllForListing: vi.fn(async () => entries),
   } as unknown as IOrdersRepository;
+}
+
+function makeOrderWithItems(): Order {
+  const order = Order.create({
+    id: 'order-parts',
+    userId: 1,
+    type: EOrderType.LOCAL,
+    createdAt: CREATED_AT,
+    tableId: '5',
+  });
+  order.addItem(
+    OrderItems.create({
+      id: 'item-pizza',
+      orderId: 'order-parts',
+      itemId: 'catalog-pizza-1',
+      unitPrice: 46,
+      quantity: 1,
+      requiresPreparation: true,
+      createdAt: CREATED_AT,
+      parts: [
+        { name: 'Calabresa G', pieces: 4 },
+        { name: 'Portuguesa G', pieces: 4 },
+      ],
+    }),
+  );
+  order.addItem(
+    OrderItems.create({
+      id: 'item-drink',
+      orderId: 'order-parts',
+      itemId: 'catalog-drink-1',
+      unitPrice: 8,
+      quantity: 2,
+      requiresPreparation: false,
+      createdAt: CREATED_AT,
+    }),
+  );
+  return order;
 }
 
 function makeLocalOrder(): Order {
@@ -96,6 +134,24 @@ describe('ListOrdersUseCase', () => {
     const [order] = await useCase.execute(DAY);
 
     expect(order.deliveredAt?.toISOString()).toBe('2026-09-07T19:00:00.000Z');
+  });
+
+  it('should round-trip the recorded price and parts on each item', async () => {
+    const repository = makeFakeRepository([
+      { order: makeOrderWithItems(), waiterName: null },
+    ]);
+    const useCase = new ListOrdersUseCase(repository);
+
+    const [order] = await useCase.execute(DAY);
+
+    expect(order.items).toHaveLength(2);
+    expect(order.items[0].unitPrice).toBe(46);
+    expect(order.items[0].parts).toEqual([
+      { name: 'Calabresa G', pieces: 4 },
+      { name: 'Portuguesa G', pieces: 4 },
+    ]);
+    expect(order.items[1].unitPrice).toBe(8);
+    expect(order.items[1].parts).toEqual([]);
   });
 
   it('should return an empty list for a day with no orders', async () => {

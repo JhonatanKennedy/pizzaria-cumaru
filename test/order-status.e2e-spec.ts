@@ -80,6 +80,7 @@ describe('Order status and kitchen queue (e2e)', () => {
               quantity: 1,
               status: 'Pending',
               requiresPreparation: true,
+              flavors: [],
               createdAt: CREATED_AT,
             },
             {
@@ -89,6 +90,7 @@ describe('Order status and kitchen queue (e2e)', () => {
               quantity: 1,
               status: null,
               requiresPreparation: false,
+              flavors: [],
               createdAt: CREATED_AT,
             },
           ],
@@ -165,6 +167,7 @@ describe('Order status and kitchen queue (e2e)', () => {
         quantity: 1,
         status: 'Pending',
         requiresPreparation: true,
+        flavors: [],
         createdAt: new Date('2026-09-07T12:05:00Z'),
       },
     });
@@ -302,6 +305,7 @@ describe('Order status and kitchen queue (e2e)', () => {
         quantity: 1,
         status: 'Pending',
         requiresPreparation: true,
+        flavors: [],
         createdAt: new Date('2026-09-07T12:05:00Z'),
       },
     });

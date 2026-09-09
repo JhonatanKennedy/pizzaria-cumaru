@@ -1,4 +1,21 @@
-import { IsArray, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+
+export class FlavorPartDto {
+  @IsString()
+  name: string;
+
+  @IsInt()
+  @Min(1)
+  pieces: number;
+}
 
 export class AddItemToOrderDto {
   @IsString()
@@ -11,8 +28,9 @@ export class AddItemToOrderDto {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  flavors?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => FlavorPartDto)
+  parts?: FlavorPartDto[];
 
   @IsOptional()
   @IsString()

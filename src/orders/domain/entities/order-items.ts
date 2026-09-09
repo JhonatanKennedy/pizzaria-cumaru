@@ -2,6 +2,13 @@ import { EOrderItemStatus } from '../enums/order-item-status.js';
 
 const MINIMUM_ITEM_QUANTITY = 1;
 
+// One entry of a pizza composition: a flavor and the fatias it occupies on
+// the pizza. The base flavor is always the first part.
+export type TFlavorPart = {
+  name: string;
+  pieces: number;
+};
+
 export interface CreateOrderItemParams {
   id: string;
   orderId: string;
@@ -10,7 +17,7 @@ export interface CreateOrderItemParams {
   quantity: number;
   requiresPreparation: boolean;
   createdAt: Date;
-  flavors?: string[];
+  parts?: TFlavorPart[];
   notes?: string;
 }
 
@@ -26,7 +33,7 @@ export class OrderItems {
     private status: TOrderItemStatus,
     private readonly requiresPreparation: boolean,
     private readonly createdAt: Date,
-    private readonly flavors: string[],
+    private readonly parts: TFlavorPart[],
     private readonly notes?: string,
   ) {}
 
@@ -48,7 +55,7 @@ export class OrderItems {
       params.requiresPreparation ? EOrderItemStatus.PENDING : undefined,
       params.requiresPreparation,
       params.createdAt,
-      params.flavors ?? [],
+      params.parts ?? [],
       params.notes,
     );
   }
@@ -65,7 +72,7 @@ export class OrderItems {
       params.status,
       params.requiresPreparation,
       params.createdAt,
-      params.flavors ?? [],
+      params.parts ?? [],
       params.notes,
     );
   }
@@ -169,8 +176,8 @@ export class OrderItems {
     return this.createdAt;
   }
 
-  getFlavors(): ReadonlyArray<string> {
-    return this.flavors;
+  getParts(): ReadonlyArray<TFlavorPart> {
+    return this.parts.map(({ name, pieces }) => ({ name, pieces }));
   }
 
   getNotes(): string {
