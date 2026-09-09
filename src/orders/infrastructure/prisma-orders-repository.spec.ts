@@ -332,4 +332,91 @@ describe('PrismaOrdersRepository', () => {
 
     expect(listing[0].waiterName).toBeNull();
   });
+
+  it("should list the day's sales with waiter, payment and sale time", async () => {
+    const day = new Date('2026-09-07T09:00:00Z');
+    const inDay = new Date('2026-09-07T14:00:00Z');
+    const user = await prisma.user.create({
+      data: {
+        email: 'waiter@example.com',
+        name: 'João Garçom',
+        role: 'Waiter',
+        passwordHash: 'hashed',
+      },
+    });
+    await prisma.order.create({
+      data: {
+        id: 'sold-local',
+        userId: user.id,
+        type: 'Local',
+        status: 'Closed',
+        paymentType: 'Pix',
+        closedAt: inDay,
+        createdAt: inDay,
+      },
+    });
+    await prisma.order.create({
+      data: {
+        id: 'sold-delivery',
+        userId: user.id,
+        type: 'Delivery',
+        status: 'Delivered',
+        customerName: 'Maria Souza',
+        address: 'Rua A',
+        deliveredAt: inDay,
+        createdAt: inDay,
+      },
+    });
+
+    const sales = await repository.findDaySales(day);
+
+    expect(sales.map((entry) => entry.order.getId())).toEqual([
+      'sold-local',
+      'sold-delivery',
+    ]);
+    expect(sales[0].waiterName).toBe('João Garçom');
+    expect(sales[0].order.getPaymentType()).toBe(EPaymentType.PIX);
+    expect(sales[0].order.getClosedAt()?.getTime()).toBe(inDay.getTime());
+    expect(sales[1].order.getPaymentType()).toBeUndefined();
+    expect(sales[1].order.getDeliveredAt()?.getTime()).toBe(inDay.getTime());
+  });
+
+  it("should keep incomplete and cancelled orders out of the day's sales", async () => {
+    const day = new Date('2026-09-07T09:00:00Z');
+    const inDay = new Date('2026-09-07T14:00:00Z');
+    await prisma.order.create({
+      data: {
+        id: 'still-open',
+        userId: 1,
+        type: 'Local',
+        status: 'Open',
+        createdAt: inDay,
+      },
+    });
+    await prisma.order.create({
+      data: {
+        id: 'still-delivering',
+        userId: 1,
+        type: 'Delivery',
+        status: 'Out for delivery',
+        customerName: 'Maria Souza',
+        address: 'Rua A',
+        createdAt: inDay,
+      },
+    });
+    await prisma.order.create({
+      data: {
+        id: 'was-cancelled',
+        userId: 1,
+        type: 'Local',
+        status: 'Cancelled',
+        cancelledAt: inDay,
+        createdAt: inDay,
+      },
+    });
+
+    const sales = await repository.findDaySales(day);
+
+    expect(sales).toEqual([]);
+  });
 });

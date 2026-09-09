@@ -12,6 +12,7 @@ import { UpdateOrderItemQuantityUseCase } from './application/use-cases/update-o
 import { CloseOrderUseCase } from './application/use-cases/close-order.js';
 import { ListOrdersUseCase } from './application/use-cases/list-orders.js';
 import { GetDailyEarningsReportUseCase } from './application/use-cases/get-daily-earnings-report.js';
+import { ListDaySalesUseCase } from './application/use-cases/list-day-sales.js';
 import { ReportsController } from './presentation/controllers/reports.controller.js';
 import { ORDERS_REPOSITORY } from './domain/repositories/orders-repository.js';
 import { PrismaOrdersRepository } from './infrastructure/prisma-orders-repository.js';
@@ -33,6 +34,7 @@ import { CatalogModule } from '../catalog/catalog.module.js';
     CloseOrderUseCase,
     ListOrdersUseCase,
     GetDailyEarningsReportUseCase,
+    ListDaySalesUseCase,
     { provide: ORDERS_REPOSITORY, useClass: PrismaOrdersRepository },
   ],
   exports: [

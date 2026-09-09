@@ -180,6 +180,105 @@ describe('Orders checkout (e2e)', () => {
     expect(response.body.message).toBe('Order must have at least one item');
   });
 
+  it('should list the day sales with waiter, payment, sale time and items, keeping incomplete and cancelled orders out', async () => {
+    const calabresa = await prisma.item.findFirstOrThrow({
+      where: { name: 'Calabresa' },
+    });
+
+    const local = await request(app.getHttpServer())
+      .post('/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ userId: waiterId, type: 'Local', tableId: '12' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/orders/${local.body.id}/items`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ itemId: calabresa.id, quantity: 2 })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/orders/${local.body.id}/close`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ paymentType: 'CreditCard' })
+      .expect(201);
+
+    const delivery = await request(app.getHttpServer())
+      .post('/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        userId: waiterId,
+        type: 'Delivery',
+        customerName: 'Maria Souza',
+        address: 'Rua A',
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/orders/${delivery.body.id}/items`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ itemId: calabresa.id })
+      .expect(201);
+    for (const status of ['Preparing', 'Out for delivery', 'Delivered']) {
+      await request(app.getHttpServer())
+        .patch(`/orders/${delivery.body.id}/status`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ status })
+        .expect(200);
+    }
+
+    const open = await request(app.getHttpServer())
+      .post('/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ userId: waiterId, type: 'Local', tableId: '10' })
+      .expect(201);
+    const cancelled = await request(app.getHttpServer())
+      .post('/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ userId: waiterId, type: 'Local', tableId: '9' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/orders/${cancelled.body.id}/cancellation`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ reason: 'Customer gave up' })
+      .expect(201);
+
+    const sales = await request(app.getHttpServer())
+      .get('/reports/daily-sales')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+
+    expect(sales.body).toHaveLength(2);
+
+    expect(sales.body[0].type).toBe('Local');
+    expect(sales.body[0].status).toBe('Closed');
+    expect(sales.body[0].waiterName).toBe('João Garçom');
+    expect(sales.body[0].paymentType).toBe('CreditCard');
+    expect(sales.body[0].closedAt).toEqual(expect.any(String));
+    expect(sales.body[0].deliveredAt).toBeNull();
+    expect(sales.body[0].tableId).toBe('12');
+    expect(sales.body[0].totalPrice).toBe(120);
+    expect(sales.body[0].items).toEqual([
+      {
+        id: expect.any(String),
+        itemId: calabresa.id,
+        quantity: 2,
+        status: 'Pending',
+      },
+    ]);
+
+    expect(sales.body[1].type).toBe('Delivery');
+    expect(sales.body[1].status).toBe('Delivered');
+    expect(sales.body[1].waiterName).toBe('João Garçom');
+    expect(sales.body[1].paymentType).toBeNull();
+    expect(sales.body[1].closedAt).toBeNull();
+    expect(sales.body[1].deliveredAt).toEqual(expect.any(String));
+    expect(sales.body[1].totalPrice).toBe(60);
+    expect(sales.body[1].items).toHaveLength(1);
+    expect(sales.body[1].items[0].status).toBe('Pending');
+
+    const saleIds = sales.body.map((sale: { id: string }) => sale.id);
+    expect(saleIds).not.toContain(open.body.id);
+    expect(saleIds).not.toContain(cancelled.body.id);
+  });
+
   it('should refuse closing a delivery order', async () => {
     const created = await request(app.getHttpServer())
       .post('/orders')

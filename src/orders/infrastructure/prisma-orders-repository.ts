@@ -78,28 +78,54 @@ export class PrismaOrdersRepository implements IOrdersRepository {
     return count > 0;
   }
   async findCompleted(day: Date): Promise<Order[]> {
-    const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-    const end = new Date(start.getTime() + MS_PER_DAY);
+    const { start, end } = this.dayWindow(day);
     const rows = await this.prisma.order.findMany({
-      where: {
-        OR: [
-          { status: 'Closed', closedAt: { gte: start, lt: end } },
-          { status: 'Delivered', deliveredAt: { gte: start, lt: end } },
-        ],
-      },
+      where: this.completedWhere(start, end),
       include: ORDER_WITH_RELATIONS,
     });
     return rows.map(orderRowToDomain);
   }
 
   async findAllForListing(day: Date): Promise<IOrderListingEntry[]> {
-    const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-    const end = new Date(start.getTime() + MS_PER_DAY);
+    const { start, end } = this.dayWindow(day);
     const rows = await this.prisma.order.findMany({
       where: { createdAt: { gte: start, lt: end } },
       include: ORDER_WITH_RELATIONS,
       orderBy: { createdAt: 'asc' },
     });
+    return this.attachWaiterNames(rows);
+  }
+
+  // The day's sales share their population with the earnings report (closed
+  // locals + delivered deliveries in the same day window), plus the waiter
+  // attribution and items of the day's listing.
+  async findDaySales(day: Date): Promise<IOrderListingEntry[]> {
+    const { start, end } = this.dayWindow(day);
+    const rows = await this.prisma.order.findMany({
+      where: this.completedWhere(start, end),
+      include: ORDER_WITH_RELATIONS,
+      orderBy: { createdAt: 'asc' },
+    });
+    return this.attachWaiterNames(rows);
+  }
+
+  private dayWindow(day: Date): { start: Date; end: Date } {
+    const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    return { start, end: new Date(start.getTime() + MS_PER_DAY) };
+  }
+
+  private completedWhere(start: Date, end: Date): Prisma.OrderWhereInput {
+    return {
+      OR: [
+        { status: 'Closed', closedAt: { gte: start, lt: end } },
+        { status: 'Delivered', deliveredAt: { gte: start, lt: end } },
+      ],
+    };
+  }
+
+  private async attachWaiterNames(
+    rows: Prisma.OrderGetPayload<{ include: typeof ORDER_WITH_RELATIONS }>[],
+  ): Promise<IOrderListingEntry[]> {
     const userIds = [...new Set(rows.map((row) => row.userId))];
     const users = await this.prisma.user.findMany({
       where: { id: { in: userIds } },

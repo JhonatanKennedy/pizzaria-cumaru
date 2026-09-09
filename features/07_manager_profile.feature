@@ -40,6 +40,13 @@ Feature: Manager profile
     When the manager accesses the list of the day's orders
     Then each order must display the name of the waiter responsible for having registered it
 
+  Scenario: Manager lists the day's sales
+    Given a local order of table "4" was closed with the payment method "Pix" in the day
+    And a delivery order of the customer "Maria Souza" was delivered in the day
+    And there is an open order and a cancelled order in the day
+    When she accesses the day's sales listing
+    Then the listing must show only the closed local order and the delivered delivery order, each with the responsible waiter, the sale time, the payment method when the order was closed with one, and the items of the sale
+
   Scenario: Manager consults the daily earnings report
     Given 5 local orders were closed totaling "R$ 480.00" in the day
     And 3 delivery orders were completed totaling "R$ 210.00" in the day

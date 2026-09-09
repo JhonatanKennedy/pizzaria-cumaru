@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { GetDailyEarningsReportUseCase } from '../../application/use-cases/get-daily-earnings-report.js';
+import { ListDaySalesUseCase } from '../../application/use-cases/list-day-sales.js';
 import { EOrderType } from '../../domain/enums/order-type.js';
 import { Roles } from '../../../common/guards/roles.guard.js';
 import { EUserRole } from '../../../users/domain/enums/user-role.js';
@@ -8,6 +9,7 @@ import { EUserRole } from '../../../users/domain/enums/user-role.js';
 export class ReportsController {
   constructor(
     private readonly getDailyEarningsReportUseCase: GetDailyEarningsReportUseCase,
+    private readonly listDaySalesUseCase: ListDaySalesUseCase,
   ) {}
 
   @Roles({ roles: [EUserRole.MANAGER] })
@@ -18,5 +20,11 @@ export class ReportsController {
         ? (type as EOrderType)
         : undefined;
     return this.getDailyEarningsReportUseCase.execute(new Date(), filter);
+  }
+
+  @Roles({ roles: [EUserRole.MANAGER] })
+  @Get('daily-sales')
+  daySales() {
+    return this.listDaySalesUseCase.execute(new Date());
   }
 }

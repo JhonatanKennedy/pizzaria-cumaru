@@ -12,6 +12,7 @@ export interface IOrdersRepository {
   existsOrderForTable(tableId: string): Promise<boolean>;
   findCompleted(day: Date): Promise<Order[]>;
   findAllForListing(day: Date): Promise<IOrderListingEntry[]>;
+  findDaySales(day: Date): Promise<IOrderListingEntry[]>;
   save(order: Order): Promise<void>;
 }
 
