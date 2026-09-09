@@ -3,15 +3,18 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { Button } from '@components/Button';
 import { formatBRL } from '@lib/format';
 import { toErrorMessage } from '@lib/errors';
+import type { TPaymentType } from '@lib/payment-labels';
+import { itemStatusLabel } from '@lib/item-labels';
 import { enrichOrder, type TEnrichedOrderItem } from '../business/enrich';
 import { orderStatusLabel } from '../business/labels';
-import { itemStatusLabel } from '@lib/item-labels';
 import { AddItemPanel } from '../components/AddItemPanel';
 import { CancelItemDialog } from '../components/CancelItemDialog';
 import { CancelOrderDialog } from '../components/CancelOrderDialog';
+import { CloseOrderDialog } from '../components/CloseOrderDialog';
 import { QuantityStepper } from '../components/QuantityStepper';
 import { useCancelItem } from '../hooks/use-cancel-item';
 import { useCancelOrder } from '../hooks/use-cancel-order';
+import { useCloseOrder } from '../hooks/use-close-order';
 import { useMenu } from '../hooks/use-menu';
 import { useOrders } from '../hooks/use-orders';
 import { useTables } from '../hooks/use-tables';
@@ -21,7 +24,15 @@ const OPEN_STATUS = 'Open';
 const PENDING_STATUS = 'Pending';
 const CANCELLED_STATUS = 'Cancelled';
 
-export function OrderDetailPage(): React.ReactNode {
+interface OrderDetailPageProps {
+  // The order detail is shared by waiters and managers; closing a table
+  // order is the manager's verb (routes/ decides, only routes/ reads auth).
+  canCloseOrder?: boolean;
+}
+
+export function OrderDetailPage({
+  canCloseOrder = false,
+}: OrderDetailPageProps): React.ReactNode {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const ordersQuery = useOrders();
@@ -29,11 +40,13 @@ export function OrderDetailPage(): React.ReactNode {
   const tablesQuery = useTables();
   const cancelItem = useCancelItem();
   const cancelOrder = useCancelOrder();
+  const closeOrder = useCloseOrder();
   const updateItemQuantity = useUpdateItemQuantity();
   const [itemToCancel, setItemToCancel] = useState<TEnrichedOrderItem | null>(
     null,
   );
   const [cancelRequested, setCancelRequested] = useState(false);
+  const [closeRequested, setCloseRequested] = useState(false);
   const [busyQuantityItemId, setBusyQuantityItemId] = useState<string | null>(
     null,
   );
@@ -67,6 +80,14 @@ export function OrderDetailPage(): React.ReactNode {
   const handleCancelConfirm = async (reason: string): Promise<void> => {
     await cancelOrder.mutateAsync({ orderId: order.id, reason });
     setCancelRequested(false);
+    navigate('/waiter/tables');
+  };
+
+  const handleCloseConfirm = async (
+    paymentType: TPaymentType,
+  ): Promise<void> => {
+    await closeOrder.mutateAsync({ orderId: order.id, paymentType });
+    setCloseRequested(false);
     navigate('/waiter/tables');
   };
 
@@ -118,6 +139,14 @@ export function OrderDetailPage(): React.ReactNode {
             <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
               {orderStatusLabel(enriched.status)}
             </span>
+            {isOpen && canCloseOrder && (
+              <Button
+                onClick={() => setCloseRequested(true)}
+                className="px-3 py-1 text-sm"
+              >
+                Fechar conta
+              </Button>
+            )}
             {isOpen && (
               <Button
                 onClick={() => setCancelRequested(true)}
@@ -208,6 +237,13 @@ export function OrderDetailPage(): React.ReactNode {
           tableNumber={String(tableNumber)}
           onConfirm={handleCancelConfirm}
           onClose={() => setCancelRequested(false)}
+        />
+      )}
+      {closeRequested && (
+        <CloseOrderDialog
+          tableNumber={String(tableNumber)}
+          onConfirm={handleCloseConfirm}
+          onClose={() => setCloseRequested(false)}
         />
       )}
     </div>

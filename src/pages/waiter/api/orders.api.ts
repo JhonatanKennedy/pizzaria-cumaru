@@ -1,7 +1,10 @@
 import { apiRequest } from '@api/http-client';
+import type { TPaymentType } from '@lib/payment-labels';
 import {
+  closedOrderSchema,
   createdOrderSchema,
   orderListingArraySchema,
+  type TClosedOrder,
   type TCreatedOrder,
   type TOrderListing,
 } from '../business/schemas';
@@ -69,4 +72,15 @@ export async function updateOrderItemQuantity(
     method: 'PATCH',
     body: JSON.stringify({ quantity }),
   });
+}
+
+export async function closeOrder(
+  orderId: string,
+  paymentType: TPaymentType,
+): Promise<TClosedOrder> {
+  const data = await apiRequest(`/orders/${orderId}/close`, {
+    method: 'POST',
+    body: JSON.stringify({ paymentType }),
+  });
+  return closedOrderSchema.parse(data);
 }

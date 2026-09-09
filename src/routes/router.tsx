@@ -11,9 +11,9 @@ import { DailyEarningsPage } from '@pages/manager/pages/daily-earnings/daily-ear
 import { DeliveryPage } from '@pages/manager/pages/delivery-page';
 import { ManagerPage } from '@pages/manager/pages/manager-page';
 import { MenuPage } from '@pages/manager/pages/menu/menu-page';
-import { OrderDetailPage } from '@pages/waiter/pages/order-detail';
 import { TablesPage } from '@pages/waiter/pages/tables';
 import { HomeRedirect } from './home-redirect';
+import { OrderDetailRoute } from './order-detail-route';
 import { AppLayout } from './layout/AppLayout';
 import { NotFoundPage } from './not-found-page';
 
@@ -35,7 +35,7 @@ export const router = createBrowserRouter([
         path: '/waiter/orders/:orderId',
         element: (
           <RequireRole roles={WAITER_PANEL_ROLES}>
-            <OrderDetailPage />
+            <OrderDetailRoute />
           </RequireRole>
         ),
       },
