@@ -51,7 +51,7 @@ src/
       components/     #   context-local views (AccessDenied/index.tsx)
       auth.context.tsx, auth-context.ts, use-auth.ts, require-role.tsx  # provider + guards
     waiter/           # waiter context: tables screen + order detail (business, api, hooks, components)
-    kitchen/          # kitchen context: the Kitchen Panel
+    kitchen/          # kitchen context: the Kitchen Panel (api, hooks, components, screen)
     manager/          # manager context: hub + menu + delivery + daily-earnings screens
   routes/              # application assembly (no app/ folder)
     app.tsx           # configureApiClient wiring + QueryClientProvider > AuthProvider > RouterProvider
@@ -63,9 +63,11 @@ src/
                       # api/catalog.api.ts — shared catalog contract (schemas, endpoints,
                       # query keys) consumed by the waiter and manager contexts
                       # api/tables.api.ts — shared tables contract (floor listing + query key)
-  lib/                # toErrorMessage, formatBRL
+  lib/                # toErrorMessage, formatBRL, catalog.ts (shared menu contract),
+                      # cancellation.ts (reason form rule), item-labels.ts (item status labels)
+                      # — shared when a second context consumes the rule
   main.tsx            # bootstrap
-  index.css           # Tailwind import + shared component classes
+  index.css           # Tailwind import + shared component classes + first @theme tokens (item status fills)
   env.d.ts            # ImportMetaEnv typing
 ```
 
@@ -87,7 +89,7 @@ JWT from `POST /auth/login` (`{ login, password }` → `{ token, user: { id, log
 | `/waiter`                 | Waiter, Manager  | `05_waiter_profile`        | redirects to `/waiter/tables` |
 | `/waiter/tables`          | Waiter, Manager  | `03_table_order`           | ✅ working          |
 | `/waiter/orders/:orderId` | Waiter, Manager  | `03_table_order`, `09`     | ✅ working          |
-| `/kitchen`                | Cook, Manager    | `06_cook_profile`          | placeholder         |
+| `/kitchen`                | Cook, Manager    | `06_cook_profile`          | ✅ working          |
 | `/manager`                | Manager          | `07_manager_profile`       | placeholder (hub)   |
 | `/manager/menu`           | Manager          | `02_menu_and_stock`        | ✅ working          |
 | `/manager/delivery`       | Manager          | `04_delivery_order`        | placeholder         |
@@ -107,7 +109,7 @@ One context per product area — the folder is the context, and each screen name
 | `10_table_management.feature` | `pages/waiter` + `pages/manager` | Floor view implemented; the manager's table CRUD screen (register/renumber/remove) is still pending. |
 | `04_delivery_order.feature`   | `pages/manager`                | Delivery orders; status cycle to Delivered. Placeholder.                                |
 | `05_waiter_profile.feature`   | `pages/waiter`                 | Tables screen with preparation-status follow-up; waiter cannot close orders.            |
-| `06_cook_profile.feature`     | `pages/kitchen`                | Two queues by arrival order; start/finish/cancel preparation.                           |
+| `06_cook_profile.feature`     | `pages/kitchen`                | Kitchen Panel implemented: anonymous item tiles in the server's arrival order (Entrega/Local from `GET /kitchen/queue`), per-status color tokens (`@theme`), start/finish/cancel-preparation verbs, 15s auto-refresh + Atualizar. |
 | `07_manager_profile.feature`  | `pages/manager`                | Manager hub, daily-earnings report, close-order flow with payment type.                 |
 | `09_cancellation_and_payment.feature` | `pages/waiter` + `pages/manager` | Item and whole-order cancellation with reason implemented in the waiter order detail (a cancelled order renders read-only as "Cancelado" and frees its table); split bill remains in the manager close-order flow. |
 
