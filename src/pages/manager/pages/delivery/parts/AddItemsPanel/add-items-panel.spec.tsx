@@ -10,9 +10,20 @@ vi.mock('../../../../hooks/use-add-item', () => ({
   useAddItem: () => ({ mutateAsync: addMock }),
 }));
 
-const CALABRESA: TMenuItem = {
-  id: 'catalog-pizza-1',
-  name: 'Calabresa',
+const CHOCOLATE_G: TMenuItem = {
+  id: 'catalog-pizza-chocolate-g',
+  name: 'Chocolate G',
+  description: 'Chocolate',
+  price: 52,
+  category: 'PIZZA',
+  requiresPreparation: true,
+  available: true,
+  ingredientIds: [],
+};
+
+const CALABRESA_G: TMenuItem = {
+  id: 'catalog-pizza-calabresa-g',
+  name: 'Calabresa G',
   description: 'Mussarela e calabresa',
   price: 45,
   category: 'PIZZA',
@@ -21,15 +32,17 @@ const CALABRESA: TMenuItem = {
   ingredientIds: [],
 };
 
-const MUSSARELA: TMenuItem = {
-  id: 'catalog-pizza-2',
+const CALABRESA_LEGACY: TMenuItem = {
+  ...CALABRESA_G,
+  id: 'catalog-pizza-legacy',
+  name: 'Calabresa',
+};
+
+const MUSSARELA_LEGACY: TMenuItem = {
+  ...CALABRESA_G,
+  id: 'catalog-pizza-mussarela',
   name: 'Mussarela',
-  description: 'Mussarela',
-  price: 40,
-  category: 'PIZZA',
-  requiresPreparation: true,
   available: false,
-  ingredientIds: [],
 };
 
 const AGUA: TMenuItem = {
@@ -43,7 +56,13 @@ const AGUA: TMenuItem = {
   ingredientIds: [],
 };
 
-const ITEMS: TMenuItem[] = [CALABRESA, MUSSARELA, AGUA];
+const ITEMS: TMenuItem[] = [
+  CHOCOLATE_G,
+  CALABRESA_G,
+  CALABRESA_LEGACY,
+  MUSSARELA_LEGACY,
+  AGUA,
+];
 
 function renderPanel(): ReturnType<typeof userEvent.setup> {
   render(<AddItemsPanel orderId="order-1" items={ITEMS} />);
@@ -58,30 +77,29 @@ describe('AddItemsPanel', () => {
     expect(screen.getByRole('button', { name: /Mussarela/ })).toBeDisabled();
   });
 
-  it('should show the flavors field only for pizzas', async () => {
+  it('should show the composer for sized pizzas and never for legacy names', async () => {
     const user = renderPanel();
 
-    expect(
-      screen.queryByLabelText('Sabores (separados por vírgula)'),
-    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^CalabresaR/ }));
 
-    await user.click(screen.getByRole('button', { name: /Calabresa/ }));
+    expect(screen.queryByText('Sabores')).not.toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: /^Chocolate G/ }));
+
+    expect(screen.getByText('Sabores')).toBeInTheDocument();
     expect(
-      screen.getByLabelText('Sabores (separados por vírgula)'),
+      screen.getByText(/Chocolate \(base\) fica com 8 fatias/),
     ).toBeInTheDocument();
   });
 
-  it('should add the selected pizza with quantity, flavors and notes', async () => {
+  it('should add a composed pizza with the fatia parts and notes', async () => {
     addMock.mockResolvedValue(null);
     const user = renderPanel();
 
-    await user.click(screen.getByRole('button', { name: /Calabresa/ }));
-    await user.clear(screen.getByLabelText('Quantidade'));
-    await user.type(screen.getByLabelText('Quantidade'), '2');
-    await user.type(
-      screen.getByLabelText('Sabores (separados por vírgula)'),
-      'Calabresa, Portuguesa',
+    await user.click(screen.getByRole('button', { name: /^Chocolate G/ }));
+    await user.click(screen.getByRole('button', { name: 'Calabresa' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Aumentar Calabresa G' }),
     );
     await user.type(screen.getByLabelText('Observações'), 'Bem assada');
     await user.click(
@@ -91,11 +109,29 @@ describe('AddItemsPanel', () => {
     expect(addMock).toHaveBeenCalledWith({
       orderId: 'order-1',
       payload: {
-        itemId: 'catalog-pizza-1',
-        quantity: 2,
-        flavors: ['Calabresa', 'Portuguesa'],
+        itemId: 'catalog-pizza-chocolate-g',
+        quantity: 1,
+        parts: [
+          { name: 'Chocolate G', pieces: 6 },
+          { name: 'Calabresa G', pieces: 2 },
+        ],
         notes: 'Bem assada',
       },
+    });
+  });
+
+  it('should add a token-less pizza as a plain item with no parts', async () => {
+    addMock.mockResolvedValue(null);
+    const user = renderPanel();
+
+    await user.click(screen.getByRole('button', { name: /^CalabresaR/ }));
+    await user.click(
+      screen.getByRole('button', { name: 'Adicionar ao pedido' }),
+    );
+
+    expect(addMock).toHaveBeenCalledWith({
+      orderId: 'order-1',
+      payload: { itemId: 'catalog-pizza-legacy', quantity: 1 },
     });
   });
 
@@ -103,7 +139,7 @@ describe('AddItemsPanel', () => {
     addMock.mockRejectedValue(new ApiError(400, 'Item is unavailable'));
     const user = renderPanel();
 
-    await user.click(screen.getByRole('button', { name: /Calabresa/ }));
+    await user.click(screen.getByRole('button', { name: /^CalabresaR/ }));
     await user.click(
       screen.getByRole('button', { name: 'Adicionar ao pedido' }),
     );

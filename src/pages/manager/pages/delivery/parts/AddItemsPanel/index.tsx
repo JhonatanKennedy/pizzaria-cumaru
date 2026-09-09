@@ -2,11 +2,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { TMenuItem } from '@api/catalog.api';
+import type { TFlavorPart } from '@api/orders.api';
 import { CATEGORY_ORDER, categoryLabel } from '@lib/catalog';
 import { toErrorMessage } from '@lib/errors';
 import { formatBRL } from '@lib/format';
 import { Button } from '@components/Button';
 import { TextField } from '@components/TextField';
+import { FlavorComposer } from '@components/FlavorComposer';
 import {
   addItemFormSchema,
   type TAddItemFormValues,
@@ -26,6 +28,9 @@ export function AddItemsPanel({
     CATEGORY_ORDER[0],
   );
   const [selectedItem, setSelectedItem] = useState<TMenuItem | null>(null);
+  // The last composition the composer emitted; empty when the pizza was not
+  // split, so plain adds carry no parts field.
+  const [parts, setParts] = useState<TFlavorPart[]>([]);
   const addItem = useAddItem();
   const {
     register,
@@ -35,32 +40,34 @@ export function AddItemsPanel({
     formState: { errors, isSubmitting },
   } = useForm<TAddItemFormValues>({
     resolver: zodResolver(addItemFormSchema),
-    defaultValues: { quantity: 1, flavors: '', notes: '' },
+    defaultValues: { quantity: 1, notes: '' },
   });
 
   const visibleItems = items.filter(
     (item) => item.category === selectedCategory,
   );
 
+  const selectItem = (item: TMenuItem): void => {
+    setSelectedItem(item);
+    setParts([]);
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     if (!selectedItem) {
       return;
     }
-    const flavors = values.flavors
-      .split(',')
-      .map((flavor) => flavor.trim())
-      .filter((flavor) => flavor.length > 0);
     try {
       await addItem.mutateAsync({
         orderId,
         payload: {
           itemId: selectedItem.id,
           quantity: values.quantity,
-          ...(flavors.length > 0 ? { flavors } : {}),
+          ...(parts.length > 0 ? { parts } : {}),
           ...(values.notes.trim() ? { notes: values.notes.trim() } : {}),
         },
       });
       setSelectedItem(null);
+      setParts([]);
       reset();
     } catch (error) {
       setError('root', { message: toErrorMessage(error) });
@@ -92,7 +99,7 @@ export function AddItemsPanel({
             type="button"
             key={item.id}
             disabled={!item.available}
-            onClick={() => setSelectedItem(item)}
+            onClick={() => selectItem(item)}
             className={
               selectedItem?.id === item.id
                 ? 'rounded-md border border-red-600 bg-red-50 p-3 text-left ring-1 ring-red-600'
@@ -123,28 +130,26 @@ export function AddItemsPanel({
               {errors.root.message}
             </p>
           )}
-          <div className="flex items-end gap-3">
-            <div className="w-24">
-              <TextField
-                id="quantity"
-                label="Quantidade"
-                type="number"
-                min={1}
-                error={errors.quantity?.message}
-                {...register('quantity', { valueAsNumber: true })}
-              />
-            </div>
-            {selectedItem.category === 'PIZZA' && (
-              <div className="flex-1">
-                <TextField
-                  id="flavors"
-                  label="Sabores (separados por vírgula)"
-                  error={errors.flavors?.message}
-                  {...register('flavors')}
-                />
-              </div>
-            )}
+          <div className="w-24">
+            <TextField
+              id="quantity"
+              label="Quantidade"
+              type="number"
+              min={1}
+              error={errors.quantity?.message}
+              {...register('quantity', { valueAsNumber: true })}
+            />
           </div>
+          {selectedItem.category === 'PIZZA' && (
+            // Keyed by the item so switching pizzas resets the allocation;
+            // token-less legacy names render nothing (plain whole pizza).
+            <FlavorComposer
+              key={selectedItem.id}
+              base={selectedItem}
+              items={items}
+              onChange={setParts}
+            />
+          )}
           <TextField
             id="notes"
             label="Observações"

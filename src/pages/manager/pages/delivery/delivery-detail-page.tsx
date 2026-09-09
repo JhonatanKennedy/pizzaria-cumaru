@@ -6,6 +6,7 @@ import { formatBRL, formatTime } from '@lib/format';
 import { itemStatusLabel } from '@lib/item-labels';
 import { enrichOrder } from '@lib/order-enrich';
 import { orderStatusLabel } from '@lib/order-labels';
+import { formatComposition } from '@lib/flavor-composition';
 import {
   DELIVERY_ACTION_LABELS,
   nextDeliveryStatus,
@@ -124,19 +125,26 @@ export function DeliveryDetailPage(): React.ReactNode {
         <ul className="mt-3 divide-y divide-stone-100">
           {enriched.items.map((item) => (
             <li key={item.id} className="flex items-center gap-2 py-2 text-sm">
-              <span className="font-medium text-stone-900">
-                {item.quantity}× {item.name}
+              <div className="flex min-w-0 flex-col">
+                <span className="flex items-center gap-2">
+                  <span className="font-medium text-stone-900">
+                    {item.quantity}× {item.name}
+                  </span>
+                  {itemStatusLabel(item.status) && (
+                    <span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-600">
+                      {itemStatusLabel(item.status)}
+                    </span>
+                  )}
+                </span>
+                {item.parts.length > 1 && (
+                  <span className="text-stone-500">
+                    {formatComposition(item.parts)}
+                  </span>
+                )}
+              </div>
+              <span className="ml-auto text-stone-600">
+                {formatBRL(item.unitPrice * item.quantity)}
               </span>
-              {itemStatusLabel(item.status) && (
-                <span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-600">
-                  {itemStatusLabel(item.status)}
-                </span>
-              )}
-              {item.unitPrice !== null && (
-                <span className="ml-auto text-stone-600">
-                  {formatBRL(item.unitPrice * item.quantity)}
-                </span>
-              )}
             </li>
           ))}
         </ul>

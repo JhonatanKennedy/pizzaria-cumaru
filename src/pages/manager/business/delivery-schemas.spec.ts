@@ -26,10 +26,9 @@ describe('createDeliveryOrderFormSchema', () => {
 });
 
 describe('addItemFormSchema', () => {
-  it('should accept a quantity with flavors and notes', () => {
+  it('should accept a quantity with notes', () => {
     const result = addItemFormSchema.safeParse({
       quantity: 2,
-      flavors: 'Calabresa, Portuguesa',
       notes: 'Sem cebola',
     });
     expect(result.success).toBe(true);
@@ -38,7 +37,6 @@ describe('addItemFormSchema', () => {
   it('should reject a quantity below one', () => {
     const result = addItemFormSchema.safeParse({
       quantity: 0,
-      flavors: '',
       notes: '',
     });
     expect(result.success).toBe(false);

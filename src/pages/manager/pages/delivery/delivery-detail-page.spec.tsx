@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { ApiError } from '@api/http-client';
@@ -179,6 +179,71 @@ describe('DeliveryDetailPage', () => {
     expect(
       await screen.findByText('Invalid delivery status transition'),
     ).toBeInTheDocument();
+  });
+
+  it('should show a composed pizza line with its composition and the recorded price', () => {
+    renderPage(
+      deliveryOrder({
+        totalPrice: 104,
+        items: [
+          {
+            id: 'line-split',
+            itemId: 'catalog-pizza-mussarela-g',
+            quantity: 2,
+            status: 'Preparing',
+            // Recorded at the max-flavor price (Chocolate G), not the base's
+            // catalog price — the line must show what was charged.
+            unitPrice: 52,
+            parts: [
+              { name: 'Mussarela G', pieces: 6 },
+              { name: 'Chocolate G', pieces: 2 },
+            ],
+          },
+        ],
+      }),
+      {
+        menu: {
+          data: [
+            ...MENU,
+            {
+              id: 'catalog-pizza-mussarela-g',
+              name: 'Mussarela G',
+              description: 'Mussarela',
+              price: 40,
+              category: 'PIZZA',
+              requiresPreparation: true,
+              available: true,
+              ingredientIds: [],
+            },
+            {
+              id: 'catalog-pizza-chocolate-g',
+              name: 'Chocolate G',
+              description: 'Chocolate',
+              price: 52,
+              category: 'PIZZA',
+              requiresPreparation: true,
+              available: true,
+              ingredientIds: [],
+            },
+          ],
+        },
+      },
+    );
+
+    // Scoped to the items card: the add panel below also lists pizza tiles.
+    const itemsCard = screen
+      .getByRole('heading', { name: 'Itens do pedido' })
+      .closest('.card');
+    expect(itemsCard).not.toBeNull();
+    const itemsList = within(itemsCard as HTMLElement);
+
+    expect(itemsList.getByText('2× Mussarela G')).toBeInTheDocument();
+    expect(
+      itemsList.getByText('Mussarela 3/4 · Chocolate 1/4'),
+    ).toBeInTheDocument();
+    // The recorded max-flavor price (52 × 2), not the base's catalog price.
+    expect(itemsList.getByText('R$ 104,00')).toBeInTheDocument();
+    expect(itemsList.queryByText('R$ 80,00')).not.toBeInTheDocument();
   });
 
   it('should show the delivery time and no action for a delivered order', () => {
