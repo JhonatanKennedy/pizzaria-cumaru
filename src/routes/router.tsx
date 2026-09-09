@@ -7,7 +7,7 @@ import {
 import { LoginPage } from '@pages/auth/pages/login/login-page';
 import { GuestOnly, RequireRole } from '@pages/auth/require-role';
 import { KitchenPage } from '@pages/kitchen/pages/kitchen-page';
-import { DailyEarningsPage } from '@pages/manager/pages/daily-earnings-page';
+import { DailyEarningsPage } from '@pages/manager/pages/daily-earnings/daily-earnings-page';
 import { DeliveryPage } from '@pages/manager/pages/delivery-page';
 import { ManagerPage } from '@pages/manager/pages/manager-page';
 import { MenuPage } from '@pages/manager/pages/menu/menu-page';

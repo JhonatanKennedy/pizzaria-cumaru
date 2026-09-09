@@ -57,3 +57,33 @@ Feature: Manager profile
       | type     | value     |
       | Local    | R$ 480.00 |
       | Delivery | R$ 210.00 |
+
+  Scenario: Manager lists the day's sales in the daily report
+    Given 2 local orders were closed in the day and 1 delivery order was delivered in the day
+    And there is still an open order and a cancelled order in the day
+    When she accesses the "Vendas do Dia" section of the daily report
+    Then the 3 sales must be listed newest first, each with its waiter, its payment method when it was closed with one, its sale time, its total and its items
+    And the open and cancelled orders must not appear in the listing
+
+  Scenario: Manager filters the day's sales in the daily report
+    Given the day's sales include a local sale closed by "Pix", a local sale closed by "CreditCard", a delivery sale, sales with drinks and sales with pizzas
+    When she filters the day's sales by the type "Entrega"
+    Then only the delivery sale must be listed
+    When she filters the day's sales by the payment method "Pix"
+    Then only the sale closed by "Pix" must be listed
+    When she filters the day's sales by the category "Bebidas"
+    Then only the sales that include a drink must be listed
+
+  Scenario: Manager combines and clears the day's sales filters
+    Given the day's sales include local and delivery sales with drinks and pizzas
+    When she filters the day's sales by the type "Local" and by the category "Bebidas"
+    Then only the local sales that include a drink must be listed
+    When she clears the category filter
+    Then all local sales must be listed again
+
+  Scenario: Manager sees the sold quantities per category
+    Given the day's sales include drinks and pizzas
+    When she accesses the "Vendas do Dia" section of the daily report
+    Then the sold quantities per category must reflect the day's sales
+    When she filters the day's sales by the type "Entrega"
+    Then the sold quantities per category must reflect only the delivery sales

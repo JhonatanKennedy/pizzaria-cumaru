@@ -23,8 +23,8 @@ export function ManagerPage(): React.ReactNode {
             Relatório de Ganhos Diários
           </h2>
           <p className="mt-1 text-sm text-stone-600">
-            Totais por tipo de pedido do dia. Spec:
-            features/07_manager_profile.feature
+            Totais do dia e vendas concluídas, com filtros por tipo, pagamento e
+            categoria. Spec: features/07_manager_profile.feature
           </p>
         </Link>
         <Link to="/manager/delivery" className="card hover:border-red-300">
