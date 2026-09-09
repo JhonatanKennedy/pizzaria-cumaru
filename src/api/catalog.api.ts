@@ -12,6 +12,7 @@ export const menuItemSchema = z.object({
   category: z.string(),
   requiresPreparation: z.boolean(),
   available: z.boolean(),
+  ingredientIds: z.array(z.string()),
 });
 
 export type TMenuItem = z.infer<typeof menuItemSchema>;
@@ -38,6 +39,7 @@ export interface ICreateItemPayload {
   price: number;
   category: string;
   requiresPreparation: boolean;
+  ingredientIds: string[];
 }
 
 export interface IUpdateItemPayload {
@@ -84,6 +86,25 @@ export async function updateItemPrice(
 
 export async function deleteItem(itemId: string): Promise<void> {
   await apiRequest(`/items/${itemId}`, { method: 'DELETE' });
+}
+
+export async function linkIngredientToItem(
+  itemId: string,
+  ingredientId: string,
+): Promise<void> {
+  await apiRequest(`/items/${itemId}/ingredients`, {
+    method: 'POST',
+    body: JSON.stringify({ ingredientId }),
+  });
+}
+
+export async function unlinkIngredientFromItem(
+  itemId: string,
+  ingredientId: string,
+): Promise<void> {
+  await apiRequest(`/items/${itemId}/ingredients/${ingredientId}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function createIngredient(name: string): Promise<void> {

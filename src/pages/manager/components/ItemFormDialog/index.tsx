@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import type { TIngredientListing } from '@api/catalog.api';
 import { CATEGORY_ORDER, categoryLabel } from '@lib/catalog';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
@@ -9,10 +10,12 @@ import { itemFormSchema, type TItemFormValues } from '../../business/schemas';
 import { useCreateItem } from '../../hooks/use-create-item';
 
 interface ItemFormDialogProps {
+  ingredients: TIngredientListing;
   onClose: () => void;
 }
 
 export function ItemFormDialog({
+  ingredients,
   onClose,
 }: ItemFormDialogProps): React.ReactNode {
   const createItemMutation = useCreateItem();
@@ -29,6 +32,7 @@ export function ItemFormDialog({
       price: 0,
       category: 'PIZZA',
       requiresPreparation: false,
+      ingredientIds: [],
     },
   });
 
@@ -101,6 +105,32 @@ export function ItemFormDialog({
               <input type="checkbox" {...register('requiresPreparation')} />
               Exige preparo
             </label>
+            <fieldset className="space-y-1">
+              <legend className="field-label">Ingredientes</legend>
+              {ingredients.length === 0 && (
+                <p className="text-sm text-stone-600">
+                  Nenhum ingrediente cadastrado.
+                </p>
+              )}
+              {ingredients.map((ingredient) => (
+                <label
+                  key={ingredient.id}
+                  className="flex items-center gap-2 text-sm text-stone-700"
+                >
+                  <input
+                    type="checkbox"
+                    value={ingredient.id}
+                    {...register('ingredientIds')}
+                  />
+                  {ingredient.name}
+                  {!ingredient.available && (
+                    <span className="text-xs font-medium text-stone-500">
+                      Indisponível
+                    </span>
+                  )}
+                </label>
+              ))}
+            </fieldset>
             <div className="flex justify-end gap-3">
               <Button
                 type="button"

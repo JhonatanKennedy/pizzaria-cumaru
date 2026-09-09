@@ -49,7 +49,7 @@ export function MenuPage(): React.ReactNode {
         </button>
       </div>
       {activeTab === 'items' ? (
-        <MenuTab items={menuQuery.data} />
+        <MenuTab items={menuQuery.data} ingredients={ingredientsQuery.data} />
       ) : (
         <IngredientsTab ingredients={ingredientsQuery.data} />
       )}

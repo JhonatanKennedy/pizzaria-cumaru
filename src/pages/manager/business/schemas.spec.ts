@@ -10,6 +10,7 @@ const VALID_ITEM_FORM = {
   price: 55,
   category: 'PIZZA',
   requiresPreparation: true,
+  ingredientIds: [],
 };
 
 describe('itemFormSchema', () => {
@@ -26,6 +27,35 @@ describe('itemFormSchema', () => {
   it('should reject a non-positive price', () => {
     expect(
       itemFormSchema.safeParse({ ...VALID_ITEM_FORM, price: 0 }).success,
+    ).toBe(false);
+  });
+
+  it('should reject an absent ingredient list', () => {
+    const { ingredientIds: _ingredientIds, ...withoutIngredientIds } =
+      VALID_ITEM_FORM;
+    expect(itemFormSchema.safeParse(withoutIngredientIds).success).toBe(false);
+  });
+
+  it('should keep the selected ingredient ids', () => {
+    const result = itemFormSchema.safeParse({
+      ...VALID_ITEM_FORM,
+      ingredientIds: ['ingredient-1', 'ingredient-2'],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.ingredientIds).toEqual([
+        'ingredient-1',
+        'ingredient-2',
+      ]);
+    }
+  });
+
+  it('should reject a non-array ingredient list', () => {
+    expect(
+      itemFormSchema.safeParse({
+        ...VALID_ITEM_FORM,
+        ingredientIds: 'ingredient-1',
+      }).success,
     ).toBe(false);
   });
 });

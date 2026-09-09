@@ -6,6 +6,7 @@ export const itemFormSchema = z.object({
   price: z.number().positive('Preço deve ser maior que zero'),
   category: z.string().min(1, 'Categoria é obrigatória'),
   requiresPreparation: z.boolean(),
+  ingredientIds: z.array(z.string()),
 });
 
 export type TItemFormValues = z.infer<typeof itemFormSchema>;

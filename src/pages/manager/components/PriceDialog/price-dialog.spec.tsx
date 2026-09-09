@@ -19,6 +19,7 @@ const ITEM = {
   category: 'PIZZA',
   requiresPreparation: true,
   available: true,
+  ingredientIds: [],
 };
 
 function renderDialog(): ReturnType<typeof userEvent.setup> {

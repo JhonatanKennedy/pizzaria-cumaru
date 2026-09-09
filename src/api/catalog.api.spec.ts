@@ -8,6 +8,7 @@ const VALID_MENU_ITEM = {
   category: 'PIZZA',
   requiresPreparation: true,
   available: true,
+  ingredientIds: ['ingredient-1'],
 };
 
 const VALID_INGREDIENT = {
@@ -24,6 +25,14 @@ describe('menuListingSchema', () => {
   it('should reject an item without the availability flag', () => {
     const { available: _available, ...withoutAvailability } = VALID_MENU_ITEM;
     expect(menuListingSchema.safeParse([withoutAvailability]).success).toBe(
+      false,
+    );
+  });
+
+  it('should reject an item without the ingredient links', () => {
+    const { ingredientIds: _ingredientIds, ...withoutIngredientIds } =
+      VALID_MENU_ITEM;
+    expect(menuListingSchema.safeParse([withoutIngredientIds]).success).toBe(
       false,
     );
   });

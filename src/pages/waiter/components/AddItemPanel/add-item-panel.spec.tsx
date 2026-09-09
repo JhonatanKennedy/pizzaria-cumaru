@@ -18,6 +18,7 @@ const CALABRESA: TMenuItem = {
   category: 'PIZZA',
   requiresPreparation: true,
   available: true,
+  ingredientIds: [],
 };
 
 const MUSSARELA: TMenuItem = {
@@ -28,6 +29,7 @@ const MUSSARELA: TMenuItem = {
   category: 'PIZZA',
   requiresPreparation: true,
   available: false,
+  ingredientIds: [],
 };
 
 const AGUA: TMenuItem = {
@@ -38,6 +40,7 @@ const AGUA: TMenuItem = {
   category: 'DRINK',
   requiresPreparation: false,
   available: true,
+  ingredientIds: [],
 };
 
 const ITEMS: TMenuItem[] = [CALABRESA, MUSSARELA, AGUA];

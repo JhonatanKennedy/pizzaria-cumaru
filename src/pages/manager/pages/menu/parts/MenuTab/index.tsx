@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import type { TMenuListing, TMenuItem } from '@api/catalog.api';
+import type {
+  TIngredientListing,
+  TMenuListing,
+  TMenuItem,
+} from '@api/catalog.api';
 import { categoryLabel } from '@lib/catalog';
 import { formatBRL } from '@lib/format';
 import { Button } from '@components/Button';
@@ -7,11 +11,13 @@ import { Card } from '@components/Card';
 import { ConfirmDialog } from '../../../../components/ConfirmDialog';
 import { EditItemDialog } from '../../../../components/EditItemDialog';
 import { ItemFormDialog } from '../../../../components/ItemFormDialog';
+import { ItemIngredientsDialog } from '../../../../components/ItemIngredientsDialog';
 import { PriceDialog } from '../../../../components/PriceDialog';
 import { useDeleteItem } from '../../../../hooks/use-delete-item';
 
 interface MenuTabProps {
   items: TMenuListing;
+  ingredients: TIngredientListing;
 }
 
 type TOpenDialog =
@@ -19,9 +25,10 @@ type TOpenDialog =
   | { kind: 'create' }
   | { kind: 'edit'; item: TMenuItem }
   | { kind: 'price'; item: TMenuItem }
-  | { kind: 'delete'; item: TMenuItem };
+  | { kind: 'delete'; item: TMenuItem }
+  | { kind: 'ingredients'; item: TMenuItem };
 
-export function MenuTab({ items }: MenuTabProps): React.ReactNode {
+export function MenuTab({ items, ingredients }: MenuTabProps): React.ReactNode {
   const [openDialog, setOpenDialog] = useState<TOpenDialog>({ kind: 'none' });
   const deleteItemMutation = useDeleteItem();
 
@@ -53,6 +60,12 @@ export function MenuTab({ items }: MenuTabProps): React.ReactNode {
               )}
               <div className="ml-auto flex gap-2">
                 <Button
+                  onClick={() => setOpenDialog({ kind: 'ingredients', item })}
+                  className="px-3 py-1 text-sm"
+                >
+                  Ingredientes
+                </Button>
+                <Button
                   onClick={() => setOpenDialog({ kind: 'edit', item })}
                   className="px-3 py-1 text-sm"
                 >
@@ -76,7 +89,17 @@ export function MenuTab({ items }: MenuTabProps): React.ReactNode {
         </ul>
       </Card>
       {openDialog.kind === 'create' && (
-        <ItemFormDialog onClose={() => setOpenDialog({ kind: 'none' })} />
+        <ItemFormDialog
+          ingredients={ingredients}
+          onClose={() => setOpenDialog({ kind: 'none' })}
+        />
+      )}
+      {openDialog.kind === 'ingredients' && (
+        <ItemIngredientsDialog
+          item={openDialog.item}
+          ingredients={ingredients}
+          onClose={() => setOpenDialog({ kind: 'none' })}
+        />
       )}
       {openDialog.kind === 'edit' && (
         <EditItemDialog
