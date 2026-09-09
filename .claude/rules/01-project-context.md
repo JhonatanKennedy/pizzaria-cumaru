@@ -60,6 +60,9 @@ src/
     home-redirect.tsx, not-found-page.tsx, query-client.ts
   components/         # shared UI kit only: Button/, Card/, TextField/, FeaturePlaceholder/ (each with index.tsx)
   api/http-client.ts  # the HTTP seam: fetch wrapper, ApiError, configureApiClient
+                      # api/catalog.api.ts — shared catalog contract (schemas, endpoints,
+                      # query keys) consumed by the waiter and manager contexts
+                      # api/tables.api.ts — shared tables contract (floor listing + query key)
   lib/                # toErrorMessage, formatBRL
   main.tsx            # bootstrap
   index.css           # Tailwind import + shared component classes
@@ -86,7 +89,7 @@ JWT from `POST /auth/login` (`{ login, password }` → `{ token, user: { id, log
 | `/waiter/orders/:orderId` | Waiter, Manager  | `03_table_order`, `09`     | ✅ working          |
 | `/kitchen`                | Cook, Manager    | `06_cook_profile`          | placeholder         |
 | `/manager`                | Manager          | `07_manager_profile`       | placeholder (hub)   |
-| `/manager/menu`           | Manager          | `02_menu_and_stock`        | placeholder         |
+| `/manager/menu`           | Manager          | `02_menu_and_stock`        | ✅ working          |
 | `/manager/delivery`       | Manager          | `04_delivery_order`        | placeholder         |
 | `/reports/daily-earnings` | Manager          | `07_manager_profile`       | placeholder         |
 
@@ -99,13 +102,14 @@ One context per product area — the folder is the context, and each screen name
 | Feature file                  | Context                        | Notes                                                                                   |
 | ----------------------------- | ------------------------------ | --------------------------------------------------------------------------------------- |
 | `01_authentication.feature`   | `pages/auth`                   | Login form (RHF + Zod), role-based redirect, logout, guards. Implemented — the canonical context. |
-| `02_menu_and_stock.feature`   | `pages/manager`                | Manager CRUD for items and ingredients, price, stock toggles, link/unlink.              |
-| `03_table_order.feature`      | `pages/waiter`                 | Tables screen, order detail, add items with flavors and notes. Implemented.             |
+| `02_menu_and_stock.feature`   | `pages/manager`                | Items and ingredients tabs implemented (create/edit/price/delete, stock toggles). Link/unlink ingredient↔item deferred — `GET /items` does not expose `ingredientIds`. |
+| `03_table_order.feature`      | `pages/waiter`                 | Floor view (free/occupied tables from `GET /tables`), order detail, add items with flavors and notes, per-row quantity adjustment (`+`/`−`, works while the item is in preparation), whole-order cancellation with reason. Implemented. |
+| `10_table_management.feature` | `pages/waiter` + `pages/manager` | Floor view implemented; the manager's table CRUD screen (register/renumber/remove) is still pending. |
 | `04_delivery_order.feature`   | `pages/manager`                | Delivery orders; status cycle to Delivered. Placeholder.                                |
 | `05_waiter_profile.feature`   | `pages/waiter`                 | Tables screen with preparation-status follow-up; waiter cannot close orders.            |
 | `06_cook_profile.feature`     | `pages/kitchen`                | Two queues by arrival order; start/finish/cancel preparation.                           |
 | `07_manager_profile.feature`  | `pages/manager`                | Manager hub, daily-earnings report, close-order flow with payment type.                 |
-| `09_cancellation_and_payment.feature` | `pages/waiter` + `pages/manager` | Item cancellation with reason implemented in the waiter order detail; split bill remains in the manager close-order flow. |
+| `09_cancellation_and_payment.feature` | `pages/waiter` + `pages/manager` | Item and whole-order cancellation with reason implemented in the waiter order detail (a cancelled order renders read-only as "Cancelado" and frees its table); split bill remains in the manager close-order flow. |
 
 ## Feature specs
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { Button } from '@components/Button';
 import { formatBRL } from '@lib/format';
 import { toErrorMessage } from '@lib/errors';
@@ -7,29 +7,46 @@ import { enrichOrder, type TEnrichedOrderItem } from '../business/enrich';
 import { itemStatusLabel, orderStatusLabel } from '../business/labels';
 import { AddItemPanel } from '../components/AddItemPanel';
 import { CancelItemDialog } from '../components/CancelItemDialog';
+import { CancelOrderDialog } from '../components/CancelOrderDialog';
+import { QuantityStepper } from '../components/QuantityStepper';
 import { useCancelItem } from '../hooks/use-cancel-item';
+import { useCancelOrder } from '../hooks/use-cancel-order';
 import { useMenu } from '../hooks/use-menu';
 import { useOrders } from '../hooks/use-orders';
+import { useTables } from '../hooks/use-tables';
+import { useUpdateItemQuantity } from '../hooks/use-update-item-quantity';
 
 const OPEN_STATUS = 'Open';
 const PENDING_STATUS = 'Pending';
+const CANCELLED_STATUS = 'Cancelled';
 
 export function OrderDetailPage(): React.ReactNode {
   const { orderId } = useParams();
+  const navigate = useNavigate();
   const ordersQuery = useOrders();
   const menuQuery = useMenu();
+  const tablesQuery = useTables();
   const cancelItem = useCancelItem();
+  const cancelOrder = useCancelOrder();
+  const updateItemQuantity = useUpdateItemQuantity();
   const [itemToCancel, setItemToCancel] = useState<TEnrichedOrderItem | null>(
     null,
   );
+  const [cancelRequested, setCancelRequested] = useState(false);
+  const [busyQuantityItemId, setBusyQuantityItemId] = useState<string | null>(
+    null,
+  );
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  if (ordersQuery.isPending || menuQuery.isPending) {
+  if (ordersQuery.isPending || menuQuery.isPending || tablesQuery.isPending) {
     return <p className="text-stone-600">Carregando…</p>;
   }
-  if (!ordersQuery.data || !menuQuery.data) {
+  if (!ordersQuery.data || !menuQuery.data || !tablesQuery.data) {
     return (
       <p role="alert" className="text-red-700">
-        {toErrorMessage(ordersQuery.error ?? menuQuery.error)}
+        {toErrorMessage(
+          ordersQuery.error ?? menuQuery.error ?? tablesQuery.error,
+        )}
       </p>
     );
   }
@@ -40,9 +57,38 @@ export function OrderDetailPage(): React.ReactNode {
   }
 
   const enriched = enrichOrder(order, menuQuery.data);
+  const tableNumber =
+    tablesQuery.data.find((table) => table.id === enriched.tableId)?.number ??
+    '—';
   const isOpen = enriched.status === OPEN_STATUS;
+  const isCancelled = enriched.status === CANCELLED_STATUS;
 
   const handleCancelConfirm = async (reason: string): Promise<void> => {
+    await cancelOrder.mutateAsync({ orderId: order.id, reason });
+    setCancelRequested(false);
+    navigate('/waiter/tables');
+  };
+
+  const handleQuantityChange = async (
+    itemId: string,
+    quantity: number,
+  ): Promise<void> => {
+    setActionError(null);
+    setBusyQuantityItemId(itemId);
+    try {
+      await updateItemQuantity.mutateAsync({
+        orderId: order.id,
+        orderItemId: itemId,
+        quantity,
+      });
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+    } finally {
+      setBusyQuantityItemId(null);
+    }
+  };
+
+  const handleCancelItemConfirm = async (reason: string): Promise<void> => {
     if (!itemToCancel) {
       return;
     }
@@ -65,11 +111,21 @@ export function OrderDetailPage(): React.ReactNode {
       <div className="card mt-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-stone-900">
-            Mesa {enriched.tableId ?? '—'}
+            Mesa {tableNumber}
           </h1>
-          <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
-            {orderStatusLabel(enriched.status)}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
+              {orderStatusLabel(enriched.status)}
+            </span>
+            {isOpen && (
+              <Button
+                onClick={() => setCancelRequested(true)}
+                className="bg-stone-200 px-3 py-1 text-sm text-stone-800 hover:bg-stone-300"
+              >
+                Cancelar pedido
+              </Button>
+            )}
+          </div>
         </div>
         <p className="mt-1 text-sm text-stone-600">
           {enriched.waiterName ?? '—'}
@@ -78,17 +134,40 @@ export function OrderDetailPage(): React.ReactNode {
           Total: {formatBRL(enriched.totalPrice)}
         </p>
       </div>
+      {actionError && (
+        <p
+          role="alert"
+          className="mt-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
+        >
+          {actionError}
+        </p>
+      )}
       <div className="card mt-4">
         <h2 className="font-semibold text-stone-900">Itens do pedido</h2>
+        {isCancelled && enriched.items.length === 0 && (
+          <p className="mt-3 text-stone-600">Este pedido foi cancelado.</p>
+        )}
         <ul className="mt-3 space-y-2">
           {enriched.items.map((item) => (
             <li
               key={item.id}
               className="flex items-center gap-3 rounded-md border border-stone-100 px-3 py-2"
             >
-              <span className="text-stone-800">
-                {item.quantity}× {item.name}
-              </span>
+              {isOpen ? (
+                <QuantityStepper
+                  quantity={item.quantity}
+                  busy={busyQuantityItemId === item.id}
+                  onDecrease={() =>
+                    handleQuantityChange(item.id, item.quantity - 1)
+                  }
+                  onIncrease={() =>
+                    handleQuantityChange(item.id, item.quantity + 1)
+                  }
+                />
+              ) : (
+                <span className="text-stone-800">{item.quantity}×</span>
+              )}
+              <span className="text-stone-800">{item.name}</span>
               {itemStatusLabel(item.status) && (
                 <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
                   {itemStatusLabel(item.status)}
@@ -119,8 +198,15 @@ export function OrderDetailPage(): React.ReactNode {
       {itemToCancel && (
         <CancelItemDialog
           itemName={itemToCancel.name}
-          onConfirm={handleCancelConfirm}
+          onConfirm={handleCancelItemConfirm}
           onClose={() => setItemToCancel(null)}
+        />
+      )}
+      {cancelRequested && (
+        <CancelOrderDialog
+          tableNumber={String(tableNumber)}
+          onConfirm={handleCancelConfirm}
+          onClose={() => setCancelRequested(false)}
         />
       )}
     </div>

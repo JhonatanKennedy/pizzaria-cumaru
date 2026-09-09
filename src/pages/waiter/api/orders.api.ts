@@ -24,7 +24,7 @@ export async function createTableOrder(
 ): Promise<TCreatedOrder> {
   const data = await apiRequest('/orders', {
     method: 'POST',
-    body: JSON.stringify({ userId, type: 'LOCAL', tableId }),
+    body: JSON.stringify({ userId, type: 'Local', tableId }),
   });
   return createdOrderSchema.parse(data);
 }
@@ -47,5 +47,26 @@ export async function cancelOrderItem(
   await apiRequest(`/orders/${orderId}/items/${orderItemId}/cancellation`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
+  });
+}
+
+export async function cancelOrder(
+  orderId: string,
+  reason: string,
+): Promise<void> {
+  await apiRequest(`/orders/${orderId}/cancellation`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function updateOrderItemQuantity(
+  orderId: string,
+  orderItemId: string,
+  quantity: number,
+): Promise<void> {
+  await apiRequest(`/orders/${orderId}/items/${orderItemId}/quantity`, {
+    method: 'PATCH',
+    body: JSON.stringify({ quantity }),
   });
 }
