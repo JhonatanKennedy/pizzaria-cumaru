@@ -1,0 +1,104 @@
+import { useState } from 'react';
+import type { TMenuListing, TMenuItem } from '@api/catalog.api';
+import { categoryLabel } from '@lib/catalog';
+import { formatBRL } from '@lib/format';
+import { Button } from '@components/Button';
+import { Card } from '@components/Card';
+import { ConfirmDialog } from '../../../../components/ConfirmDialog';
+import { EditItemDialog } from '../../../../components/EditItemDialog';
+import { ItemFormDialog } from '../../../../components/ItemFormDialog';
+import { PriceDialog } from '../../../../components/PriceDialog';
+import { useDeleteItem } from '../../../../hooks/use-delete-item';
+
+interface MenuTabProps {
+  items: TMenuListing;
+}
+
+type TOpenDialog =
+  | { kind: 'none' }
+  | { kind: 'create' }
+  | { kind: 'edit'; item: TMenuItem }
+  | { kind: 'price'; item: TMenuItem }
+  | { kind: 'delete'; item: TMenuItem };
+
+export function MenuTab({ items }: MenuTabProps): React.ReactNode {
+  const [openDialog, setOpenDialog] = useState<TOpenDialog>({ kind: 'none' });
+  const deleteItemMutation = useDeleteItem();
+
+  return (
+    <div>
+      <div className="mt-6 flex justify-end">
+        <Button onClick={() => setOpenDialog({ kind: 'create' })}>
+          Novo item
+        </Button>
+      </div>
+      <Card className="mt-4">
+        <ul className="divide-y divide-stone-100">
+          {items.map((item) => (
+            <li
+              key={item.id}
+              className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+            >
+              <span className="font-medium text-stone-900">{item.name}</span>
+              <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
+                {categoryLabel(item.category)}
+              </span>
+              <span className="text-sm text-stone-600">
+                {formatBRL(item.price)}
+              </span>
+              {!item.available && (
+                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-500">
+                  Indisponível
+                </span>
+              )}
+              <div className="ml-auto flex gap-2">
+                <Button
+                  onClick={() => setOpenDialog({ kind: 'edit', item })}
+                  className="px-3 py-1 text-sm"
+                >
+                  Editar
+                </Button>
+                <Button
+                  onClick={() => setOpenDialog({ kind: 'price', item })}
+                  className="px-3 py-1 text-sm"
+                >
+                  Preço
+                </Button>
+                <Button
+                  onClick={() => setOpenDialog({ kind: 'delete', item })}
+                  className="bg-stone-200 px-3 py-1 text-sm text-stone-800 hover:bg-stone-300"
+                >
+                  Excluir
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Card>
+      {openDialog.kind === 'create' && (
+        <ItemFormDialog onClose={() => setOpenDialog({ kind: 'none' })} />
+      )}
+      {openDialog.kind === 'edit' && (
+        <EditItemDialog
+          item={openDialog.item}
+          onClose={() => setOpenDialog({ kind: 'none' })}
+        />
+      )}
+      {openDialog.kind === 'price' && (
+        <PriceDialog
+          item={openDialog.item}
+          onClose={() => setOpenDialog({ kind: 'none' })}
+        />
+      )}
+      {openDialog.kind === 'delete' && (
+        <ConfirmDialog
+          title="Excluir item"
+          message={`"${openDialog.item.name}" será removido do cardápio.`}
+          confirmLabel="Excluir"
+          onConfirm={() => deleteItemMutation.mutateAsync(openDialog.item.id)}
+          onClose={() => setOpenDialog({ kind: 'none' })}
+        />
+      )}
+    </div>
+  );
+}

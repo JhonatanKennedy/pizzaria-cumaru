@@ -1,20 +1,9 @@
 import { z } from 'zod';
 
-export const menuItemSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  price: z.number(),
-  category: z.string(),
-  requiresPreparation: z.boolean(),
-  available: z.boolean(),
-});
-
-export type TMenuItem = z.infer<typeof menuItemSchema>;
-
-export const menuListingSchema = z.array(menuItemSchema);
-
-export type TMenuListing = z.infer<typeof menuListingSchema>;
+// Mirrors the backend's EOrderType (orders/domain/enums/order-type.ts) —
+// sent as-is in create payloads and asserted in the Gherkin specs.
+export const ORDER_TYPES = ['Local', 'Delivery'] as const;
+export type TOrderType = (typeof ORDER_TYPES)[number];
 
 export const orderItemListingSchema = z.object({
   id: z.string(),
@@ -26,7 +15,7 @@ export const orderItemListingSchema = z.object({
 export const orderListingSchema = z.object({
   id: z.string(),
   waiterName: z.string().nullable(),
-  type: z.string(),
+  type: z.enum(ORDER_TYPES),
   status: z.string(),
   tableId: z.string().optional(),
   createdAt: z.string(),
@@ -58,8 +47,10 @@ export const addItemFormSchema = z.object({
 
 export type TAddItemFormValues = z.infer<typeof addItemFormSchema>;
 
-export const cancelItemFormSchema = z.object({
+export const cancellationReasonFormSchema = z.object({
   reason: z.string().trim().min(1, 'Motivo é obrigatório'),
 });
 
-export type TCancelItemFormValues = z.infer<typeof cancelItemFormSchema>;
+export type TCancellationReasonFormValues = z.infer<
+  typeof cancellationReasonFormSchema
+>;

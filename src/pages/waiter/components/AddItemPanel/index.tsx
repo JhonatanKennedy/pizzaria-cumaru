@@ -4,9 +4,9 @@ import { useForm } from 'react-hook-form';
 import {
   addItemFormSchema,
   type TAddItemFormValues,
-  type TMenuItem,
 } from '../../business/schemas';
-import { CATEGORY_ORDER, categoryLabel } from '../../business/labels';
+import type { TMenuItem } from '@api/catalog.api';
+import { CATEGORY_ORDER, categoryLabel } from '@lib/catalog';
 import { useAddItem } from '../../hooks/use-add-item';
 import { Button } from '@components/Button';
 import { TextField } from '@components/TextField';

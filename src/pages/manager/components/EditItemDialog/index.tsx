@@ -1,38 +1,47 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import {
-  cancellationReasonFormSchema,
-  type TCancellationReasonFormValues,
-} from '../../business/schemas';
+import type { TMenuItem } from '@api/catalog.api';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
 import { TextField } from '@components/TextField';
 import { toErrorMessage } from '@lib/errors';
+import { useUpdateItem } from '../../hooks/use-update-item';
+import { z } from 'zod';
 
-interface CancelItemDialogProps {
-  itemName: string;
-  onConfirm: (reason: string) => Promise<void>;
+const editItemFormSchema = z.object({
+  name: z.string().trim().min(1, 'Nome é obrigatório'),
+  description: z.string().trim().min(1, 'Descrição é obrigatória'),
+});
+
+type TEditItemFormValues = z.infer<typeof editItemFormSchema>;
+
+interface EditItemDialogProps {
+  item: TMenuItem;
   onClose: () => void;
 }
 
-export function CancelItemDialog({
-  itemName,
-  onConfirm,
+export function EditItemDialog({
+  item,
   onClose,
-}: CancelItemDialogProps): React.ReactNode {
+}: EditItemDialogProps): React.ReactNode {
+  const updateItemMutation = useUpdateItem();
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<TCancellationReasonFormValues>({
-    resolver: zodResolver(cancellationReasonFormSchema),
-    defaultValues: { reason: '' },
+  } = useForm<TEditItemFormValues>({
+    resolver: zodResolver(editItemFormSchema),
+    defaultValues: { name: item.name, description: item.description },
   });
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await onConfirm(values.reason);
+      await updateItemMutation.mutateAsync({
+        itemId: item.id,
+        payload: values,
+      });
+      onClose();
     } catch (error) {
       setError('root', { message: toErrorMessage(error) });
     }
@@ -40,14 +49,10 @@ export function CancelItemDialog({
 
   return (
     <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-4">
-      <Card className="w-full max-w-sm">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Cancelar ${itemName}`}
-        >
+      <Card className="w-full max-w-md">
+        <div role="dialog" aria-modal="true" aria-label="Editar item">
           <h2 className="text-lg font-bold text-stone-900">
-            Cancelar {itemName}
+            Editar {item.name}
           </h2>
           <form onSubmit={onSubmit} noValidate className="mt-4 space-y-4">
             {errors.root && (
@@ -59,10 +64,16 @@ export function CancelItemDialog({
               </p>
             )}
             <TextField
-              id="reason"
-              label="Motivo"
-              error={errors.reason?.message}
-              {...register('reason')}
+              id="edit-item-name"
+              label="Nome"
+              error={errors.name?.message}
+              {...register('name')}
+            />
+            <TextField
+              id="edit-item-description"
+              label="Descrição"
+              error={errors.description?.message}
+              {...register('description')}
             />
             <div className="flex justify-end gap-3">
               <Button
@@ -70,10 +81,10 @@ export function CancelItemDialog({
                 onClick={onClose}
                 className="bg-stone-200 text-stone-800 hover:bg-stone-300"
               >
-                Voltar
+                Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Cancelando…' : 'Cancelar item'}
+                {isSubmitting ? 'Salvando…' : 'Salvar'}
               </Button>
             </div>
           </form>

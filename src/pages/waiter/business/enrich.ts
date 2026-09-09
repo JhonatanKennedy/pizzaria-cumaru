@@ -1,4 +1,5 @@
-import type { TMenuListing, TOrderListing } from './schemas';
+import type { TOrderListing } from './schemas';
+import type { TMenuListing } from '@api/catalog.api';
 
 export const REMOVED_ITEM_LABEL = 'Item removido do cardápio';
 

@@ -52,7 +52,7 @@ export async function apiRequest(
       apiClientConfig?.onUnauthorized();
     }
     const body: unknown = await response.json().catch(() => null);
-    const message = isErrorBody(body) ? body.message : 'Unexpected error';
+    const message = isErrorBody(body) ? body.message : 'Erro inesperado';
     throw new ApiError(response.status, message);
   }
 

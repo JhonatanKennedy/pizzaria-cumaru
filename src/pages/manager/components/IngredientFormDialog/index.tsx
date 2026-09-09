@@ -1,38 +1,50 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import {
-  cancellationReasonFormSchema,
-  type TCancellationReasonFormValues,
-} from '../../business/schemas';
+import type { TIngredient } from '@api/catalog.api';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
 import { TextField } from '@components/TextField';
 import { toErrorMessage } from '@lib/errors';
+import {
+  ingredientNameFormSchema,
+  type TIngredientNameFormValues,
+} from '../../business/schemas';
+import { useCreateIngredient } from '../../hooks/use-create-ingredient';
+import { useRenameIngredient } from '../../hooks/use-rename-ingredient';
 
-interface CancelItemDialogProps {
-  itemName: string;
-  onConfirm: (reason: string) => Promise<void>;
+interface IngredientFormDialogProps {
+  ingredient?: TIngredient;
   onClose: () => void;
 }
 
-export function CancelItemDialog({
-  itemName,
-  onConfirm,
+export function IngredientFormDialog({
+  ingredient,
   onClose,
-}: CancelItemDialogProps): React.ReactNode {
+}: IngredientFormDialogProps): React.ReactNode {
+  const isRename = ingredient !== undefined;
+  const createIngredientMutation = useCreateIngredient();
+  const renameIngredientMutation = useRenameIngredient();
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<TCancellationReasonFormValues>({
-    resolver: zodResolver(cancellationReasonFormSchema),
-    defaultValues: { reason: '' },
+  } = useForm<TIngredientNameFormValues>({
+    resolver: zodResolver(ingredientNameFormSchema),
+    defaultValues: { name: ingredient?.name ?? '' },
   });
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await onConfirm(values.reason);
+      if (ingredient) {
+        await renameIngredientMutation.mutateAsync({
+          ingredientId: ingredient.id,
+          name: values.name,
+        });
+      } else {
+        await createIngredientMutation.mutateAsync(values.name);
+      }
+      onClose();
     } catch (error) {
       setError('root', { message: toErrorMessage(error) });
     }
@@ -44,10 +56,10 @@ export function CancelItemDialog({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`Cancelar ${itemName}`}
+          aria-label={isRename ? 'Renomear ingrediente' : 'Novo ingrediente'}
         >
           <h2 className="text-lg font-bold text-stone-900">
-            Cancelar {itemName}
+            {isRename ? 'Renomear ingrediente' : 'Novo ingrediente'}
           </h2>
           <form onSubmit={onSubmit} noValidate className="mt-4 space-y-4">
             {errors.root && (
@@ -59,10 +71,10 @@ export function CancelItemDialog({
               </p>
             )}
             <TextField
-              id="reason"
-              label="Motivo"
-              error={errors.reason?.message}
-              {...register('reason')}
+              id="ingredient-name"
+              label="Nome"
+              error={errors.name?.message}
+              {...register('name')}
             />
             <div className="flex justify-end gap-3">
               <Button
@@ -70,10 +82,10 @@ export function CancelItemDialog({
                 onClick={onClose}
                 className="bg-stone-200 text-stone-800 hover:bg-stone-300"
               >
-                Voltar
+                Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Cancelando…' : 'Cancelar item'}
+                {isSubmitting ? 'Salvando…' : 'Salvar'}
               </Button>
             </div>
           </form>

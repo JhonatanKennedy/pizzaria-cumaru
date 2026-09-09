@@ -1,38 +1,40 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import {
-  cancellationReasonFormSchema,
-  type TCancellationReasonFormValues,
-} from '../../business/schemas';
+import type { TMenuItem } from '@api/catalog.api';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
 import { TextField } from '@components/TextField';
 import { toErrorMessage } from '@lib/errors';
+import { priceFormSchema, type TPriceFormValues } from '../../business/schemas';
+import { useUpdateItemPrice } from '../../hooks/use-update-item-price';
 
-interface CancelItemDialogProps {
-  itemName: string;
-  onConfirm: (reason: string) => Promise<void>;
+interface PriceDialogProps {
+  item: TMenuItem;
   onClose: () => void;
 }
 
-export function CancelItemDialog({
-  itemName,
-  onConfirm,
+export function PriceDialog({
+  item,
   onClose,
-}: CancelItemDialogProps): React.ReactNode {
+}: PriceDialogProps): React.ReactNode {
+  const updatePriceMutation = useUpdateItemPrice();
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<TCancellationReasonFormValues>({
-    resolver: zodResolver(cancellationReasonFormSchema),
-    defaultValues: { reason: '' },
+  } = useForm<TPriceFormValues>({
+    resolver: zodResolver(priceFormSchema),
+    defaultValues: { price: item.price },
   });
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await onConfirm(values.reason);
+      await updatePriceMutation.mutateAsync({
+        itemId: item.id,
+        price: values.price,
+      });
+      onClose();
     } catch (error) {
       setError('root', { message: toErrorMessage(error) });
     }
@@ -41,13 +43,9 @@ export function CancelItemDialog({
   return (
     <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-4">
       <Card className="w-full max-w-sm">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Cancelar ${itemName}`}
-        >
+        <div role="dialog" aria-modal="true" aria-label="Alterar preço">
           <h2 className="text-lg font-bold text-stone-900">
-            Cancelar {itemName}
+            Preço de {item.name}
           </h2>
           <form onSubmit={onSubmit} noValidate className="mt-4 space-y-4">
             {errors.root && (
@@ -59,10 +57,13 @@ export function CancelItemDialog({
               </p>
             )}
             <TextField
-              id="reason"
-              label="Motivo"
-              error={errors.reason?.message}
-              {...register('reason')}
+              id="price-input"
+              label="Preço"
+              type="number"
+              min={0}
+              step="0.01"
+              error={errors.price?.message}
+              {...register('price', { valueAsNumber: true })}
             />
             <div className="flex justify-end gap-3">
               <Button
@@ -70,10 +71,10 @@ export function CancelItemDialog({
                 onClick={onClose}
                 className="bg-stone-200 text-stone-800 hover:bg-stone-300"
               >
-                Voltar
+                Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Cancelando…' : 'Cancelar item'}
+                {isSubmitting ? 'Salvando…' : 'Salvar'}
               </Button>
             </div>
           </form>

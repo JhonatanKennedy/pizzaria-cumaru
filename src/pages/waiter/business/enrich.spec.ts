@@ -1,4 +1,5 @@
-import type { TMenuListing, TOrderListing } from './schemas';
+import type { TMenuListing } from '@api/catalog.api';
+import type { TOrderListing } from './schemas';
 import { REMOVED_ITEM_LABEL, enrichOrder } from './enrich';
 
 const MENU: TMenuListing = [
@@ -16,7 +17,7 @@ const MENU: TMenuListing = [
 const ORDER: TOrderListing = {
   id: 'order-1',
   waiterName: 'joao.garcom',
-  type: 'LOCAL',
+  type: 'Local',
   status: 'Open',
   tableId: '5',
   createdAt: '2026-09-08T12:00:00Z',

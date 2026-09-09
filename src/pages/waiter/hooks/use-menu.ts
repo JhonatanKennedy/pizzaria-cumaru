@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { listMenu } from '../api/catalog.api';
+import { MENU_QUERY_KEY, listMenu } from '@api/catalog.api';
 
 export function useMenu() {
   return useQuery({
-    queryKey: ['menu'],
+    queryKey: MENU_QUERY_KEY,
     queryFn: listMenu,
     refetchOnWindowFocus: true,
   });

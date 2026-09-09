@@ -10,7 +10,7 @@ import { KitchenPage } from '@pages/kitchen/pages/kitchen-page';
 import { DailyEarningsPage } from '@pages/manager/pages/daily-earnings-page';
 import { DeliveryPage } from '@pages/manager/pages/delivery-page';
 import { ManagerPage } from '@pages/manager/pages/manager-page';
-import { MenuPage } from '@pages/manager/pages/menu-page';
+import { MenuPage } from '@pages/manager/pages/menu/menu-page';
 import { OrderDetailPage } from '@pages/waiter/pages/order-detail';
 import { TablesPage } from '@pages/waiter/pages/tables';
 import { HomeRedirect } from './home-redirect';

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '@api/http-client';
-import type { TMenuItem } from '../../business/schemas';
+import type { TMenuItem } from '@api/catalog.api';
 import { AddItemPanel } from './index';
 
 const { addMock } = vi.hoisted(() => ({ addMock: vi.fn() }));
