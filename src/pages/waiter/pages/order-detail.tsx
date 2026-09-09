@@ -6,6 +6,7 @@ import { toErrorMessage } from '@lib/errors';
 import type { TPaymentType } from '@lib/payment-labels';
 import { itemStatusLabel } from '@lib/item-labels';
 import { enrichOrder, type TEnrichedOrderItem } from '@lib/order-enrich';
+import { formatComposition } from '@lib/flavor-composition';
 import { orderStatusLabel } from '@lib/order-labels';
 import { AddItemPanel } from '../components/AddItemPanel';
 import { CancelItemDialog } from '../components/CancelItemDialog';
@@ -197,17 +198,24 @@ export function OrderDetailPage({
               ) : (
                 <span className="text-stone-800">{item.quantity}×</span>
               )}
-              <span className="text-stone-800">{item.name}</span>
-              {itemStatusLabel(item.status) && (
-                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
-                  {itemStatusLabel(item.status)}
+              <div className="flex flex-col">
+                <span className="flex items-center gap-2">
+                  <span className="text-stone-800">{item.name}</span>
+                  {itemStatusLabel(item.status) && (
+                    <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
+                      {itemStatusLabel(item.status)}
+                    </span>
+                  )}
                 </span>
-              )}
-              {item.unitPrice !== null && (
-                <span className="ml-auto text-sm text-stone-600">
-                  {formatBRL(item.unitPrice * item.quantity)}
-                </span>
-              )}
+                {item.parts.length > 1 && (
+                  <span className="text-sm text-stone-500">
+                    {formatComposition(item.parts)}
+                  </span>
+                )}
+              </div>
+              <span className="ml-auto text-sm text-stone-600">
+                {formatBRL(item.unitPrice * item.quantity)}
+              </span>
               {isOpen && canCancelOrderItem(item.status) && (
                 <Button
                   onClick={() => setItemToCancel(item)}

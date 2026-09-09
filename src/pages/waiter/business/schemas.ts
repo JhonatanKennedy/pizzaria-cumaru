@@ -21,7 +21,6 @@ export type TTableOrderFormValues = z.infer<typeof tableOrderFormSchema>;
 
 export const addItemFormSchema = z.object({
   quantity: z.number().min(1, 'Quantidade mínima é 1'),
-  flavors: z.string(),
   notes: z.string(),
 });
 

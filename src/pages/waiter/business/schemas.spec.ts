@@ -13,10 +13,9 @@ describe('tableOrderFormSchema', () => {
 });
 
 describe('addItemFormSchema', () => {
-  it('should accept quantity, flavors and notes', () => {
+  it('should accept quantity and notes', () => {
     const result = addItemFormSchema.safeParse({
       quantity: 2,
-      flavors: 'Calabresa, Portuguesa',
       notes: 'sem cebola',
     });
     expect(result.success).toBe(true);
@@ -24,8 +23,7 @@ describe('addItemFormSchema', () => {
 
   it('should reject a quantity below one', () => {
     expect(
-      addItemFormSchema.safeParse({ quantity: 0, flavors: '', notes: '' })
-        .success,
+      addItemFormSchema.safeParse({ quantity: 0, notes: '' }).success,
     ).toBe(false);
   });
 });
