@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Context for working in `pizzaria-cumaru-backend` — the backend for a pizzeria management system ("Pizzaria Cumaru"). Orders, catalog, and users flows run end-to-end — HTTP controller → use-case → domain aggregate → repository interface → Prisma — with JWT auth, class-validator DTOs, and a global error filter. Kitchen is a thin context that drives order items through the orders use-cases. Two use-cases remain stubbed (`SplitBillUseCase`, `CreateDeliveryOrderUseCase`); remaining debt and open design questions live in [08-conventions.md](.claude/rules/08-conventions.md).
+Context for working in `pizzaria-cumaru-backend` — the backend for a pizzeria management system ("Pizzaria Cumaru"). Orders, catalog, tables, and users flows run end-to-end — HTTP controller → use-case → domain aggregate → repository interface → Prisma — with JWT auth, class-validator DTOs, and a global error filter. Kitchen is a thin context that drives order items through the orders use-cases. Two use-cases remain stubbed (`SplitBillUseCase`, `CreateDeliveryOrderUseCase`); remaining debt and open design questions live in [08-conventions.md](.claude/rules/08-conventions.md).
 
 This file is an index. The rules live in `.claude/rules/`, one file per topic, each with ✅/❌ examples. Read the ones relevant to the task before writing code.
 

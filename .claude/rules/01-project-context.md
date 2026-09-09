@@ -1,6 +1,6 @@
 # Project context
 
-`pizzaria-cumaru-backend` — backend for a pizzeria management system ("Pizzaria Cumaru"). Orders, catalog, and users flows are implemented end-to-end (HTTP controller → application use-case → domain aggregate → repository interface → Prisma-backed implementation); kitchen is a thin context that drives `OrderItems` through orders use-cases. Feature specs live in `features/*.feature` (Gherkin, English) — read the relevant file before building an endpoint. Remaining stubs and open design questions are tracked in [08-conventions.md](08-conventions.md).
+`pizzaria-cumaru-backend` — backend for a pizzeria management system ("Pizzaria Cumaru"). Orders, catalog, tables, and users flows are implemented end-to-end (HTTP controller → application use-case → domain aggregate → repository interface → Prisma-backed implementation); kitchen is a thin context that drives `OrderItems` through orders use-cases. Feature specs live in `features/*.feature` (Gherkin, English) — read the relevant file before building an endpoint. Remaining stubs and open design questions are tracked in [08-conventions.md](08-conventions.md).
 
 ## Stack & tooling
 
@@ -68,6 +68,7 @@ Cross-cutting areas:
 | `OrdersModule`  | Catalog                                         | `OrdersController` (`/orders`), `ReportsController` (`/reports`)       | 11 use-cases + `ORDERS_REPOSITORY` → `PrismaOrdersRepository`; exports the repo and the three preparation use-cases for kitchen |
 | `CatalogModule` | —                                               | `ItemsController` (`/items`), `IngredientsController` (`/ingredients`) | 13 use-cases + `CATALOG_REPOSITORY` → `PrismaCatalogRepository`                                                                 |
 | `KitchenModule` | Orders, Catalog                                 | `KitchenQueueController` (`/kitchen`)                                  | `ListKitchenQueueUseCase` only — no domain/infrastructure of its own                                                            |
+| `TablesModule`  | Orders                                          | `TablesController` (`/tables`)                                         | 4 use-cases + `TABLES_REPOSITORY` → `PrismaTablesRepository`; imports orders for the busy map and the delete block              |
 | `UsersModule`   | `JwtModule.registerAsync` (`JWT_SECRET`)        | `AuthController` (`/auth`)                                             | `AuthenticateUserUseCase`, `LogoutUserUseCase`, `USER_REPOSITORY` → `PrismaUserRepository`; exports repo + `JwtModule`          |
 
 ### The HTTP contract, in three global pieces (all registered in `app.module.ts`)
@@ -89,18 +90,21 @@ Cross-cutting areas:
 | `IngredientsController`  | `GET /ingredients`                                                                                                                                                                 | Waiter, Manager     |
 |                          | `POST /ingredients`, `PATCH /ingredients/:ingredientId`, `PATCH /ingredients/:ingredientId/stock`, `DELETE /ingredients/:ingredientId`                                             | Manager only        |
 | `KitchenQueueController` | `GET /kitchen/queue`, `POST /kitchen/orders/:orderId/items/:orderItemId/start` / `finish` / `cancel`                                                                               | Cook, Manager       |
+| `TablesController`      | `GET /tables`                                                                                                                                                                       | Waiter, Manager     |
+|                         | `POST /tables`, `PATCH /tables/:tableId`, `DELETE /tables/:tableId`                                                                                                                | Manager only        |
 
 ## Domain model (current state)
 
 - **orders** — `Order` aggregate + `OrderItems` entity. `Order.create` enforces delivery rules (customer name + address required for `DELIVERY`); `Order.restore` / `OrderItems.restore` rehydrate persisted state (items, status, timestamps, cancellation history). Lifecycle: local orders go `Open → Closed`; delivery orders add the cycle `Preparing → Out for delivery → Delivered` — `EOrderStatus` carries all five members and use-cases guard the transitions. `close(paymentType, closedAt)` rejects empty and already-closed orders. Item statuses (`EOrderItemStatus`): `Pending → Preparing → Ready`; cancellable only while `Pending` (customer) or `Preparing` (kitchen). Money is a plain `number`; totals derive from `unitPrice * quantity`. Local orders are created against a `tableId` (`'Table is required for local orders'`).
 - **catalog** — `Item` (name, description, price, `EItemCategory`, `requiresPreparation`, linked ingredients) and `Ingredient` (name, in-stock flag). Stock availability checks live in the add-item and kitchen-queue flows, not on the entities.
+- **tables** — `Table` (id, unique `number`). `create`/`rename` validate `number >= 1` (`'Table number must be greater than zero'`); free/occupied is derived — a table is occupied while it has an open order, there is no status field.
 - **kitchen** — no domain entities or enums; `KitchenQueueController` + `ListKitchenQueueUseCase` read orders and drive `OrderItems` through the orders context's exported use-cases.
 - **users** — `User` entity (login, bcrypt hash, `EUserRole` Waiter/Cook/Manager) with failed-attempt lockout (`MAX_FAILED_ATTEMPTS = 5`, 15-minute lock). Auth is real: `POST /auth/login` issues a 1-hour JWT, `logout` denylists its `jti`. There is no create-user endpoint — users are seeded (`npm run seed`: `ana.gerente`, `joao.garcom`, `carlos.cozinha`).
 
 ## Persistence
 
-The Prisma schema mirrors the aggregates — 8 models (`User`, `DeniedToken`, `Order`, `OrderItem`, `OrderCancellation`, `Item`, `Ingredient`, `ItemIngredient`) — with five committed migrations under `migrations/`. Enums are stored as strings and validated by parse guards in the repository/mapper layer on both read and write; some relations are deliberately denormalized (no FK `Order → User`, `OrderItem → Item`). Ids: `User.id` is an `Int` autoincrement, all other aggregates are `String` with `uuid()` defaults. Details and mapping rules in [07-prisma.md](07-prisma.md).
+The Prisma schema mirrors the aggregates — 9 models (`User`, `DeniedToken`, `Order`, `OrderItem`, `OrderCancellation`, `Item`, `Ingredient`, `ItemIngredient`, `Table`) — with six committed migrations under `migrations/`. Enums are stored as strings and validated by parse guards in the repository/mapper layer on both read and write; `Order.tableId → Table` has a real FK (`onDelete: Restrict`), while the remaining relations stay deliberately denormalized (no FK `Order → User`, `OrderItem → Item`). Ids: `User.id` is an `Int` autoincrement, all other aggregates are `String` with `uuid()` defaults. Details and mapping rules in [07-prisma.md](07-prisma.md).
 
 ## Feature specs
 
-`features/*.feature` are the product specs — one file per flow: `01_authentication`, `02_menu_and_stock`, `03_table_order`, `04_delivery_order`, `05_waiter_profile`, `06_cook_profile`, `07_manager_profile`, `09_cancellation_and_payment` (there is no `08`). Endpoints and e2e tests should trace back to scenarios in these files.
+`features/*.feature` are the product specs — one file per flow: `01_authentication`, `02_menu_and_stock`, `03_table_order`, `04_delivery_order`, `05_waiter_profile`, `06_cook_profile`, `07_manager_profile`, `09_cancellation_and_payment`, `10_table_management` (there is no `08`). Endpoints and e2e tests should trace back to scenarios in these files.

@@ -25,7 +25,7 @@ docker compose up -d          # PostgreSQL on :5432 (user/pass: prisma)
 
 npx prisma migrate dev        # applies migrations to the dev DB
 npx prisma migrate deploy     # applies migrations to the test DB (point DATABASE_URL at it)
-npm run seed                  # seeds profile users and the menu catalog (refuses in production)
+npm run seed                  # seeds profile users, the menu catalog, and tables 1-10 (refuses in production)
 ```
 
 ## Running
@@ -65,7 +65,7 @@ All other endpoints require `Authorization: Bearer <token>`. Seeded users:
 | --- | --- | :-: | :-: | :-: |
 | `POST /orders` | create local / delivery order | ✓ | | ✓ |
 | `POST /orders/:id/items` | add item (flavors, notes) | ✓ | | ✓ |
-| `PATCH /orders/:id/items/:itemId/status` | start / finish preparation (`Preparing`, `Ready`) | | ✓ | ✓ |
+| `POST /kitchen/orders/:orderId/items/:itemId/start` / `finish` | start / finish preparation (`Preparing`, `Ready`) | | ✓ | ✓ |
 | `POST /orders/:id/items/:itemId/cancellation` | cancel item with reason | ✓ | | ✓ |
 | `PATCH /orders/:id/status` | advance delivery cycle (`Preparing` → `Out for delivery` → `Delivered`) | ✓ | | ✓ |
 | `POST /orders/:id/close` | close with payment, optional `splitInto` | | | ✓ |
@@ -73,6 +73,10 @@ All other endpoints require `Authorization: Bearer <token>`. Seeded users:
 | `POST /kitchen/orders/:orderId/items/:itemId/cancel` | cancel the preparation of a started dish (reason in body) | | ✓ | ✓ |
 | `GET /orders` | day's orders with waiter name | ✓ | | ✓ |
 | `GET /reports/daily-earnings` | day's earnings (`?type=Local\|Delivery`) | | | ✓ |
+| `GET /tables` | floor listing (each table with its open order summary) | ✓ | | ✓ |
+| `POST /tables` | register table (`{ number }`) | | | ✓ |
+| `PATCH /tables/:id` | renumber table | | | ✓ |
+| `DELETE /tables/:id` | remove table (refused while it has orders) | | | ✓ |
 | `GET /items` / `GET /ingredients` | menu / stock listings | ✓ | | ✓ |
 | `POST /items` | create menu item | | | ✓ |
 | `PATCH /items/:id` | rename item / change description | | | ✓ |
@@ -89,7 +93,7 @@ Error conventions: business refusals return `400` with the spec message (`{"mess
 
 ## Architecture
 
-Modular monolith with bounded contexts under `src/` (`orders`, `kitchen`, `catalog`, `users`), each in domain → application → presentation layers with repository interfaces in `domain/repositories/` and Prisma implementations in `infrastructure/`. Feature specs live in `features/*.feature`; capability specs (normative system behavior) live in `openspec/specs/`. Domain rules are pure TypeScript with unit tests; e2e tests map to feature scenarios.
+Modular monolith with bounded contexts under `src/` (`orders`, `kitchen`, `catalog`, `tables`, `users`), each in domain → application → presentation layers with repository interfaces in `domain/repositories/` and Prisma implementations in `infrastructure/`. Feature specs live in `features/*.feature`; capability specs (normative system behavior) live in `openspec/specs/`. Domain rules are pure TypeScript with unit tests; e2e tests map to feature scenarios.
 
 ## Known gaps
 
