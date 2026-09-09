@@ -8,7 +8,8 @@ import { LoginPage } from '@pages/auth/pages/login/login-page';
 import { GuestOnly, RequireRole } from '@pages/auth/require-role';
 import { KitchenPage } from '@pages/kitchen/pages/kitchen-page';
 import { DailyEarningsPage } from '@pages/manager/pages/daily-earnings/daily-earnings-page';
-import { DeliveryPage } from '@pages/manager/pages/delivery-page';
+import { DeliveryDetailPage } from '@pages/manager/pages/delivery/delivery-detail-page';
+import { DeliveryPage } from '@pages/manager/pages/delivery/delivery-page';
 import { ManagerPage } from '@pages/manager/pages/manager-page';
 import { MenuPage } from '@pages/manager/pages/menu/menu-page';
 import { TablesPage } from '@pages/waiter/pages/tables';
@@ -68,6 +69,14 @@ export const router = createBrowserRouter([
         element: (
           <RequireRole roles={MANAGER_ROLES}>
             <DeliveryPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: '/manager/delivery/:orderId',
+        element: (
+          <RequireRole roles={MANAGER_ROLES}>
+            <DeliveryDetailPage />
           </RequireRole>
         ),
       },
