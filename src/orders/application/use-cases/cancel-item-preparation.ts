@@ -5,13 +5,12 @@ import type { IOrdersRepository } from '../../domain/repositories/orders-reposit
 export interface ICancelItemPreparationParams {
   orderId: string;
   itemId: string;
-  reason: string;
 }
 
 // Cancel an item that is "Preparing" from the kitchen panel, recording the
-// reason in the order history. Items still "Pending" cannot be cancelled here
-// (the order-side cancellation covers them) and "Ready" items are not
-// cancellable through either path.
+// cancellation in the order history. Items still "Pending" cannot be
+// cancelled here (the order-side cancellation covers them) and "Ready" items
+// are not cancellable through either path.
 // Feature: 06_cook_profile.feature.
 @Injectable()
 export class CancelItemPreparationUseCase {
@@ -33,7 +32,7 @@ export class CancelItemPreparationUseCase {
       throw new Error('Item not found');
     }
 
-    order.cancelPreparationItem(params.itemId, params.reason, new Date());
+    order.cancelPreparationItem(params.itemId, new Date());
     await this.ordersRepository.save(order);
   }
 }

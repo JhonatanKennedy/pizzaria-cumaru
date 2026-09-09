@@ -40,20 +40,17 @@ function makeFakeRepository(order: Order | null) {
 }
 
 describe('CancelItemFromOrderUseCase', () => {
-  it('should remove a Pending item and record the reason in the order history', async () => {
+  it('should remove a Pending item and record the cancellation in the order history', async () => {
     const order = makeOrderWithItem();
     const repository = makeFakeRepository(order);
     const useCase = new CancelItemFromOrderUseCase(repository);
 
-    await useCase.execute({
-      orderId: ORDER_ID,
-      itemId: ITEM_ID,
-      reason: 'Customer gave up',
-    });
+    await useCase.execute({ orderId: ORDER_ID, itemId: ITEM_ID });
 
     expect(order.getItems()).toHaveLength(0);
-    expect(order.getCancellationHistory()).toHaveLength(1);
-    expect(order.getCancellationHistory()[0].reason).toBe('Customer gave up');
+    expect(order.getCancellationHistory()).toEqual([
+      { itemId: ITEM_ID, cancelledAt: expect.any(Date) },
+    ]);
     expect(repository.save).toHaveBeenCalledWith(order);
   });
 
@@ -64,11 +61,7 @@ describe('CancelItemFromOrderUseCase', () => {
     const useCase = new CancelItemFromOrderUseCase(repository);
 
     await expect(
-      useCase.execute({
-        orderId: ORDER_ID,
-        itemId: ITEM_ID,
-        reason: 'Customer gave up',
-      }),
+      useCase.execute({ orderId: ORDER_ID, itemId: ITEM_ID }),
     ).rejects.toThrow('Cannot cancel an item in preparation');
     expect(order.getItems()).toHaveLength(1);
     expect(repository.save).not.toHaveBeenCalled();
@@ -81,11 +74,7 @@ describe('CancelItemFromOrderUseCase', () => {
     const useCase = new CancelItemFromOrderUseCase(repository);
 
     await expect(
-      useCase.execute({
-        orderId: ORDER_ID,
-        itemId: ITEM_ID,
-        reason: 'Customer gave up',
-      }),
+      useCase.execute({ orderId: ORDER_ID, itemId: ITEM_ID }),
     ).rejects.toThrow('Cannot change a closed order');
     expect(repository.save).not.toHaveBeenCalled();
   });
@@ -95,11 +84,7 @@ describe('CancelItemFromOrderUseCase', () => {
     const useCase = new CancelItemFromOrderUseCase(repository);
 
     await expect(
-      useCase.execute({
-        orderId: ORDER_ID,
-        itemId: ITEM_ID,
-        reason: 'Customer gave up',
-      }),
+      useCase.execute({ orderId: ORDER_ID, itemId: ITEM_ID }),
     ).rejects.toThrow('Order not found');
   });
 });

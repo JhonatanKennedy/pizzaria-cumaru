@@ -47,14 +47,10 @@ describe('CancelOrderUseCase', () => {
     const repository = makeFakeRepository(order);
     const useCase = new CancelOrderUseCase(repository);
 
-    await useCase.execute({
-      orderId: ORDER_ID,
-      reason: 'Customer gave up',
-    });
+    await useCase.execute({ orderId: ORDER_ID });
 
     expect(order.getStatus()).toBe(EOrderStatus.CANCELLED);
     expect(order.getItems()).toHaveLength(0);
-    expect(order.getCancelledReason()).toBe('Customer gave up');
     expect(repository.save).toHaveBeenCalledWith(order);
   });
 
@@ -64,9 +60,9 @@ describe('CancelOrderUseCase', () => {
     const repository = makeFakeRepository(order);
     const useCase = new CancelOrderUseCase(repository);
 
-    await expect(
-      useCase.execute({ orderId: ORDER_ID, reason: 'Customer gave up' }),
-    ).rejects.toThrow('Cannot change a closed order');
+    await expect(useCase.execute({ orderId: ORDER_ID })).rejects.toThrow(
+      'Cannot change a closed order',
+    );
     expect(repository.save).not.toHaveBeenCalled();
   });
 
@@ -74,8 +70,8 @@ describe('CancelOrderUseCase', () => {
     const repository = makeFakeRepository(null);
     const useCase = new CancelOrderUseCase(repository);
 
-    await expect(
-      useCase.execute({ orderId: ORDER_ID, reason: 'Customer gave up' }),
-    ).rejects.toThrow('Order not found');
+    await expect(useCase.execute({ orderId: ORDER_ID })).rejects.toThrow(
+      'Order not found',
+    );
   });
 });

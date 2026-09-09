@@ -96,25 +96,17 @@ describe('OrderItems', () => {
     );
   });
 
-  it('should throw when cancelling without a reason', () => {
-    const item = makePreparedItem();
-
-    expect(() => item.cancel('   ')).toThrow('Cancellation reason is required');
-  });
-
   it('should allow cancelling a Pending prepared item', () => {
     const item = makePreparedItem();
 
-    expect(() => item.cancel('Customer gave up')).not.toThrow();
+    expect(() => item.cancel()).not.toThrow();
   });
 
   it('should refuse cancelling a Preparing item with the spec message', () => {
     const item = makePreparedItem();
     item.startPreparation();
 
-    expect(() => item.cancel('Customer gave up')).toThrow(
-      'Cannot cancel an item in preparation',
-    );
+    expect(() => item.cancel()).toThrow('Cannot cancel an item in preparation');
   });
 
   it('should refuse cancelling a Ready item', () => {
@@ -122,28 +114,26 @@ describe('OrderItems', () => {
     item.startPreparation();
     item.finishPreparation();
 
-    expect(() => item.cancel('Customer gave up')).toThrow(
-      'Cannot cancel an item in preparation',
-    );
+    expect(() => item.cancel()).toThrow('Cannot cancel an item in preparation');
   });
 
   it('should allow cancelling a non-prepared item regardless of its status', () => {
     const drink = makeDrink();
 
-    expect(() => drink.cancel('Customer gave up')).not.toThrow();
+    expect(() => drink.cancel()).not.toThrow();
   });
 
   it('should allow cancelling the preparation of an item in preparation', () => {
     const item = makePreparedItem();
     item.startPreparation();
 
-    expect(() => item.cancelPreparation('Wrong dish started')).not.toThrow();
+    expect(() => item.cancelPreparation()).not.toThrow();
   });
 
   it('should refuse cancelPreparation while the item is Pending', () => {
     const item = makePreparedItem();
 
-    expect(() => item.cancelPreparation('Wrong dish started')).toThrow(
+    expect(() => item.cancelPreparation()).toThrow(
       'Cannot cancel an item not in preparation',
     );
   });
@@ -153,7 +143,7 @@ describe('OrderItems', () => {
     item.startPreparation();
     item.finishPreparation();
 
-    expect(() => item.cancelPreparation('Wrong dish started')).toThrow(
+    expect(() => item.cancelPreparation()).toThrow(
       'Cannot cancel an item not in preparation',
     );
   });
@@ -161,17 +151,8 @@ describe('OrderItems', () => {
   it('should refuse cancelPreparation on a non-prepared item', () => {
     const drink = makeDrink();
 
-    expect(() => drink.cancelPreparation('Wrong dish started')).toThrow(
+    expect(() => drink.cancelPreparation()).toThrow(
       'Cannot cancel an item not in preparation',
-    );
-  });
-
-  it('should refuse cancelPreparation without a reason', () => {
-    const item = makePreparedItem();
-    item.startPreparation();
-
-    expect(() => item.cancelPreparation('   ')).toThrow(
-      'Cancellation reason is required',
     );
   });
 

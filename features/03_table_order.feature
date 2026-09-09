@@ -69,7 +69,7 @@ Feature: Table orders (local service)
 
   Scenario: Open a new order for a table whose order was cancelled
     Given there is an open order for table "5"
-    When the waiter cancels the order of table "5" informing the reason "Customer gave up"
+    When the waiter cancels the order of table "5"
     And opens a new order for table "5"
     Then an order of type "Local" linked to table "5" must be created
 

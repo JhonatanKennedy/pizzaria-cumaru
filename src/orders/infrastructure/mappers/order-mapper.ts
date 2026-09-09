@@ -85,7 +85,6 @@ export function orderRowToDomain(row: TOrderRow): Order {
     status: parseOrderStatus(row.status),
     deliveredAt: row.deliveredAt ?? undefined,
     closedAt: row.closedAt ?? undefined,
-    cancelledReason: row.cancelledReason ?? undefined,
     cancelledAt: row.cancelledAt ?? undefined,
     items: row.items
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
@@ -105,7 +104,6 @@ export function orderRowToDomain(row: TOrderRow): Order {
       ),
     cancellationHistory: row.cancellations.map((cancellation) => ({
       itemId: cancellation.itemId,
-      reason: cancellation.reason,
       cancelledAt: cancellation.cancelledAt,
     })),
   });
@@ -132,7 +130,6 @@ function cancellationsToNestedCreate(
 ): Prisma.OrderCancellationCreateWithoutOrderInput[] {
   return order.getCancellationHistory().map((entry) => ({
     itemId: entry.itemId,
-    reason: entry.reason,
     cancelledAt: entry.cancelledAt,
   }));
 }
@@ -163,7 +160,6 @@ export function orderDomainToCreate(
     createdAt: order.getCreatedAt(),
     deliveredAt: order.getDeliveredAt() ?? null,
     closedAt: order.getClosedAt() ?? null,
-    cancelledReason: order.getCancelledReason() ?? null,
     cancelledAt: order.getCancelledAt() ?? null,
     items: { create: itemsToNestedCreate(order) },
     cancellations: { create: cancellationsToNestedCreate(order) },
@@ -177,7 +173,6 @@ export function orderDomainToUpdate(order: Order): Prisma.OrderUpdateInput {
     notes: notesOrNull(order),
     deliveredAt: order.getDeliveredAt() ?? null,
     closedAt: order.getClosedAt() ?? null,
-    cancelledReason: order.getCancelledReason() ?? null,
     cancelledAt: order.getCancelledAt() ?? null,
     items: {
       deleteMany: {},

@@ -64,11 +64,8 @@ export class OrdersController {
 
   @Roles({ roles: [EUserRole.WAITER, EUserRole.MANAGER] })
   @Post(':orderId/cancellation')
-  cancelOrder(@Param('orderId') orderId: string, @Body() dto: CancelOrderDto) {
-    return this.cancelOrderUseCase.execute({
-      orderId,
-      reason: dto.reason,
-    });
+  cancelOrder(@Param('orderId') orderId: string, @Body() _dto: CancelOrderDto) {
+    return this.cancelOrderUseCase.execute({ orderId });
   }
 
   @Roles({ roles: [EUserRole.WAITER, EUserRole.MANAGER] })
@@ -108,12 +105,8 @@ export class OrdersController {
   cancelItem(
     @Param('orderId') orderId: string,
     @Param('itemId') itemId: string,
-    @Body() dto: CancelItemDto,
+    @Body() _dto: CancelItemDto,
   ) {
-    return this.cancelItemFromOrderUseCase.execute({
-      orderId,
-      itemId,
-      reason: dto.reason,
-    });
+    return this.cancelItemFromOrderUseCase.execute({ orderId, itemId });
   }
 }

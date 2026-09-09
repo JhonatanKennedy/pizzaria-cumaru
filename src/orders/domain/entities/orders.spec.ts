@@ -112,42 +112,39 @@ describe('Order', () => {
     );
   });
 
-  it('should remove a cancelled item and record the reason in history', () => {
+  it('should remove a cancelled item and record the cancellation in history', () => {
     const order = makeOrder();
     order.addItem(makeItem(PIZZA_PRICE));
     order.addItem(makeDrink());
 
-    order.cancelItem('drink-1', 'Customer gave up', CANCELLED_AT);
+    order.cancelItem('drink-1', CANCELLED_AT);
 
     expect(order.getItems()).toHaveLength(1);
     expect(order.getCancellationHistory()).toEqual([
       {
         itemId: 'drink-1',
-        reason: 'Customer gave up',
         cancelledAt: CANCELLED_AT,
       },
     ]);
   });
 
-  it('should record each cancellation with its reason and time', () => {
+  it('should record each cancellation with its item and time', () => {
     const order = makeOrder();
     const pizza = makeItem(PIZZA_PRICE);
     const water = makeItem(WATER_PRICE);
     order.addItem(pizza);
     order.addItem(water);
 
-    order.cancelItem(pizza.getId(), 'Customer gave up', CANCELLED_AT);
-    order.cancelItem(water.getId(), 'Wrong order', CANCELLED_AT);
+    order.cancelItem(pizza.getId(), CANCELLED_AT);
+    order.cancelItem(water.getId(), CANCELLED_AT);
 
     expect(order.getCancellationHistory()).toEqual([
       {
         itemId: pizza.getId(),
-        reason: 'Customer gave up',
         cancelledAt: CANCELLED_AT,
       },
       {
         itemId: water.getId(),
-        reason: 'Wrong order',
         cancelledAt: CANCELLED_AT,
       },
     ]);
@@ -160,9 +157,9 @@ describe('Order', () => {
     order.addItem(pizza);
     pizza.startPreparation();
 
-    expect(() =>
-      order.cancelItem(pizza.getId(), 'Customer gave up', CANCELLED_AT),
-    ).toThrow('Cannot cancel an item in preparation');
+    expect(() => order.cancelItem(pizza.getId(), CANCELLED_AT)).toThrow(
+      'Cannot cancel an item in preparation',
+    );
     expect(order.getItems()).toHaveLength(1);
     expect(order.getCancellationHistory()).toHaveLength(0);
   });
@@ -175,7 +172,7 @@ describe('Order', () => {
     order.addItem(drink);
     pizza.startPreparation();
 
-    order.cancelItem(drink.getId(), 'Customer gave up', CANCELLED_AT);
+    order.cancelItem(drink.getId(), CANCELLED_AT);
 
     expect(order.getItems()).toHaveLength(1);
     expect(order.getCancellationHistory()).toHaveLength(1);
@@ -189,18 +186,13 @@ describe('Order', () => {
     order.addItem(drink);
     pizza.startPreparation();
 
-    order.cancelPreparationItem(
-      pizza.getId(),
-      'Wrong dish started',
-      CANCELLED_AT,
-    );
+    order.cancelPreparationItem(pizza.getId(), CANCELLED_AT);
 
     expect(order.getItems()).toHaveLength(1);
     expect(order.getItems()[0].getId()).toBe(drink.getId());
     expect(order.getCancellationHistory()).toEqual([
       {
         itemId: pizza.getId(),
-        reason: 'Wrong dish started',
         cancelledAt: CANCELLED_AT,
       },
     ]);
@@ -216,11 +208,7 @@ describe('Order', () => {
     order.close(EPaymentType.CASH, CANCELLED_AT);
 
     expect(() =>
-      order.cancelPreparationItem(
-        pizza.getId(),
-        'Wrong dish started',
-        CANCELLED_AT,
-      ),
+      order.cancelPreparationItem(pizza.getId(), CANCELLED_AT),
     ).toThrow('Cannot change a closed order');
   });
 
@@ -228,11 +216,7 @@ describe('Order', () => {
     const order = makeOrder();
 
     expect(() =>
-      order.cancelPreparationItem(
-        'unknown-item',
-        'Wrong dish started',
-        CANCELLED_AT,
-      ),
+      order.cancelPreparationItem('unknown-item', CANCELLED_AT),
     ).toThrow('Item not found');
   });
 
@@ -242,17 +226,17 @@ describe('Order', () => {
     order.addItem(pizza);
     order.close(EPaymentType.CASH, CANCELLED_AT);
 
-    expect(() =>
-      order.cancelItem(pizza.getId(), 'Customer gave up', CANCELLED_AT),
-    ).toThrow('Cannot change a closed order');
+    expect(() => order.cancelItem(pizza.getId(), CANCELLED_AT)).toThrow(
+      'Cannot change a closed order',
+    );
   });
 
   it('should throw when cancelling an item that is not in the order', () => {
     const order = makeOrder();
 
-    expect(() =>
-      order.cancelItem('unknown-item', 'Customer gave up', CANCELLED_AT),
-    ).toThrow('Item not found');
+    expect(() => order.cancelItem('unknown-item', CANCELLED_AT)).toThrow(
+      'Item not found',
+    );
   });
 
   it('should keep the creation timestamp supplied by the caller', () => {
@@ -319,31 +303,21 @@ describe('Order cancellation', () => {
     readyDish.startPreparation();
     readyDish.finishPreparation();
 
-    order.cancelOrder('Customer gave up', CANCELLED_AT);
+    order.cancelOrder(CANCELLED_AT);
 
     expect(order.getStatus()).toBe(EOrderStatus.CANCELLED);
     expect(order.getItems()).toHaveLength(0);
     expect(order.totalPrice).toBe(0);
-    expect(order.getCancelledReason()).toBe('Customer gave up');
     expect(order.getCancelledAt()).toBe(CANCELLED_AT);
   });
 
-  it('should cancel an empty open order and keep the reason', () => {
+  it('should cancel an empty open order', () => {
     const order = makeOrder();
 
-    order.cancelOrder('Customer left', CANCELLED_AT);
+    order.cancelOrder(CANCELLED_AT);
 
     expect(order.getStatus()).toBe(EOrderStatus.CANCELLED);
-    expect(order.getCancelledReason()).toBe('Customer left');
-  });
-
-  it('should refuse cancelling an open order without a reason', () => {
-    const order = makeOrder();
-
-    expect(() => order.cancelOrder('   ', CANCELLED_AT)).toThrow(
-      'Cancellation reason is required',
-    );
-    expect(order.getStatus()).toBe(EOrderStatus.OPEN);
+    expect(order.getCancelledAt()).toBe(CANCELLED_AT);
   });
 
   it('should refuse cancelling a closed order', () => {
@@ -351,7 +325,7 @@ describe('Order cancellation', () => {
     order.addItem(makeItem(PIZZA_PRICE));
     order.close(EPaymentType.CASH, CANCELLED_AT);
 
-    expect(() => order.cancelOrder('Customer gave up', CANCELLED_AT)).toThrow(
+    expect(() => order.cancelOrder(CANCELLED_AT)).toThrow(
       'Cannot change a closed order',
     );
     expect(order.getStatus()).toBe(EOrderStatus.CLOSED);
@@ -362,7 +336,7 @@ describe('Order cancellation', () => {
     order.startDeliveryPreparation();
     order.sendOutForDelivery();
 
-    expect(() => order.cancelOrder('Customer gave up', CANCELLED_AT)).toThrow(
+    expect(() => order.cancelOrder(CANCELLED_AT)).toThrow(
       'Only open orders can be cancelled',
     );
     expect(order.getStatus()).toBe(EOrderStatus.OUT_FOR_DELIVERY);
@@ -370,11 +344,11 @@ describe('Order cancellation', () => {
 
   it('should refuse cancelling an order that is already cancelled', () => {
     const order = makeOrder();
-    order.cancelOrder('Customer gave up', CANCELLED_AT);
+    order.cancelOrder(CANCELLED_AT);
 
-    expect(() =>
-      order.cancelOrder('Customer gave up again', CANCELLED_AT),
-    ).toThrow('Only open orders can be cancelled');
+    expect(() => order.cancelOrder(CANCELLED_AT)).toThrow(
+      'Only open orders can be cancelled',
+    );
   });
 
   it('should freeze a cancelled order against item mutations and closing', () => {
@@ -382,7 +356,7 @@ describe('Order cancellation', () => {
     const pizza = makeItem(PIZZA_PRICE);
     order.addItem(pizza);
     pizza.startPreparation();
-    order.cancelOrder('Customer gave up', CANCELLED_AT);
+    order.cancelOrder(CANCELLED_AT);
 
     expect(() => order.addItem(makeItem(WATER_PRICE))).toThrow(
       'Cannot change a cancelled order',
@@ -390,15 +364,11 @@ describe('Order cancellation', () => {
     expect(() => order.removeItem(pizza.getId())).toThrow(
       'Cannot change a cancelled order',
     );
+    expect(() => order.cancelItem(pizza.getId(), CANCELLED_AT)).toThrow(
+      'Cannot change a cancelled order',
+    );
     expect(() =>
-      order.cancelItem(pizza.getId(), 'Wrong order', CANCELLED_AT),
-    ).toThrow('Cannot change a cancelled order');
-    expect(() =>
-      order.cancelPreparationItem(
-        pizza.getId(),
-        'Wrong dish started',
-        CANCELLED_AT,
-      ),
+      order.cancelPreparationItem(pizza.getId(), CANCELLED_AT),
     ).toThrow('Cannot change a cancelled order');
     expect(() => order.close(EPaymentType.CASH, CANCELLED_AT)).toThrow(
       'Cannot close a cancelled order',

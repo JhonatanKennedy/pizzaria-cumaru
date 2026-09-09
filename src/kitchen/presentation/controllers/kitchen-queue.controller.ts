@@ -45,21 +45,17 @@ export class KitchenQueueController {
   }
 
   // Stopping a dish that was started by mistake: unlike the waiter's
-  // cancellation (Pending only), this acts on "Preparing" rows and records the
-  // reason in the order history. Pending and Ready rows are refused by the
-  // domain verb.
+  // cancellation (Pending only), this acts on "Preparing" rows and records
+  // the cancellation in the order history. Pending and Ready rows are refused
+  // by the domain verb.
   // Feature: 06_cook_profile.feature.
   @Roles({ roles: [EUserRole.COOK, EUserRole.MANAGER] })
   @Post('orders/:orderId/items/:orderItemId/cancel')
   cancel(
     @Param('orderId') orderId: string,
     @Param('orderItemId') itemId: string,
-    @Body() dto: CancelItemDto,
+    @Body() _dto: CancelItemDto,
   ) {
-    return this.cancelItemPreparationUseCase.execute({
-      orderId,
-      itemId,
-      reason: dto.reason,
-    });
+    return this.cancelItemPreparationUseCase.execute({ orderId, itemId });
   }
 }

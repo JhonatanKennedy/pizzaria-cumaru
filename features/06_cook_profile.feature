@@ -45,7 +45,7 @@ Feature: Cook profile
   Scenario: Cook cancels the preparation of a dish already started
     Given the dish "Parmegiana de Frango" is in the kitchen queue with status "Pending"
     And he starts the preparation of the dish "Parmegiana de Frango"
-    When he cancels the preparation of the dish "Parmegiana de Frango" informing the reason "Customer gave up"
+    When he cancels the preparation of the dish "Parmegiana de Frango"
     Then the dish "Parmegiana de Frango" must leave the kitchen queue and the order
-    And the cancellation reason must be recorded in the order history
+    And the order history must record the cancelled item and the cancellation time
     And the order as a whole must remain "Open"

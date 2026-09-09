@@ -9,7 +9,6 @@ import { EOrderStatus } from '../../domain/enums/order-status.js';
 const ORDER_ID = 'order-1';
 const ITEM_ID = 'item-1';
 const OTHER_ITEM_ID = 'item-2';
-const REASON = 'Wrong dish started';
 const CREATED_AT = new Date('2026-09-07T12:00:00Z');
 
 function makeOrderWithTwoPreparedItems(): Order {
@@ -54,22 +53,18 @@ function makeFakeRepository(order: Order | null) {
 }
 
 describe('CancelItemPreparationUseCase', () => {
-  it('should cancel a Preparing item, record the reason, and keep the order open', async () => {
+  it('should cancel a Preparing item, record the cancellation, and keep the order open', async () => {
     const order = makeOrderWithTwoPreparedItems();
     order.getItems()[0].startPreparation();
     const repository = makeFakeRepository(order);
     const useCase = new CancelItemPreparationUseCase(repository);
 
-    await useCase.execute({
-      orderId: ORDER_ID,
-      itemId: ITEM_ID,
-      reason: REASON,
-    });
+    await useCase.execute({ orderId: ORDER_ID, itemId: ITEM_ID });
 
     expect(order.getItems()).toHaveLength(1);
     expect(order.getItems()[0].getId()).toBe(OTHER_ITEM_ID);
     expect(order.getCancellationHistory()).toEqual([
-      { itemId: ITEM_ID, reason: REASON, cancelledAt: expect.any(Date) },
+      { itemId: ITEM_ID, cancelledAt: expect.any(Date) },
     ]);
     expect(order.getStatus()).toBe(EOrderStatus.OPEN);
     expect(repository.save).toHaveBeenCalledWith(order);
@@ -80,7 +75,7 @@ describe('CancelItemPreparationUseCase', () => {
     const useCase = new CancelItemPreparationUseCase(repository);
 
     await expect(
-      useCase.execute({ orderId: ORDER_ID, itemId: ITEM_ID, reason: REASON }),
+      useCase.execute({ orderId: ORDER_ID, itemId: ITEM_ID }),
     ).rejects.toThrow('Order not found');
     expect(repository.save).not.toHaveBeenCalled();
   });
@@ -91,11 +86,7 @@ describe('CancelItemPreparationUseCase', () => {
     const useCase = new CancelItemPreparationUseCase(repository);
 
     await expect(
-      useCase.execute({
-        orderId: ORDER_ID,
-        itemId: 'unknown-item',
-        reason: REASON,
-      }),
+      useCase.execute({ orderId: ORDER_ID, itemId: 'unknown-item' }),
     ).rejects.toThrow('Item not found');
     expect(repository.save).not.toHaveBeenCalled();
   });

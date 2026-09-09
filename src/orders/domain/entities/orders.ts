@@ -18,7 +18,6 @@ export type TCreateOrderParams = {
 
 export interface ICancellationHistoryEntry {
   itemId: string;
-  reason: string;
   cancelledAt: Date;
 }
 
@@ -36,7 +35,6 @@ export interface TRestoreOrderParams {
   status: EOrderStatus;
   deliveredAt?: Date;
   closedAt?: Date;
-  cancelledReason?: string;
   cancelledAt?: Date;
   items: OrderItems[];
   cancellationHistory: ICancellationHistoryEntry[];
@@ -59,7 +57,6 @@ export class Order {
     private notes?: string,
     private deliveredAt?: Date,
     private closedAt?: Date,
-    private cancelledReason?: string,
     private cancelledAt?: Date,
   ) {}
 
@@ -90,7 +87,6 @@ export class Order {
       undefined,
       undefined,
       undefined,
-      undefined,
     );
   }
 
@@ -111,15 +107,11 @@ export class Order {
       params.notes,
       params.deliveredAt,
       params.closedAt,
-      params.cancelledReason,
       params.cancelledAt,
     );
   }
 
-  cancelOrder(reason: string, cancelledAt: Date): void {
-    if (!reason.trim()) {
-      throw new Error('Cancellation reason is required');
-    }
+  cancelOrder(cancelledAt: Date): void {
     if (this.status === EOrderStatus.CLOSED) {
       throw new Error('Cannot change a closed order');
     }
@@ -128,10 +120,9 @@ export class Order {
     }
 
     // A customer who gives up leaves no hostage: every item leaves the order,
-    // whatever its preparation status — the order-level reason is the audit.
+    // whatever its preparation status.
     this.items = [];
     this.status = EOrderStatus.CANCELLED;
-    this.cancelledReason = reason;
     this.cancelledAt = cancelledAt;
   }
 
@@ -156,7 +147,7 @@ export class Order {
     this.items = this.items.filter((item) => item.getId() !== itemId);
   }
 
-  cancelItem(itemId: string, reason: string, cancelledAt: Date): void {
+  cancelItem(itemId: string, cancelledAt: Date): void {
     this.assertNotFrozen();
 
     const item = this.items.find((entry) => entry.getId() === itemId);
@@ -164,15 +155,11 @@ export class Order {
       throw new Error('Item not found');
     }
 
-    item.cancel(reason);
-    this.recordCancellation(itemId, reason, cancelledAt);
+    item.cancel();
+    this.recordCancellation(itemId, cancelledAt);
   }
 
-  cancelPreparationItem(
-    itemId: string,
-    reason: string,
-    cancelledAt: Date,
-  ): void {
+  cancelPreparationItem(itemId: string, cancelledAt: Date): void {
     this.assertNotFrozen();
 
     const item = this.items.find((entry) => entry.getId() === itemId);
@@ -180,17 +167,13 @@ export class Order {
       throw new Error('Item not found');
     }
 
-    item.cancelPreparation(reason);
-    this.recordCancellation(itemId, reason, cancelledAt);
+    item.cancelPreparation();
+    this.recordCancellation(itemId, cancelledAt);
   }
 
-  private recordCancellation(
-    itemId: string,
-    reason: string,
-    cancelledAt: Date,
-  ): void {
+  private recordCancellation(itemId: string, cancelledAt: Date): void {
     this.items = this.items.filter((entry) => entry.getId() !== itemId);
-    this.cancellationHistory.push({ itemId, reason, cancelledAt });
+    this.cancellationHistory.push({ itemId, cancelledAt });
   }
 
   startDeliveryPreparation(): void {
@@ -294,10 +277,6 @@ export class Order {
 
   getClosedAt(): Date | undefined {
     return this.closedAt;
-  }
-
-  getCancelledReason(): string | undefined {
-    return this.cancelledReason;
   }
 
   getCancelledAt(): Date | undefined {

@@ -218,12 +218,11 @@ describe('Order status and kitchen queue (e2e)', () => {
     expect(response.body.delivery).toHaveLength(0);
   });
 
-  it('should cancel a pending item, recording the reason', async () => {
+  it('should cancel a pending item, recording the cancellation', async () => {
     await request(app.getHttpServer())
       .post(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/cancellation`)
       .set('Authorization', `Bearer ${authToken}`)
       .set('Authorization', `Bearer ${authToken}`)
-      .send({ reason: 'Customer gave up' })
       .expect(201);
 
     const response = await request(app.getHttpServer())
@@ -238,7 +237,22 @@ describe('Order status and kitchen queue (e2e)', () => {
       include: { cancellations: true },
     });
     expect(order?.cancellations).toHaveLength(1);
-    expect(order?.cancellations[0].reason).toBe('Customer gave up');
+    expect(order?.cancellations[0].itemId).toBe(PIZZA_ITEM_ID);
+    expect(order?.cancellations[0].cancelledAt).toEqual(expect.any(Date));
+  });
+
+  it('should cancel a pending item even when the body is empty', async () => {
+    await request(app.getHttpServer())
+      .post(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/cancellation`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({})
+      .expect(201);
+
+    const order = await prisma.order.findUnique({
+      where: { id: LOCAL_ORDER_ID },
+      include: { items: true },
+    });
+    expect(order?.items.map((item) => item.id)).toEqual(['order-item-drink-1']);
   });
 
   it('should return 400 with the domain message on an invalid transition', async () => {
@@ -275,15 +289,6 @@ describe('Order status and kitchen queue (e2e)', () => {
     expect(response.body.message).toBe(
       'Access not authorized for your profile',
     );
-  });
-
-  it('should return 400 when cancelling without a reason', async () => {
-    await request(app.getHttpServer())
-      .post(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/cancellation`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .send({})
-      .expect(400);
   });
 
   it('should return 400 with the domain message for a nonexistent order', async () => {
@@ -339,7 +344,6 @@ describe('Order status and kitchen queue (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/cancel`)
       .set('Authorization', `Bearer ${cookToken}`)
-      .send({ reason: 'Wrong dish started' })
       .expect(201);
 
     const queue = await request(app.getHttpServer())
@@ -356,7 +360,8 @@ describe('Order status and kitchen queue (e2e)', () => {
       include: { cancellations: true },
     });
     expect(order?.cancellations).toHaveLength(1);
-    expect(order?.cancellations[0].reason).toBe('Wrong dish started');
+    expect(order?.cancellations[0].itemId).toBe(PIZZA_ITEM_ID);
+    expect(order?.cancellations[0].cancelledAt).toEqual(expect.any(Date));
     expect(order?.status).toBe('Open');
   });
 
@@ -384,7 +389,6 @@ describe('Order status and kitchen queue (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/cancel`)
       .set('Authorization', `Bearer ${loginResponse.body.token}`)
-      .send({ reason: 'Wrong dish started' })
       .expect(403);
 
     expect(response.body.message).toBe(
@@ -401,7 +405,6 @@ describe('Order status and kitchen queue (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post(`/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/cancellation`)
       .set('Authorization', `Bearer ${authToken}`)
-      .send({ reason: 'Customer gave up' })
       .expect(400);
 
     expect(response.body.message).toBe('Cannot cancel an item in preparation');
@@ -416,7 +419,6 @@ describe('Order status and kitchen queue (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/orders/${LOCAL_ORDER_ID}/cancellation`)
       .set('Authorization', `Bearer ${authToken}`)
-      .send({ reason: 'Customer gave up' })
       .expect(201);
 
     const order = await prisma.order.findUnique({
@@ -424,7 +426,6 @@ describe('Order status and kitchen queue (e2e)', () => {
       include: { items: true },
     });
     expect(order?.status).toBe('Cancelled');
-    expect(order?.cancelledReason).toBe('Customer gave up');
     expect(order?.cancelledAt).not.toBeNull();
     expect(order?.items).toHaveLength(0);
 
@@ -448,12 +449,17 @@ describe('Order status and kitchen queue (e2e)', () => {
       .expect(201);
   });
 
-  it('should return 400 when cancelling a whole order without a reason', async () => {
+  it('should cancel a whole order even when the body is empty', async () => {
     await request(app.getHttpServer())
       .post(`/orders/${LOCAL_ORDER_ID}/cancellation`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({})
-      .expect(400);
+      .expect(201);
+
+    const order = await prisma.order.findUnique({
+      where: { id: LOCAL_ORDER_ID },
+    });
+    expect(order?.status).toBe('Cancelled');
   });
 
   it('should adjust quantities, including an item already in preparation', async () => {
@@ -500,6 +506,15 @@ describe('Order status and kitchen queue (e2e)', () => {
 
   it('should refuse a quantity adjustment of a closed order', async () => {
     await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/finish`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+
+    await request(app.getHttpServer())
       .post(`/orders/${LOCAL_ORDER_ID}/close`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({ paymentType: 'Cash' })
@@ -534,7 +549,6 @@ describe('Order status and kitchen queue (e2e)', () => {
     const cancellation = await request(app.getHttpServer())
       .post(`/orders/${LOCAL_ORDER_ID}/cancellation`)
       .set('Authorization', `Bearer ${cookToken}`)
-      .send({ reason: 'Customer gave up' })
       .expect(403);
     expect(cancellation.body.message).toBe(
       'Access not authorized for your profile',

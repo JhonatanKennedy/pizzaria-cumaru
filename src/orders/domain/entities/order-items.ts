@@ -95,11 +95,7 @@ export class OrderItems {
    * Validates that this item can be cancelled. Removal from the order and
    * history recording are performed by `Order.cancelItem`, the only caller.
    */
-  cancel(reason: string): void {
-    if (!reason.trim()) {
-      throw new Error('Cancellation reason is required');
-    }
-
+  cancel(): void {
     if (this.requiresPreparation && this.status !== EOrderItemStatus.PENDING) {
       throw new Error('Cannot cancel an item in preparation');
     }
@@ -110,11 +106,7 @@ export class OrderItems {
    * by the kitchen. Removal from the order and history recording are
    * performed by `Order.cancelPreparationItem`, the only caller.
    */
-  cancelPreparation(reason: string): void {
-    if (!reason.trim()) {
-      throw new Error('Cancellation reason is required');
-    }
-
+  cancelPreparation(): void {
     if (this.status !== EOrderItemStatus.PREPARING) {
       throw new Error('Cannot cancel an item not in preparation');
     }

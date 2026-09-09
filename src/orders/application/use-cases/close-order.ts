@@ -3,6 +3,7 @@ import { ORDERS_REPOSITORY } from '../../domain/repositories/orders-repository.j
 import type { IOrdersRepository } from '../../domain/repositories/orders-repository.js';
 import { EOrderType } from '../../domain/enums/order-type.js';
 import { EPaymentType } from '../../domain/enums/payment-type.js';
+import { EOrderItemStatus } from '../../domain/enums/order-item-status.js';
 
 export interface ICloseOrderParams {
   orderId: string;
@@ -18,7 +19,10 @@ export interface ICloseOrderResult {
   parts?: number[];
 }
 
-// Close an order with its payment type (manager only — waiter attempts are refused).
+// Close a local order with its payment type (manager only — waiter attempts
+// are refused). The close waits for the kitchen: an order whose items are
+// still "Pending" or "Preparing" cannot be billed. Items that never enter
+// the kitchen and items already "Ready" never block.
 // Features: 05_waiter_profile.feature, 07_manager_profile.feature.
 @Injectable()
 export class CloseOrderUseCase {
@@ -34,6 +38,17 @@ export class CloseOrderUseCase {
     }
     if (order.getType() !== EOrderType.LOCAL) {
       throw new Error('Only local orders can be closed');
+    }
+
+    const hasItemInPreparation = order
+      .getItems()
+      .some(
+        (item) =>
+          item.getStatus() === EOrderItemStatus.PENDING ||
+          item.getStatus() === EOrderItemStatus.PREPARING,
+      );
+    if (hasItemInPreparation) {
+      throw new Error('Cannot close an order with items in preparation');
     }
 
     order.close(params.paymentType, new Date());

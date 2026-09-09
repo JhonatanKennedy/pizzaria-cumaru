@@ -137,7 +137,7 @@ describe('UpdateOrderItemQuantityUseCase', () => {
 
   it('should refuse adjusting an item of a cancelled order', async () => {
     const order = makeOpenOrderWithItems();
-    order.cancelOrder('Customer gave up', CREATED_AT);
+    order.cancelOrder(CREATED_AT);
     const repository = makeFakeRepository(order);
     const useCase = new UpdateOrderItemQuantityUseCase(repository);
 

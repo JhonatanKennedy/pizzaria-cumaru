@@ -28,7 +28,6 @@ export type OrderCancellationMinAggregateOutputType = {
   id: string | null
   orderId: string | null
   itemId: string | null
-  reason: string | null
   cancelledAt: Date | null
 }
 
@@ -36,7 +35,6 @@ export type OrderCancellationMaxAggregateOutputType = {
   id: string | null
   orderId: string | null
   itemId: string | null
-  reason: string | null
   cancelledAt: Date | null
 }
 
@@ -44,7 +42,6 @@ export type OrderCancellationCountAggregateOutputType = {
   id: number
   orderId: number
   itemId: number
-  reason: number
   cancelledAt: number
   _all: number
 }
@@ -54,7 +51,6 @@ export type OrderCancellationMinAggregateInputType = {
   id?: true
   orderId?: true
   itemId?: true
-  reason?: true
   cancelledAt?: true
 }
 
@@ -62,7 +58,6 @@ export type OrderCancellationMaxAggregateInputType = {
   id?: true
   orderId?: true
   itemId?: true
-  reason?: true
   cancelledAt?: true
 }
 
@@ -70,7 +65,6 @@ export type OrderCancellationCountAggregateInputType = {
   id?: true
   orderId?: true
   itemId?: true
-  reason?: true
   cancelledAt?: true
   _all?: true
 }
@@ -151,7 +145,6 @@ export type OrderCancellationGroupByOutputType = {
   id: string
   orderId: string
   itemId: string
-  reason: string
   cancelledAt: Date
   _count: OrderCancellationCountAggregateOutputType | null
   _min: OrderCancellationMinAggregateOutputType | null
@@ -180,7 +173,6 @@ export type OrderCancellationWhereInput = {
   id?: Prisma.StringFilter<"OrderCancellation"> | string
   orderId?: Prisma.StringFilter<"OrderCancellation"> | string
   itemId?: Prisma.StringFilter<"OrderCancellation"> | string
-  reason?: Prisma.StringFilter<"OrderCancellation"> | string
   cancelledAt?: Prisma.DateTimeFilter<"OrderCancellation"> | Date | string
   order?: Prisma.XOR<Prisma.OrderScalarRelationFilter, Prisma.OrderWhereInput>
 }
@@ -189,7 +181,6 @@ export type OrderCancellationOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   orderId?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
-  reason?: Prisma.SortOrder
   cancelledAt?: Prisma.SortOrder
   order?: Prisma.OrderOrderByWithRelationInput
 }
@@ -201,7 +192,6 @@ export type OrderCancellationWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.OrderCancellationWhereInput | Prisma.OrderCancellationWhereInput[]
   orderId?: Prisma.StringFilter<"OrderCancellation"> | string
   itemId?: Prisma.StringFilter<"OrderCancellation"> | string
-  reason?: Prisma.StringFilter<"OrderCancellation"> | string
   cancelledAt?: Prisma.DateTimeFilter<"OrderCancellation"> | Date | string
   order?: Prisma.XOR<Prisma.OrderScalarRelationFilter, Prisma.OrderWhereInput>
 }, "id">
@@ -210,7 +200,6 @@ export type OrderCancellationOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   orderId?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
-  reason?: Prisma.SortOrder
   cancelledAt?: Prisma.SortOrder
   _count?: Prisma.OrderCancellationCountOrderByAggregateInput
   _max?: Prisma.OrderCancellationMaxOrderByAggregateInput
@@ -224,14 +213,12 @@ export type OrderCancellationScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"OrderCancellation"> | string
   orderId?: Prisma.StringWithAggregatesFilter<"OrderCancellation"> | string
   itemId?: Prisma.StringWithAggregatesFilter<"OrderCancellation"> | string
-  reason?: Prisma.StringWithAggregatesFilter<"OrderCancellation"> | string
   cancelledAt?: Prisma.DateTimeWithAggregatesFilter<"OrderCancellation"> | Date | string
 }
 
 export type OrderCancellationCreateInput = {
   id?: string
   itemId: string
-  reason: string
   cancelledAt: Date | string
   order: Prisma.OrderCreateNestedOneWithoutCancellationsInput
 }
@@ -240,14 +227,12 @@ export type OrderCancellationUncheckedCreateInput = {
   id?: string
   orderId: string
   itemId: string
-  reason: string
   cancelledAt: Date | string
 }
 
 export type OrderCancellationUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.StringFieldUpdateOperationsInput | string
-  reason?: Prisma.StringFieldUpdateOperationsInput | string
   cancelledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   order?: Prisma.OrderUpdateOneRequiredWithoutCancellationsNestedInput
 }
@@ -256,7 +241,6 @@ export type OrderCancellationUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   orderId?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.StringFieldUpdateOperationsInput | string
-  reason?: Prisma.StringFieldUpdateOperationsInput | string
   cancelledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -264,14 +248,12 @@ export type OrderCancellationCreateManyInput = {
   id?: string
   orderId: string
   itemId: string
-  reason: string
   cancelledAt: Date | string
 }
 
 export type OrderCancellationUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.StringFieldUpdateOperationsInput | string
-  reason?: Prisma.StringFieldUpdateOperationsInput | string
   cancelledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -279,7 +261,6 @@ export type OrderCancellationUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   orderId?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.StringFieldUpdateOperationsInput | string
-  reason?: Prisma.StringFieldUpdateOperationsInput | string
   cancelledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -297,7 +278,6 @@ export type OrderCancellationCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   orderId?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
-  reason?: Prisma.SortOrder
   cancelledAt?: Prisma.SortOrder
 }
 
@@ -305,7 +285,6 @@ export type OrderCancellationMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   orderId?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
-  reason?: Prisma.SortOrder
   cancelledAt?: Prisma.SortOrder
 }
 
@@ -313,7 +292,6 @@ export type OrderCancellationMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   orderId?: Prisma.SortOrder
   itemId?: Prisma.SortOrder
-  reason?: Prisma.SortOrder
   cancelledAt?: Prisma.SortOrder
 }
 
@@ -362,14 +340,12 @@ export type OrderCancellationUncheckedUpdateManyWithoutOrderNestedInput = {
 export type OrderCancellationCreateWithoutOrderInput = {
   id?: string
   itemId: string
-  reason: string
   cancelledAt: Date | string
 }
 
 export type OrderCancellationUncheckedCreateWithoutOrderInput = {
   id?: string
   itemId: string
-  reason: string
   cancelledAt: Date | string
 }
 
@@ -406,35 +382,30 @@ export type OrderCancellationScalarWhereInput = {
   id?: Prisma.StringFilter<"OrderCancellation"> | string
   orderId?: Prisma.StringFilter<"OrderCancellation"> | string
   itemId?: Prisma.StringFilter<"OrderCancellation"> | string
-  reason?: Prisma.StringFilter<"OrderCancellation"> | string
   cancelledAt?: Prisma.DateTimeFilter<"OrderCancellation"> | Date | string
 }
 
 export type OrderCancellationCreateManyOrderInput = {
   id?: string
   itemId: string
-  reason: string
   cancelledAt: Date | string
 }
 
 export type OrderCancellationUpdateWithoutOrderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.StringFieldUpdateOperationsInput | string
-  reason?: Prisma.StringFieldUpdateOperationsInput | string
   cancelledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type OrderCancellationUncheckedUpdateWithoutOrderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.StringFieldUpdateOperationsInput | string
-  reason?: Prisma.StringFieldUpdateOperationsInput | string
   cancelledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type OrderCancellationUncheckedUpdateManyWithoutOrderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   itemId?: Prisma.StringFieldUpdateOperationsInput | string
-  reason?: Prisma.StringFieldUpdateOperationsInput | string
   cancelledAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -444,7 +415,6 @@ export type OrderCancellationSelect<ExtArgs extends runtime.Types.Extensions.Int
   id?: boolean
   orderId?: boolean
   itemId?: boolean
-  reason?: boolean
   cancelledAt?: boolean
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["orderCancellation"]>
@@ -453,7 +423,6 @@ export type OrderCancellationSelectCreateManyAndReturn<ExtArgs extends runtime.T
   id?: boolean
   orderId?: boolean
   itemId?: boolean
-  reason?: boolean
   cancelledAt?: boolean
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["orderCancellation"]>
@@ -462,7 +431,6 @@ export type OrderCancellationSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   id?: boolean
   orderId?: boolean
   itemId?: boolean
-  reason?: boolean
   cancelledAt?: boolean
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["orderCancellation"]>
@@ -471,11 +439,10 @@ export type OrderCancellationSelectScalar = {
   id?: boolean
   orderId?: boolean
   itemId?: boolean
-  reason?: boolean
   cancelledAt?: boolean
 }
 
-export type OrderCancellationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "itemId" | "reason" | "cancelledAt", ExtArgs["result"]["orderCancellation"]>
+export type OrderCancellationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "itemId" | "cancelledAt", ExtArgs["result"]["orderCancellation"]>
 export type OrderCancellationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
 }
@@ -495,7 +462,6 @@ export type $OrderCancellationPayload<ExtArgs extends runtime.Types.Extensions.I
     id: string
     orderId: string
     itemId: string
-    reason: string
     cancelledAt: Date
   }, ExtArgs["result"]["orderCancellation"]>
   composites: {}
@@ -924,7 +890,6 @@ export interface OrderCancellationFieldRefs {
   readonly id: Prisma.FieldRef<"OrderCancellation", 'String'>
   readonly orderId: Prisma.FieldRef<"OrderCancellation", 'String'>
   readonly itemId: Prisma.FieldRef<"OrderCancellation", 'String'>
-  readonly reason: Prisma.FieldRef<"OrderCancellation", 'String'>
   readonly cancelledAt: Prisma.FieldRef<"OrderCancellation", 'DateTime'>
 }
     

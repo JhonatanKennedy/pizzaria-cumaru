@@ -38,7 +38,6 @@ model Order {
   createdAt       DateTime
   deliveredAt     DateTime?
   closedAt        DateTime?
-  cancelledReason String?
   cancelledAt     DateTime?
   items           OrderItem[]
   cancellations   OrderCancellation[]
@@ -72,7 +71,6 @@ model OrderCancellation {
   id          String   @id @default(uuid())
   orderId     String
   itemId      String
-  reason      String
   cancelledAt DateTime
   order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 

@@ -113,7 +113,6 @@ export const OrderScalarFieldEnum = {
   createdAt: 'createdAt',
   deliveredAt: 'deliveredAt',
   closedAt: 'closedAt',
-  cancelledReason: 'cancelledReason',
   cancelledAt: 'cancelledAt'
 } as const
 
@@ -148,7 +147,6 @@ export const OrderCancellationScalarFieldEnum = {
   id: 'id',
   orderId: 'orderId',
   itemId: 'itemId',
-  reason: 'reason',
   cancelledAt: 'cancelledAt'
 } as const
 

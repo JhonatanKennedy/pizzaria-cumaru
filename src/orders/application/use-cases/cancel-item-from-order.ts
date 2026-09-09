@@ -5,10 +5,9 @@ import type { IOrdersRepository } from '../../domain/repositories/orders-reposit
 export interface ICancelItemFromOrderParams {
   orderId: string;
   itemId: string;
-  reason: string;
 }
 
-// Cancel an order item, recording the reason in the order history.
+// Cancel an order item, recording the cancellation in the order history.
 // Items already "Preparing" cannot be cancelled; items that don't require
 // preparation can be cancelled anytime while the order is open.
 // Feature: 09_cancellation_and_payment.feature.
@@ -25,7 +24,7 @@ export class CancelItemFromOrderUseCase {
       throw new Error('Order not found');
     }
 
-    order.cancelItem(params.itemId, params.reason, new Date());
+    order.cancelItem(params.itemId, new Date());
     await this.ordersRepository.save(order);
   }
 }

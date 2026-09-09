@@ -101,6 +101,19 @@ describe('Orders checkout (e2e)', () => {
       .send({ itemId: calabresa.id, quantity: 2 })
       .expect(201);
 
+    // The kitchen must finish the pizzas before the manager can close.
+    const pizzaItem = await prisma.orderItem.findFirstOrThrow({
+      where: { orderId: created.body.id },
+    });
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${created.body.id}/items/${pizzaItem.id}/start`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${created.body.id}/items/${pizzaItem.id}/finish`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+
     const closed = await request(app.getHttpServer())
       .post(`/orders/${created.body.id}/close`)
       .set('Authorization', `Bearer ${authToken}`)
@@ -128,7 +141,7 @@ describe('Orders checkout (e2e)', () => {
     expect(listing.body).toHaveLength(1);
     expect(listing.body[0].waiterName).toBe('João Garçom');
     expect(listing.body[0].status).toBe('Closed');
-    expect(listing.body[0].items[0].status).toBe('Pending');
+    expect(listing.body[0].items[0].status).toBe('Ready');
   });
 
   it('should free the table after closing', async () => {
@@ -147,6 +160,17 @@ describe('Orders checkout (e2e)', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .send({ itemId: calabresa.id })
       .expect(201);
+    const pizzaItem = await prisma.orderItem.findFirstOrThrow({
+      where: { orderId: first.body.id },
+    });
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${first.body.id}/items/${pizzaItem.id}/start`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${first.body.id}/items/${pizzaItem.id}/finish`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
     await request(app.getHttpServer())
       .post(`/orders/${first.body.id}/close`)
       .set('Authorization', `Bearer ${authToken}`)
@@ -159,6 +183,57 @@ describe('Orders checkout (e2e)', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({ userId: waiterId, type: 'Local', tableId: '10' })
+      .expect(201);
+  });
+
+  it('should refuse closing an order while an item is still pending or in preparation', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ userId: waiterId, type: 'Local', tableId: '9' })
+      .expect(201);
+    const calabresa = await prisma.item.findFirstOrThrow({
+      where: { name: 'Calabresa' },
+    });
+    await request(app.getHttpServer())
+      .post(`/orders/${created.body.id}/items`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ itemId: calabresa.id })
+      .expect(201);
+
+    const whilePending = await request(app.getHttpServer())
+      .post(`/orders/${created.body.id}/close`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ paymentType: 'Cash' })
+      .expect(400);
+    expect(whilePending.body.message).toBe(
+      'Cannot close an order with items in preparation',
+    );
+
+    const pizzaItem = await prisma.orderItem.findFirstOrThrow({
+      where: { orderId: created.body.id },
+    });
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${created.body.id}/items/${pizzaItem.id}/start`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+    const whilePreparing = await request(app.getHttpServer())
+      .post(`/orders/${created.body.id}/close`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ paymentType: 'Cash' })
+      .expect(400);
+    expect(whilePreparing.body.message).toBe(
+      'Cannot close an order with items in preparation',
+    );
+
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${created.body.id}/items/${pizzaItem.id}/finish`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/orders/${created.body.id}/close`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ paymentType: 'Cash' })
       .expect(201);
   });
 
@@ -194,6 +269,17 @@ describe('Orders checkout (e2e)', () => {
       .post(`/orders/${local.body.id}/items`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({ itemId: calabresa.id, quantity: 2 })
+      .expect(201);
+    const localPizza = await prisma.orderItem.findFirstOrThrow({
+      where: { orderId: local.body.id },
+    });
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${local.body.id}/items/${localPizza.id}/start`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/kitchen/orders/${local.body.id}/items/${localPizza.id}/finish`)
+      .set('Authorization', `Bearer ${authToken}`)
       .expect(201);
     await request(app.getHttpServer())
       .post(`/orders/${local.body.id}/close`)
@@ -237,7 +323,6 @@ describe('Orders checkout (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/orders/${cancelled.body.id}/cancellation`)
       .set('Authorization', `Bearer ${authToken}`)
-      .send({ reason: 'Customer gave up' })
       .expect(201);
 
     const sales = await request(app.getHttpServer())
@@ -260,7 +345,7 @@ describe('Orders checkout (e2e)', () => {
         id: expect.any(String),
         itemId: calabresa.id,
         quantity: 2,
-        status: 'Pending',
+        status: 'Ready',
       },
     ]);
 

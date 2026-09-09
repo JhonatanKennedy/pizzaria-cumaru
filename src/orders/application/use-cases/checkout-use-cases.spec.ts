@@ -7,6 +7,7 @@ import { OrderItems } from '../../domain/entities/order-items.js';
 import { EOrderType } from '../../domain/enums/order-type.js';
 import { EOrderStatus } from '../../domain/enums/order-status.js';
 import { EPaymentType } from '../../domain/enums/payment-type.js';
+import { EOrderItemStatus } from '../../domain/enums/order-item-status.js';
 
 const CREATED_AT = new Date('2026-09-07T12:00:00Z');
 const DAY = new Date('2026-09-07T09:00:00Z');
@@ -35,6 +36,38 @@ function makeLocalOrder(id: string, withItem: boolean): Order {
   return order;
 }
 
+// Drives every kitchen item of the order to "Ready", as the cook would.
+function makeKitchenItemsReady(order: Order): void {
+  for (const item of order.getItems()) {
+    if (item.getStatus() !== undefined) {
+      item.startPreparation();
+      item.finishPreparation();
+    }
+  }
+}
+
+function makeDrinksOnlyOrder(id: string): Order {
+  const order = Order.create({
+    id,
+    userId: 1,
+    type: EOrderType.LOCAL,
+    createdAt: CREATED_AT,
+    tableId: '5',
+  });
+  order.addItem(
+    OrderItems.create({
+      id: `${id}-drink`,
+      orderId: id,
+      itemId: 'catalog-drink-1',
+      unitPrice: 8,
+      quantity: 2,
+      requiresPreparation: false,
+      createdAt: CREATED_AT,
+    }),
+  );
+  return order;
+}
+
 function makeFakeRepository(
   order: Order | null,
   completed: Order[] = [],
@@ -53,6 +86,7 @@ function makeFakeRepository(
 describe('CloseOrderUseCase', () => {
   it('should close a local order with payment and report the total', async () => {
     const order = makeLocalOrder('order-1', true);
+    makeKitchenItemsReady(order);
     const repository = makeFakeRepository(order);
     const useCase = new CloseOrderUseCase(repository);
 
@@ -71,6 +105,7 @@ describe('CloseOrderUseCase', () => {
 
   it('should split the bill into equal parts when requested', async () => {
     const order = makeLocalOrder('order-1', true);
+    makeKitchenItemsReady(order);
     const repository = makeFakeRepository(order);
     const useCase = new CloseOrderUseCase(repository);
 
@@ -81,6 +116,61 @@ describe('CloseOrderUseCase', () => {
     });
 
     expect(result.parts).toEqual([40, 40, 40]);
+  });
+
+  it('should refuse closing while an item is still Pending', async () => {
+    const order = makeLocalOrder('order-1', true);
+    const repository = makeFakeRepository(order);
+    const useCase = new CloseOrderUseCase(repository);
+
+    await expect(
+      useCase.execute({ orderId: 'order-1', paymentType: EPaymentType.CASH }),
+    ).rejects.toThrow('Cannot close an order with items in preparation');
+    expect(order.getStatus()).toBe(EOrderStatus.OPEN);
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it('should refuse closing while an item is still Preparing', async () => {
+    const order = makeLocalOrder('order-1', true);
+    order.getItems()[0].startPreparation();
+    const repository = makeFakeRepository(order);
+    const useCase = new CloseOrderUseCase(repository);
+
+    await expect(
+      useCase.execute({ orderId: 'order-1', paymentType: EPaymentType.CASH }),
+    ).rejects.toThrow('Cannot close an order with items in preparation');
+    expect(order.getStatus()).toBe(EOrderStatus.OPEN);
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it('should close once every kitchen item reached Ready', async () => {
+    const order = makeLocalOrder('order-1', true);
+    makeKitchenItemsReady(order);
+    expect(order.getItems()[0].getStatus()).toBe(EOrderItemStatus.READY);
+    const repository = makeFakeRepository(order);
+    const useCase = new CloseOrderUseCase(repository);
+
+    await useCase.execute({
+      orderId: 'order-1',
+      paymentType: EPaymentType.CREDIT_CARD,
+    });
+
+    expect(order.getStatus()).toBe(EOrderStatus.CLOSED);
+    expect(repository.save).toHaveBeenCalledWith(order);
+  });
+
+  it('should close an order holding only non-prepared items', async () => {
+    const order = makeDrinksOnlyOrder('order-1');
+    const repository = makeFakeRepository(order);
+    const useCase = new CloseOrderUseCase(repository);
+
+    const result = await useCase.execute({
+      orderId: 'order-1',
+      paymentType: EPaymentType.CASH,
+    });
+
+    expect(order.getStatus()).toBe(EOrderStatus.CLOSED);
+    expect(result.total).toBe(16);
   });
 
   it('should refuse closing a delivery order', async () => {
@@ -111,6 +201,22 @@ describe('CloseOrderUseCase', () => {
     await expect(
       useCase.execute({ orderId: 'order-1', paymentType: EPaymentType.CASH }),
     ).rejects.toThrow('Order must have at least one item');
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it('should refuse closing an order that is already closed', async () => {
+    const order = makeLocalOrder('order-1', true);
+    makeKitchenItemsReady(order);
+    order.close(EPaymentType.CASH, CREATED_AT);
+    const repository = makeFakeRepository(order);
+    const useCase = new CloseOrderUseCase(repository);
+
+    await expect(
+      useCase.execute({
+        orderId: 'order-1',
+        paymentType: EPaymentType.CASH,
+      }),
+    ).rejects.toThrow('Order is already closed');
     expect(repository.save).not.toHaveBeenCalled();
   });
 });

@@ -82,18 +82,18 @@ describe('PrismaOrdersRepository', () => {
     await repository.save(order);
 
     const cancelledAt = new Date('2026-09-07T12:30:00Z');
-    order.cancelItem(item.getId(), 'Customer gave up', cancelledAt);
+    order.cancelItem(item.getId(), cancelledAt);
     await repository.save(order);
 
     const loaded = await repository.findById('order-1');
 
     expect(loaded?.getItems()).toHaveLength(0);
     expect(loaded?.getCancellationHistory()).toEqual([
-      { itemId: item.getId(), reason: 'Customer gave up', cancelledAt },
+      { itemId: item.getId(), cancelledAt },
     ]);
   });
 
-  it('should round-trip a cancelled order with its reason and time', async () => {
+  it('should round-trip a cancelled order with its time', async () => {
     const order = makeOrder();
     const item = makeItem();
     order.addItem(item);
@@ -101,7 +101,7 @@ describe('PrismaOrdersRepository', () => {
     await repository.save(order);
 
     const cancelledAt = new Date('2026-09-07T12:30:00Z');
-    order.cancelOrder('Customer gave up', cancelledAt);
+    order.cancelOrder(cancelledAt);
     await repository.save(order);
 
     const loaded = await repository.findById('order-1');
@@ -109,7 +109,6 @@ describe('PrismaOrdersRepository', () => {
     expect(loaded).not.toBeNull();
     expect(loaded?.getStatus()).toBe(EOrderStatus.CANCELLED);
     expect(loaded?.getItems()).toHaveLength(0);
-    expect(loaded?.getCancelledReason()).toBe('Customer gave up');
     expect(loaded?.getCancelledAt()?.getTime()).toBe(cancelledAt.getTime());
   });
 
@@ -180,7 +179,7 @@ describe('PrismaOrdersRepository', () => {
 
     const cancelledOrder = makeOrder('cancelled-order');
     cancelledOrder.addItem(makeItem('cancelled-item'));
-    cancelledOrder.cancelOrder('Customer gave up', CREATED_AT);
+    cancelledOrder.cancelOrder(CREATED_AT);
     await repository.save(cancelledOrder);
 
     const openOrders = await repository.findAllOpen();

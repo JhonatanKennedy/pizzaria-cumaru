@@ -29,10 +29,22 @@ Feature: Manager profile
 
   Scenario: Manager closes a table order
     Given there is an open order for table "10" with items added
+    And every kitchen item of the order has reached "Ready"
     When she closes the order of table "10" informing the payment method "CreditCard"
     Then the order status must change to "Closed"
     And the total value of the order must be calculated and displayed
     And table "10" must become available for a new service
+
+  Scenario: Closing is refused while the kitchen still prepares an item
+    Given there is an open order for table "10" with a pizza "Calabresa" that the kitchen is preparing
+    When she tries to close the order of table "10" informing the payment method "CreditCard"
+    Then the system must refuse the operation
+    And the message "Cannot close an order with items in preparation" must be displayed
+
+  Scenario: An order with only non-prepared items closes without waiting for the kitchen
+    Given there is an open order for table "10" containing only the drink "Água"
+    When she closes the order of table "10" informing the payment method "CreditCard"
+    Then the order status must change to "Closed"
 
   Scenario: Manager sees which waiter registered each order
     Given the waiter "joao.garcom" opened the order of table "4"
