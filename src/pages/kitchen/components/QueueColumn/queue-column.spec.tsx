@@ -16,6 +16,7 @@ const ORDERS: TKitchenQueueOrder[] = [
         quantity: 2,
         status: 'Pending',
         createdAt: '2026-09-09T12:00:00Z',
+        parts: [],
       },
       {
         orderItemId: 'order-item-2',
@@ -24,6 +25,7 @@ const ORDERS: TKitchenQueueOrder[] = [
         quantity: 1,
         status: 'Pending',
         createdAt: '2026-09-09T12:01:00Z',
+        parts: [],
       },
     ],
   },
@@ -39,6 +41,7 @@ const ORDERS: TKitchenQueueOrder[] = [
         quantity: 1,
         status: 'Preparing',
         createdAt: '2026-09-09T12:02:00Z',
+        parts: [],
       },
     ],
   },

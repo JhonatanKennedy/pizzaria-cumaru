@@ -42,6 +42,35 @@ describe('kitchenQueueSchema', () => {
     expect(kitchenQueueSchema.safeParse(queue).success).toBe(true);
   });
 
+  it('should default parts to [] and carry a composition through the parse', () => {
+    const queue = {
+      delivery: [],
+      local: [
+        {
+          ...QUEUE_ORDER,
+          items: [
+            { ...QUEUE_ITEM_WITHOUT_NOTES },
+            {
+              ...QUEUE_ITEM_WITH_NOTES,
+              name: 'Mussarela G',
+              parts: [
+                { name: 'Mussarela G', pieces: 6 },
+                { name: 'Chocolate G', pieces: 2 },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const parsed = kitchenQueueSchema.parse(queue);
+
+    expect(parsed.local[0].items[0].parts).toEqual([]);
+    expect(parsed.local[0].items[1].parts).toEqual([
+      { name: 'Mussarela G', pieces: 6 },
+      { name: 'Chocolate G', pieces: 2 },
+    ]);
+  });
+
   it('should reject an item with a status outside the queue states', () => {
     const queue = {
       delivery: [],

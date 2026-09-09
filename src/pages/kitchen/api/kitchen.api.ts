@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { apiRequest } from '@api/http-client';
+import { flavorPartSchema } from '@api/orders.api';
 
 export const KITCHEN_QUEUE_KEY = ['kitchen-queue'] as const;
 
 // Mirrors GET /kitchen/queue (backend ListKitchenQueueUseCase). The panel
-// is anonymous, so tableId is deliberately not modeled. notes is nullish:
-// until the backend slice lands, a queue without the field must still
-// render (tiles just show no notes line) — the one deliberate tolerance.
+// is anonymous, so tableId is deliberately not modeled. notes is nullish
+// and parts defaults to [] — until the backend slice lands, a queue
+// without the fields must still render (tiles just show no extra lines).
 export const kitchenQueueOrderSchema = z.object({
   orderId: z.string(),
   type: z.enum(['Local', 'Delivery']),
@@ -20,6 +21,7 @@ export const kitchenQueueOrderSchema = z.object({
       status: z.enum(['Pending', 'Preparing']),
       createdAt: z.string(),
       notes: z.string().nullish(),
+      parts: z.array(flavorPartSchema).default([]),
     }),
   ),
 });

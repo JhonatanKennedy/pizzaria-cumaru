@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@components/Button';
+import { formatComposition } from '@lib/flavor-composition';
 import { itemStatusLabel } from '@lib/item-labels';
 import type { TKitchenQueueItem } from '../../api/kitchen.api';
 import { CancelPreparationDialog } from '../CancelPreparationDialog';
@@ -47,6 +48,11 @@ export function ItemTile({
           {item.quantity}×
         </span>
       </div>
+      {item.parts.length > 1 && (
+        <p className="text-sm text-stone-600">
+          {formatComposition(item.parts)}
+        </p>
+      )}
       {item.notes && <p className="text-sm text-stone-600">{item.notes}</p>}
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm text-stone-600">

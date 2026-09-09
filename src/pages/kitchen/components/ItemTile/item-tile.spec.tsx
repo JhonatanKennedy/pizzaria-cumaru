@@ -11,6 +11,7 @@ const PENDING_ITEM: TKitchenQueueItem = {
   status: 'Pending',
   createdAt: '2026-09-09T12:00:00Z',
   notes: 'sem cebola',
+  parts: [],
 };
 
 const PREPARING_ITEM: TKitchenQueueItem = {
@@ -52,6 +53,29 @@ describe('ItemTile', () => {
     renderTile({ ...PREPARING_ITEM, notes: null });
 
     expect(screen.queryByText('sem cebola')).not.toBeInTheDocument();
+  });
+
+  it('should not render a composition line for a plain item', () => {
+    renderTile({ ...PENDING_ITEM, parts: [] });
+
+    expect(screen.queryByText(/·/)).not.toBeInTheDocument();
+  });
+
+  it('should show the composition line on a composed pizza tile', () => {
+    renderTile({
+      ...PENDING_ITEM,
+      name: 'Mussarela G',
+      quantity: 1,
+      parts: [
+        { name: 'Mussarela G', pieces: 4 },
+        { name: 'Chocolate G', pieces: 4 },
+      ],
+    });
+
+    expect(screen.getByText('Mussarela G')).toBeInTheDocument();
+    expect(
+      screen.getByText('Mussarela 1/2 · Chocolate 1/2'),
+    ).toBeInTheDocument();
   });
 
   it('should paint the tile with its status color', () => {
