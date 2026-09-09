@@ -146,6 +146,24 @@ const SEED_ITEMS: SeedItem[] = [
 
 const SEED_TABLES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
+// Pizzas are registered per size as flat catalog entries whose names carry
+// the trailing size token ("Mussarela G" / "Mussarela M"); each seed pizza
+// yields its two sized variants at the base price. The token-less legacy
+// names stay so past orders keep resolving their catalog item.
+const PIZZA_SIZE_SUFFIXES = ['G', 'M'] as const;
+const SEED_ITEMS_WITH_SIZES: SeedItem[] = SEED_ITEMS.flatMap((seed) => {
+  if (seed.category !== EItemCategory.PIZZA) {
+    return [seed];
+  }
+  return [
+    seed,
+    ...PIZZA_SIZE_SUFFIXES.map((suffix) => ({
+      ...seed,
+      name: `${seed.name} ${suffix}`,
+    })),
+  ];
+});
+
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
@@ -186,7 +204,7 @@ for (const seed of SEED_INGREDIENTS) {
 // Matches by name: items renamed by a user are left alone and re-created
 // under the seed name.
 const itemIdsByName = new Map<string, string>();
-for (const seed of SEED_ITEMS) {
+for (const seed of SEED_ITEMS_WITH_SIZES) {
   const data = {
     name: seed.name,
     description: seed.description,
@@ -205,7 +223,7 @@ for (const seed of SEED_ITEMS) {
 
 // --- links ---
 let linkCount = 0;
-for (const seed of SEED_ITEMS) {
+for (const seed of SEED_ITEMS_WITH_SIZES) {
   const itemId = itemIdsByName.get(seed.name);
   if (!itemId) {
     throw new Error(`Seed item not found after upsert: ${seed.name}`);
@@ -239,6 +257,6 @@ console.log(
   `Seeded ${SEED_USERS.length} users with password "${SEED_PASSWORD}"`,
 );
 console.log(
-  `Seeded ${SEED_INGREDIENTS.length} ingredients, ${SEED_ITEMS.length} items and ${linkCount} item-ingredient links`,
+  `Seeded ${SEED_INGREDIENTS.length} ingredients, ${SEED_ITEMS_WITH_SIZES.length} items and ${linkCount} item-ingredient links`,
 );
 console.log(`Seeded ${SEED_TABLES.length} tables`);
