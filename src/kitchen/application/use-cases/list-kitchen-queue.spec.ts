@@ -34,6 +34,7 @@ function makePizza(
   orderId: string,
   id = 'item-1',
   createdAt = BASE_TIME,
+  notes?: string,
 ): OrderItems {
   return OrderItems.create({
     id,
@@ -43,6 +44,7 @@ function makePizza(
     quantity: 1,
     requiresPreparation: true,
     createdAt,
+    notes,
   });
 }
 
@@ -133,6 +135,23 @@ describe('ListKitchenQueueUseCase', () => {
     expect(queue.local[0].items.map((item) => item.orderItemId)).toEqual([
       'line-1',
       'line-2',
+    ]);
+  });
+
+  it('should expose the order item notes, empty when the item has none', async () => {
+    const order = makeOrder('table-3', EOrderType.LOCAL, BASE_TIME, '3');
+    order.addItem(makePizza('table-3', 'line-1', BASE_TIME, 'sem cebola'));
+    order.addItem(makePizza('table-3', 'line-2'));
+
+    const queue = await makeUseCase(
+      [order],
+      [makePizzaCatalogItem()],
+      [makeIngredient(true)],
+    ).execute();
+
+    expect(queue.local[0].items.map((item) => item.notes)).toEqual([
+      'sem cebola',
+      '',
     ]);
   });
 

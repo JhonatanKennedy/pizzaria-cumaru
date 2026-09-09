@@ -19,6 +19,8 @@ export interface IKitchenQueueItem {
   quantity: number;
   status: EOrderItemStatus;
   createdAt: Date;
+  // Guest/waiter note on the order line; '' when the item has none.
+  notes: string;
 }
 
 export interface IKitchenQueueOrder {
@@ -96,6 +98,7 @@ export class ListKitchenQueueUseCase {
         quantity: item.getQuantity(),
         status: item.getStatus() as EOrderItemStatus,
         createdAt: item.getCreatedAt(),
+        notes: item.getNotes(),
       }));
 
     return {
