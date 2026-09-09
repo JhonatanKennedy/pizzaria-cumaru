@@ -8,6 +8,7 @@ import { Ingredient } from '../../../catalog/domain/entities/ingredients.js';
 import { EOrderType } from '../../../orders/domain/enums/order-type.js';
 import { EItemCategory } from '../../../catalog/domain/enums/item-category.js';
 import { EOrderItemStatus } from '../../../orders/domain/enums/order-item-status.js';
+import type { TFlavorPart } from '../../../orders/domain/entities/order-items.js';
 
 const PIZZA_ITEM_ID = 'catalog-pizza-1';
 const INGREDIENT_ID = 'ingredient-1';
@@ -35,6 +36,7 @@ function makePizza(
   id = 'item-1',
   createdAt = BASE_TIME,
   notes?: string,
+  parts?: TFlavorPart[],
 ): OrderItems {
   return OrderItems.create({
     id,
@@ -45,6 +47,7 @@ function makePizza(
     requiresPreparation: true,
     createdAt,
     notes,
+    parts,
   });
 }
 
@@ -153,6 +156,29 @@ describe('ListKitchenQueueUseCase', () => {
       'sem cebola',
       '',
     ]);
+  });
+
+  it('should expose the composition of a composed pizza row only', async () => {
+    const order = makeOrder('table-3', EOrderType.LOCAL, BASE_TIME, '3');
+    order.addItem(
+      makePizza('table-3', 'line-1', BASE_TIME, undefined, [
+        { name: 'Mussarela G', pieces: 6 },
+        { name: 'Chocolate G', pieces: 2 },
+      ]),
+    );
+    order.addItem(makePizza('table-3', 'line-2'));
+
+    const queue = await makeUseCase(
+      [order],
+      [makePizzaCatalogItem()],
+      [makeIngredient(true)],
+    ).execute();
+
+    expect(queue.local[0].items[0].parts).toEqual([
+      { name: 'Mussarela G', pieces: 6 },
+      { name: 'Chocolate G', pieces: 2 },
+    ]);
+    expect(queue.local[0].items[1].parts).toEqual([]);
   });
 
   it('should order each queue by arrival, earliest first', async () => {

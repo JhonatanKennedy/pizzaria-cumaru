@@ -6,7 +6,10 @@ import type { ICatalogRepository } from '../../../catalog/domain/repositories/ca
 import { EOrderType } from '../../../orders/domain/enums/order-type.js';
 import { EOrderItemStatus } from '../../../orders/domain/enums/order-item-status.js';
 import type { Order } from '../../../orders/domain/entities/orders.js';
-import type { OrderItems } from '../../../orders/domain/entities/order-items.js';
+import type {
+  OrderItems,
+  TFlavorPart,
+} from '../../../orders/domain/entities/order-items.js';
 import type { Item } from '../../../catalog/domain/entities/items.js';
 
 export interface IKitchenQueueItem {
@@ -21,6 +24,9 @@ export interface IKitchenQueueItem {
   createdAt: Date;
   // Guest/waiter note on the order line; '' when the item has none.
   notes: string;
+  // Flavor composition when the item is a composed pizza (parts recorded in
+  // order); empty for whole pizzas and non-pizza items.
+  parts: TFlavorPart[];
 }
 
 export interface IKitchenQueueOrder {
@@ -99,6 +105,8 @@ export class ListKitchenQueueUseCase {
         status: item.getStatus() as EOrderItemStatus,
         createdAt: item.getCreatedAt(),
         notes: item.getNotes(),
+        parts:
+          item.getParts().length > 1 ? [...item.getParts()] : [],
       }));
 
     return {
