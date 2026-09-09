@@ -19,9 +19,9 @@ import { useMenu } from '../hooks/use-menu';
 import { useOrders } from '../hooks/use-orders';
 import { useTables } from '../hooks/use-tables';
 import { useUpdateItemQuantity } from '../hooks/use-update-item-quantity';
+import { canCancelOrderItem } from '../business/can-cancel-order-item';
 
 const OPEN_STATUS = 'Open';
-const PENDING_STATUS = 'Pending';
 const CANCELLED_STATUS = 'Cancelled';
 
 interface OrderDetailPageProps {
@@ -208,7 +208,7 @@ export function OrderDetailPage({
                   {formatBRL(item.unitPrice * item.quantity)}
                 </span>
               )}
-              {isOpen && item.status === PENDING_STATUS && (
+              {isOpen && canCancelOrderItem(item.status) && (
                 <Button
                   onClick={() => setItemToCancel(item)}
                   className="px-3 py-1 text-sm"
