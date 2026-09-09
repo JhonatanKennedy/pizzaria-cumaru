@@ -10,11 +10,24 @@ export const ORDERS_QUERY_KEY = ['orders'];
 export const ORDER_TYPES = ['Local', 'Delivery'] as const;
 export type TOrderType = (typeof ORDER_TYPES)[number];
 
+// A flavor part of a split pizza: the flavor names a registered pizza item
+// (same size as the base) and the pieces are the fatias it occupies.
+export const flavorPartSchema = z.object({
+  name: z.string(),
+  pieces: z.number().int().positive(),
+});
+
+export type TFlavorPart = z.infer<typeof flavorPartSchema>;
+
 export const orderItemListingSchema = z.object({
   id: z.string(),
   itemId: z.string(),
   quantity: z.number().int().positive(),
   status: z.string().nullable(),
+  // The unit price recorded when the item was added (a composed pizza
+  // records the max-flavor price); parts is empty for whole items.
+  unitPrice: z.number(),
+  parts: z.array(flavorPartSchema).default([]),
 });
 
 export const orderListingSchema = z.object({
@@ -48,7 +61,8 @@ export type TCreatedOrder = z.infer<typeof createdOrderSchema>;
 export interface IAddItemPayload {
   itemId: string;
   quantity?: number;
-  flavors?: string[];
+  // The flavor composition when splitting a pizza; omit for a whole item.
+  parts?: TFlavorPart[];
   notes?: string;
 }
 

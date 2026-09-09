@@ -25,30 +25,56 @@ const ORDER: TOrderListing = {
   createdAt: '2026-09-08T12:00:00Z',
   totalPrice: 90,
   items: [
-    { id: 'line-1', itemId: 'catalog-pizza-1', quantity: 2, status: 'Pending' },
-    { id: 'line-2', itemId: 'catalog-removed-1', quantity: 1, status: null },
-  ],
-};
-
-describe('enrichOrder', () => {
-  it('should join each line with its menu item name and price', () => {
-    const enriched = enrichOrder(ORDER, MENU);
-
-    expect(enriched.items[0]).toEqual({
+    {
       id: 'line-1',
       itemId: 'catalog-pizza-1',
       quantity: 2,
       status: 'Pending',
-      name: 'Calabresa',
-      unitPrice: 45,
-    });
+      unitPrice: 52,
+      parts: [
+        { name: 'Calabresa G', pieces: 6 },
+        { name: 'Chocolate G', pieces: 2 },
+      ],
+    },
+    {
+      id: 'line-2',
+      itemId: 'catalog-removed-1',
+      quantity: 1,
+      status: null,
+      unitPrice: 30,
+      parts: [],
+    },
+  ],
+};
+
+describe('enrichOrder', () => {
+  it('should join each line with its menu item name', () => {
+    const enriched = enrichOrder(ORDER, MENU);
+
+    expect(enriched.items[0].name).toBe('Calabresa');
   });
 
-  it('should show the fallback label and no price for removed menu items', () => {
+  it('should keep the recorded unit price instead of the catalog price', () => {
+    const enriched = enrichOrder(ORDER, MENU);
+
+    expect(enriched.items[0].unitPrice).toBe(52);
+  });
+
+  it('should keep the recorded parts and quantity on each line', () => {
+    const enriched = enrichOrder(ORDER, MENU);
+
+    expect(enriched.items[0].parts).toEqual([
+      { name: 'Calabresa G', pieces: 6 },
+      { name: 'Chocolate G', pieces: 2 },
+    ]);
+    expect(enriched.items[0].quantity).toBe(2);
+  });
+
+  it('should show the fallback label with the recorded price for removed menu items', () => {
     const enriched = enrichOrder(ORDER, MENU);
 
     expect(enriched.items[1].name).toBe(REMOVED_ITEM_LABEL);
-    expect(enriched.items[1].unitPrice).toBeNull();
+    expect(enriched.items[1].unitPrice).toBe(30);
   });
 
   it('should keep the order totals untouched', () => {
@@ -58,7 +84,7 @@ describe('enrichOrder', () => {
     expect(enriched.tableId).toBe('5');
   });
 
-  it('should fall back for every line when the menu is empty', () => {
+  it('should fall back for every name when the menu is empty', () => {
     const enriched = enrichOrder(ORDER, []);
 
     expect(

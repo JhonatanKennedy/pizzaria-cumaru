@@ -38,6 +38,8 @@ const OPEN_DELIVERY: TOrderListing = {
       itemId: 'catalog-pizza-1',
       quantity: 1,
       status: 'Pending',
+      unitPrice: 45,
+      parts: [],
     },
   ],
 };
@@ -54,6 +56,8 @@ const PREPARING_DELIVERY: TOrderListing = {
       itemId: 'catalog-drink-1',
       quantity: 2,
       status: 'Ready',
+      unitPrice: 8,
+      parts: [],
     },
   ],
 };
@@ -72,6 +76,8 @@ const LOCAL_ORDER: TOrderListing = {
       itemId: 'catalog-pizza-2',
       quantity: 2,
       status: 'Pending',
+      unitPrice: 49,
+      parts: [],
     },
   ],
 };
