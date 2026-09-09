@@ -4,15 +4,12 @@ import type {
   TMenuListing,
   TMenuItem,
 } from '@api/catalog.api';
-import { categoryLabel } from '@lib/catalog';
+import { CATEGORY_ORDER, categoryLabel } from '@lib/catalog';
 import { formatBRL } from '@lib/format';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
 import { ConfirmDialog } from '../../../../components/ConfirmDialog';
-import { EditItemDialog } from '../../../../components/EditItemDialog';
 import { ItemFormDialog } from '../../../../components/ItemFormDialog';
-import { ItemIngredientsDialog } from '../../../../components/ItemIngredientsDialog';
-import { PriceDialog } from '../../../../components/PriceDialog';
 import { useDeleteItem } from '../../../../hooks/use-delete-item';
 
 interface MenuTabProps {
@@ -24,24 +21,47 @@ type TOpenDialog =
   | { kind: 'none' }
   | { kind: 'create' }
   | { kind: 'edit'; item: TMenuItem }
-  | { kind: 'price'; item: TMenuItem }
-  | { kind: 'delete'; item: TMenuItem }
-  | { kind: 'ingredients'; item: TMenuItem };
+  | { kind: 'delete'; item: TMenuItem };
+
+const CATEGORY_CHIPS: readonly (string | null)[] = [null, ...CATEGORY_ORDER];
 
 export function MenuTab({ items, ingredients }: MenuTabProps): React.ReactNode {
   const [openDialog, setOpenDialog] = useState<TOpenDialog>({ kind: 'none' });
+  // The listing is the full unpaginated catalog the other screens share, so
+  // browsing by category stays client-side (null means Todas).
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const deleteItemMutation = useDeleteItem();
+  const visibleItems =
+    categoryFilter === null
+      ? items
+      : items.filter((item) => item.category === categoryFilter);
 
   return (
     <div>
-      <div className="mt-6 flex justify-end">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {CATEGORY_CHIPS.map((category) => (
+            <button
+              key={category ?? 'ALL'}
+              type="button"
+              onClick={() => setCategoryFilter(category)}
+              className={
+                categoryFilter === category
+                  ? 'rounded-full bg-red-700 px-3 py-1 text-sm font-medium text-white'
+                  : 'rounded-full bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700'
+              }
+            >
+              {category === null ? 'Todas' : categoryLabel(category)}
+            </button>
+          ))}
+        </div>
         <Button onClick={() => setOpenDialog({ kind: 'create' })}>
           Novo item
         </Button>
       </div>
       <Card className="mt-4">
         <ul className="divide-y divide-stone-100">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <li
               key={item.id}
               className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
@@ -60,22 +80,10 @@ export function MenuTab({ items, ingredients }: MenuTabProps): React.ReactNode {
               )}
               <div className="ml-auto flex gap-2">
                 <Button
-                  onClick={() => setOpenDialog({ kind: 'ingredients', item })}
-                  className="px-3 py-1 text-sm"
-                >
-                  Ingredientes
-                </Button>
-                <Button
                   onClick={() => setOpenDialog({ kind: 'edit', item })}
                   className="px-3 py-1 text-sm"
                 >
                   Editar
-                </Button>
-                <Button
-                  onClick={() => setOpenDialog({ kind: 'price', item })}
-                  className="px-3 py-1 text-sm"
-                >
-                  Preço
                 </Button>
                 <Button
                   onClick={() => setOpenDialog({ kind: 'delete', item })}
@@ -94,22 +102,10 @@ export function MenuTab({ items, ingredients }: MenuTabProps): React.ReactNode {
           onClose={() => setOpenDialog({ kind: 'none' })}
         />
       )}
-      {openDialog.kind === 'ingredients' && (
-        <ItemIngredientsDialog
+      {openDialog.kind === 'edit' && (
+        <ItemFormDialog
           item={openDialog.item}
           ingredients={ingredients}
-          onClose={() => setOpenDialog({ kind: 'none' })}
-        />
-      )}
-      {openDialog.kind === 'edit' && (
-        <EditItemDialog
-          item={openDialog.item}
-          onClose={() => setOpenDialog({ kind: 'none' })}
-        />
-      )}
-      {openDialog.kind === 'price' && (
-        <PriceDialog
-          item={openDialog.item}
           onClose={() => setOpenDialog({ kind: 'none' })}
         />
       )}

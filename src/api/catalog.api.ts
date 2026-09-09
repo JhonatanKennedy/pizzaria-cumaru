@@ -42,9 +42,15 @@ export interface ICreateItemPayload {
   ingredientIds: string[];
 }
 
+// The item form saves the whole item on one update PATCH: the backend
+// replaces the fields wholesale, ingredient links included, so there is no
+// partial-save endpoint anymore (retired with the per-link verbs).
 export interface IUpdateItemPayload {
-  name?: string;
-  description?: string;
+  name: string;
+  description: string;
+  price: number;
+  requiresPreparation: boolean;
+  ingredientIds: string[];
 }
 
 export async function listMenu(): Promise<TMenuListing> {
@@ -74,37 +80,8 @@ export async function updateItem(
   });
 }
 
-export async function updateItemPrice(
-  itemId: string,
-  price: number,
-): Promise<void> {
-  await apiRequest(`/items/${itemId}/price`, {
-    method: 'PATCH',
-    body: JSON.stringify({ price }),
-  });
-}
-
 export async function deleteItem(itemId: string): Promise<void> {
   await apiRequest(`/items/${itemId}`, { method: 'DELETE' });
-}
-
-export async function linkIngredientToItem(
-  itemId: string,
-  ingredientId: string,
-): Promise<void> {
-  await apiRequest(`/items/${itemId}/ingredients`, {
-    method: 'POST',
-    body: JSON.stringify({ ingredientId }),
-  });
-}
-
-export async function unlinkIngredientFromItem(
-  itemId: string,
-  ingredientId: string,
-): Promise<void> {
-  await apiRequest(`/items/${itemId}/ingredients/${ingredientId}`, {
-    method: 'DELETE',
-  });
 }
 
 export async function createIngredient(name: string): Promise<void> {

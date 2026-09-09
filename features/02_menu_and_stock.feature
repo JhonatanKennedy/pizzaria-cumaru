@@ -8,6 +8,24 @@ Feature: Menu and ingredient stock management
     And the menu has the dishes "Parmegiana de Frango" and "Parmegiana de Carne", which require preparation
     And the menu has the drinks "Refrigerante Lata", "Suco Natural" and "Água", which do not require preparation
 
+  Scenario: Manager lists the menu with category, price and availability
+    Given the manager "ana.gerente" is authenticated
+    When she opens the "Menu and stock" screen
+    Then every menu item must be listed with its category, its price and its availability
+
+  Scenario: Manager filters the items by category
+    Given the manager "ana.gerente" is authenticated
+    When she picks the "Pizzas" category chip in the items tab
+    Then only the pizzas must be listed
+    When she picks the "Todas" chip
+    Then every menu item must be listed again
+
+  Scenario: One edit action per row
+    Given the manager "ana.gerente" is authenticated
+    When she views an item row in the items tab
+    Then the row must offer a single "Editar" action plus "Excluir"
+    And the separate "Preço" and "Ingredientes" actions must not exist
+
   Scenario: Items that do not require preparation never enter the kitchen flow
     Given the drink "Água" does not require preparation
     When an order is created with the drink "Água"
@@ -35,12 +53,7 @@ Feature: Menu and ingredient stock management
     When the manager "ana.gerente" marks the ingredient "Mussarela" as available again
     Then the items that depend on "Mussarela" must appear normally again for the waiter and for the kitchen
 
-  Scenario: Manager updates the price of a menu item
-    Given the manager "ana.gerente" is authenticated
-    When she changes the price of the pizza "Calabresa" to "R$ 45.00"
-    Then new orders with the pizza "Calabresa" must consider the value "R$ 45.00"
-
-  Scenario: Manager adds a new item to the menu
+  Scenario: Manager registers a new item
     Given the manager "ana.gerente" is authenticated
     When she registers the pizza "Calabresa Especial" with the price "R$ 55.00" depending on the ingredient "Mussarela"
     Then the pizza "Calabresa Especial" must appear in the menu with the price "R$ 55.00"
@@ -51,22 +64,38 @@ Feature: Menu and ingredient stock management
     Then the system must refuse the operation
     And the message "Item name already in use" must be displayed
 
-  Scenario: Manager edits a menu item
-    When the manager "ana.gerente" renames the pizza "Calabresa" to "Calabresa Reforçada"
+  Scenario: Manager edits an item through its single edit dialog
+    When the manager "ana.gerente" edits the pizza "Calabresa" through its "Editar" dialog, pre-filled with the item's name, description, price, preparation flag and linked ingredients
+    And she renames it to "Calabresa Reforçada"
     Then the menu must show "Calabresa Reforçada"
     And the kitchen queue must display "Calabresa Reforçada" for that item
 
-  Scenario: Manager links an ingredient to a dish
+  Scenario: Manager updates an item price inside the edit dialog
+    Given the manager "ana.gerente" is authenticated
+    When she changes the price of the pizza "Calabresa" to "R$ 45.00" inside its "Editar" dialog
+    Then the menu must show the pizza "Calabresa" with the price "R$ 45.00"
+    And new orders with the pizza "Calabresa" must consider the value "R$ 45.00"
+
+  Scenario: Manager links an ingredient to a dish through its edit dialog
     Given the dish "Parmegiana de Frango" does not depend on "Mussarela"
-    When the manager "ana.gerente" links the ingredient "Mussarela" to the dish "Parmegiana de Frango"
+    When the manager "ana.gerente" edits the dish "Parmegiana de Frango" and selects the ingredient "Mussarela"
     Then the dish "Parmegiana de Frango" must be unavailable whenever "Mussarela" is unavailable
     And it must become available again when "Mussarela" is restored
 
-  Scenario: Manager unlinks an ingredient from a dish
+  Scenario: Manager unlinks an ingredient from a dish through its edit dialog
     Given the ingredient "Mussarela" is unavailable in stock
     And the dish "Parmegiana de Frango" depends on "Mussarela"
-    When the manager "ana.gerente" unlinks the ingredient "Mussarela" from the dish "Parmegiana de Frango"
+    When the manager "ana.gerente" edits the dish "Parmegiana de Frango" and deselects the ingredient "Mussarela"
     Then the dish "Parmegiana de Frango" must become available again
+
+  Scenario: Kitchen items demand the preparation flag
+    When the manager "ana.gerente" tries to register or edit an item of category "Pizzas" or "Pratos" with the "Exige preparo" flag unchecked
+    Then the form must refuse to save
+    And the message `Pizzas e pratos exigem "Exige preparo"` must be displayed
+
+  Scenario: Picking a kitchen category pre-checks the flag
+    When the manager "ana.gerente" chooses the category "Pizzas" or "Pratos" in the item form
+    Then the "Exige preparo" checkbox must be checked for that item
 
   Scenario: Manager removes an item from the menu
     Given an open order contains the pizza "Calabresa"
