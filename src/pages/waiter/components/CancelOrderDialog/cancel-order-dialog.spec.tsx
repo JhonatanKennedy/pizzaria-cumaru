@@ -26,23 +26,16 @@ describe('CancelOrderDialog', () => {
     ).toBeInTheDocument();
   });
 
-  it('should require a reason', async () => {
-    const user = renderDialog();
-
-    await user.click(screen.getByRole('button', { name: 'Cancelar pedido' }));
-
-    expect(await screen.findByText('Motivo é obrigatório')).toBeInTheDocument();
-    expect(onConfirmMock).not.toHaveBeenCalled();
-  });
-
-  it('should confirm with the informed reason', async () => {
+  it('should confirm the cancellation without asking for a reason', async () => {
     onConfirmMock.mockResolvedValue(undefined);
     const user = renderDialog();
 
-    await user.type(screen.getByLabelText('Motivo'), 'Cliente desistiu');
+    expect(screen.queryByLabelText('Motivo')).not.toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: 'Cancelar pedido' }));
 
-    expect(onConfirmMock).toHaveBeenCalledWith('Cliente desistiu');
+    expect(onConfirmMock).toHaveBeenCalledWith();
+    expect(onCloseMock).toHaveBeenCalled();
   });
 
   it('should display the backend error message verbatim', async () => {
@@ -51,12 +44,12 @@ describe('CancelOrderDialog', () => {
     );
     const user = renderDialog();
 
-    await user.type(screen.getByLabelText('Motivo'), 'Cliente desistiu');
     await user.click(screen.getByRole('button', { name: 'Cancelar pedido' }));
 
     expect(
       await screen.findByText('Cannot change a closed order'),
     ).toBeInTheDocument();
+    expect(onCloseMock).not.toHaveBeenCalled();
   });
 
   it('should close when the back button is clicked', async () => {

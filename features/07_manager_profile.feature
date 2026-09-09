@@ -34,6 +34,18 @@ Feature: Manager profile
     And the total value of the order must be calculated and displayed
     And table "10" must become available for a new service
 
+  Scenario: The SPA blocks the close while a kitchen item is still in preparation
+    Given there is an open order for table "10" whose pizza is still "Pending"
+    When she opens the order detail of table "10"
+    Then the "Fechar conta" action must be disabled
+    And the hint "Ainda há itens em preparação" must be displayed
+
+  Scenario: The manager closes the order once the kitchen finished every item
+    Given there is an open order for table "10" whose pizza already reached "Ready"
+    And whose "Água" never entered the kitchen flow
+    When she opens the order detail of table "10"
+    Then the "Fechar conta" action must be available
+
   Scenario: Manager sees which waiter registered each order
     Given the waiter "joao.garcom" opened the order of table "4"
     And the waiter "joao.garcom" created the delivery order of the customer "Maria Souza"

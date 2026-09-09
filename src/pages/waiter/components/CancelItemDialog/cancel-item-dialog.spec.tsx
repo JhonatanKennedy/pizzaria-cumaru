@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ApiError } from '@api/http-client';
 import { CancelItemDialog } from './index';
 
 const onConfirmMock = vi.fn();
@@ -25,23 +26,16 @@ describe('CancelItemDialog', () => {
     ).toBeInTheDocument();
   });
 
-  it('should require a reason', async () => {
-    const user = renderDialog();
-
-    await user.click(screen.getByRole('button', { name: 'Cancelar item' }));
-
-    expect(await screen.findByText('Motivo é obrigatório')).toBeInTheDocument();
-    expect(onConfirmMock).not.toHaveBeenCalled();
-  });
-
-  it('should confirm with the informed reason', async () => {
+  it('should confirm the cancellation without asking for a reason', async () => {
     onConfirmMock.mockResolvedValue(undefined);
     const user = renderDialog();
 
-    await user.type(screen.getByLabelText('Motivo'), 'Cliente desistiu');
+    expect(screen.queryByLabelText('Motivo')).not.toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: 'Cancelar item' }));
 
-    expect(onConfirmMock).toHaveBeenCalledWith('Cliente desistiu');
+    expect(onConfirmMock).toHaveBeenCalledWith();
+    expect(onCloseMock).toHaveBeenCalled();
   });
 
   it('should close when the back button is clicked', async () => {
@@ -50,5 +44,19 @@ describe('CancelItemDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Voltar' }));
 
     expect(onCloseMock).toHaveBeenCalled();
+  });
+
+  it('should surface a backend refusal verbatim', async () => {
+    onConfirmMock.mockRejectedValue(
+      new ApiError(409, 'Cannot cancel an item in preparation'),
+    );
+    const user = renderDialog();
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar item' }));
+
+    expect(
+      await screen.findByText('Cannot cancel an item in preparation'),
+    ).toBeInTheDocument();
+    expect(onCloseMock).not.toHaveBeenCalled();
   });
 });

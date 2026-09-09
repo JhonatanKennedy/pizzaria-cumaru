@@ -26,23 +26,16 @@ describe('CancelPreparationDialog', () => {
     ).toBeInTheDocument();
   });
 
-  it('should refuse a cancel without a reason', async () => {
-    const user = renderDialog();
-
-    await user.click(screen.getByRole('button', { name: 'Cancelar preparo' }));
-
-    expect(await screen.findByText('Motivo é obrigatório')).toBeInTheDocument();
-    expect(onConfirmMock).not.toHaveBeenCalled();
-  });
-
-  it('should confirm with the informed reason', async () => {
+  it('should confirm the cancellation without asking for a reason', async () => {
     onConfirmMock.mockResolvedValue(undefined);
     const user = renderDialog();
 
-    await user.type(screen.getByLabelText('Motivo'), 'Item queimado');
+    expect(screen.queryByLabelText('Motivo')).not.toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: 'Cancelar preparo' }));
 
-    expect(onConfirmMock).toHaveBeenCalledWith('Item queimado');
+    expect(onConfirmMock).toHaveBeenCalledWith();
+    expect(onCloseMock).toHaveBeenCalled();
   });
 
   it('should close when the back button is clicked', async () => {
@@ -59,11 +52,11 @@ describe('CancelPreparationDialog', () => {
     );
     const user = renderDialog();
 
-    await user.type(screen.getByLabelText('Motivo'), 'Item queimado');
     await user.click(screen.getByRole('button', { name: 'Cancelar preparo' }));
 
     expect(
       await screen.findByText('Cannot cancel an item not in preparation'),
     ).toBeInTheDocument();
+    expect(onCloseMock).not.toHaveBeenCalled();
   });
 });

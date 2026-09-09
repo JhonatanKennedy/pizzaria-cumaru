@@ -37,12 +37,8 @@ export function KitchenPage(): React.ReactNode {
     finishPreparation.mutate({ orderId, orderItemId });
   };
 
-  const handleCancel = (
-    orderId: string,
-    orderItemId: string,
-    reason: string,
-  ): Promise<void> =>
-    cancelPreparation.mutateAsync({ orderId, orderItemId, reason });
+  const handleCancel = (orderId: string, orderItemId: string): Promise<void> =>
+    cancelPreparation.mutateAsync({ orderId, orderItemId });
 
   return (
     <div className="space-y-4">

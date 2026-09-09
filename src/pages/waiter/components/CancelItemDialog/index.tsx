@@ -1,17 +1,11 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import {
-  cancellationReasonFormSchema,
-  type TCancellationReasonFormValues,
-} from '@lib/cancellation';
+import { useState } from 'react';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
-import { TextField } from '@components/TextField';
 import { toErrorMessage } from '@lib/errors';
 
 interface CancelItemDialogProps {
   itemName: string;
-  onConfirm: (reason: string) => Promise<void>;
+  onConfirm: () => Promise<void>;
   onClose: () => void;
 }
 
@@ -20,23 +14,24 @@ export function CancelItemDialog({
   onConfirm,
   onClose,
 }: CancelItemDialogProps): React.ReactNode {
-  const {
-    register,
-    handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<TCancellationReasonFormValues>({
-    resolver: zodResolver(cancellationReasonFormSchema),
-    defaultValues: { reason: '' },
-  });
+  const [busy, setBusy] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const onSubmit = handleSubmit(async (values) => {
-    try {
-      await onConfirm(values.reason);
-    } catch (error) {
-      setError('root', { message: toErrorMessage(error) });
+  const handleConfirm = async (): Promise<void> => {
+    if (busy) {
+      return;
     }
-  });
+    setBusy(true);
+    setErrorMessage(null);
+    try {
+      await onConfirm();
+      onClose();
+    } catch (error) {
+      setErrorMessage(toErrorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-4">
@@ -49,34 +44,28 @@ export function CancelItemDialog({
           <h2 className="text-lg font-bold text-stone-900">
             Cancelar {itemName}
           </h2>
-          <form onSubmit={onSubmit} noValidate className="mt-4 space-y-4">
-            {errors.root && (
-              <p
-                role="alert"
-                className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
-              >
-                {errors.root.message}
-              </p>
-            )}
-            <TextField
-              id="reason"
-              label="Motivo"
-              error={errors.reason?.message}
-              {...register('reason')}
-            />
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                onClick={onClose}
-                className="bg-stone-200 text-stone-800 hover:bg-stone-300"
-              >
-                Voltar
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Cancelando…' : 'Cancelar item'}
-              </Button>
-            </div>
-          </form>
+          <p className="mt-2 text-stone-600">O item será removido do pedido.</p>
+          {errorMessage && (
+            <p
+              role="alert"
+              className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
+            >
+              {errorMessage}
+            </p>
+          )}
+          <div className="mt-4 flex justify-end gap-3">
+            <Button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              className="bg-stone-200 text-stone-800 hover:bg-stone-300"
+            >
+              Voltar
+            </Button>
+            <Button type="button" onClick={handleConfirm} disabled={busy}>
+              {busy ? 'Cancelando…' : 'Cancelar item'}
+            </Button>
+          </div>
         </div>
       </Card>
     </div>

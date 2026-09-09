@@ -7,11 +7,7 @@ interface QueueColumnProps {
   isBusy: (orderItemId: string) => boolean;
   onStart: (orderId: string, orderItemId: string) => void;
   onFinish: (orderId: string, orderItemId: string) => void;
-  onCancel: (
-    orderId: string,
-    orderItemId: string,
-    reason: string,
-  ) => Promise<void>;
+  onCancel: (orderId: string, orderItemId: string) => Promise<void>;
 }
 
 export function QueueColumn({

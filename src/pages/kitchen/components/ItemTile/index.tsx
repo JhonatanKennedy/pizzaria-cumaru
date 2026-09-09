@@ -16,11 +16,7 @@ interface ItemTileProps {
   isBusy: boolean;
   onStart: (orderId: string, orderItemId: string) => void;
   onFinish: (orderId: string, orderItemId: string) => void;
-  onCancel: (
-    orderId: string,
-    orderItemId: string,
-    reason: string,
-  ) => Promise<void>;
+  onCancel: (orderId: string, orderItemId: string) => Promise<void>;
 }
 
 export function ItemTile({
@@ -33,8 +29,8 @@ export function ItemTile({
 }: ItemTileProps): React.ReactNode {
   const [cancelOpen, setCancelOpen] = useState(false);
 
-  const handleCancelConfirm = async (reason: string): Promise<void> => {
-    await onCancel(orderId, item.orderItemId, reason);
+  const handleCancelConfirm = async (): Promise<void> => {
+    await onCancel(orderId, item.orderItemId);
     setCancelOpen(false);
   };
 

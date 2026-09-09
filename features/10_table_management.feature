@@ -57,5 +57,5 @@ Feature: Table management
   Scenario: The listing shows the table free again after its order is cancelled
     Given table "5" is registered
     And there is an open order for table "5"
-    When the waiter cancels the order of table "5" informing the reason "Customer gave up"
+    When the waiter cancels the order of table "5"
     Then the listing must show table "5" with no open order

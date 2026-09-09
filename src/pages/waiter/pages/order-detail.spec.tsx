@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
+import { ApiError } from '@api/http-client';
 import type { TOrderListing } from '@api/orders.api';
 import type { TMenuListing } from '@api/catalog.api';
 import type { TTableListing } from '@api/tables.api';
@@ -51,83 +52,107 @@ vi.mock('../hooks/use-add-item', () => ({
   useAddItem: () => ({ mutateAsync: addItemMock }),
 }));
 
-function renderOrderDetail(): ReturnType<typeof userEvent.setup> {
+function renderOrderDetail(
+  canCloseOrder = false,
+): ReturnType<typeof userEvent.setup> {
   render(
     <MemoryRouter initialEntries={['/waiter/orders/o1']}>
       <Routes>
-        <Route path="/waiter/orders/:orderId" element={<OrderDetailPage />} />
+        <Route
+          path="/waiter/orders/:orderId"
+          element={<OrderDetailPage canCloseOrder={canCloseOrder} />}
+        />
+        <Route path="/waiter/tables" element={<div>Mesas</div>} />
       </Routes>
     </MemoryRouter>,
   );
   return userEvent.setup();
 }
 
+interface OrderItemFixture {
+  id: string;
+  itemId: string;
+  quantity: number;
+  status: string | null;
+  unitPrice: number;
+  parts?: unknown[];
+}
+
+interface OrderFixture {
+  id?: string;
+  status?: string;
+  totalPrice?: number;
+  items: OrderItemFixture[];
+}
+
+function seedOrder(order: OrderFixture): void {
+  orders.value = [
+    {
+      id: 'o1',
+      waiterName: null,
+      type: 'Local',
+      status: order.status ?? 'Open',
+      tableId: 't1',
+      createdAt: '2026-09-09T12:00:00.000Z',
+      totalPrice: order.totalPrice ?? 0,
+      items: order.items.map((item) => ({ parts: [], ...item })),
+    },
+  ] as unknown as TOrderListing[];
+}
+
+function seedMenu(
+  items: { id: string; name: string; price: number; category?: string }[],
+): void {
+  menu.value = items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    description: '',
+    price: item.price,
+    category: item.category ?? 'PIZZA',
+    requiresPreparation: item.category ? item.category !== 'DRINK' : true,
+    available: true,
+    ingredientIds: [],
+  })) as unknown as TMenuListing;
+}
+
+function seedTables(): void {
+  tables.value = [
+    { id: 't1', number: 5, openOrder: null },
+  ] as unknown as TTableListing[];
+}
+
+function seedDefaults(): void {
+  seedTables();
+  cancelItemMock.mockReset();
+  cancelOrderMock.mockReset();
+  closeOrderMock.mockReset();
+}
+
 describe('OrderDetailPage', () => {
-  it('should offer cancelling an item that never requires preparation and remove it with a reason', async () => {
-    orders.value = [
-      {
-        id: 'o1',
-        waiterName: null,
-        type: 'Local',
-        status: 'Open',
-        tableId: 't1',
-        createdAt: '2026-09-09T12:00:00.000Z',
-        totalPrice: 18,
-        items: [
-          {
-            id: 'oi-coke',
-            itemId: 'i-coke',
-            quantity: 2,
-            status: null,
-            unitPrice: 9,
-            parts: [],
-          },
-          {
-            id: 'oi-calabresa',
-            itemId: 'i-calabresa',
-            quantity: 1,
-            status: 'Preparing',
-            unitPrice: 45,
-            parts: [],
-          },
-        ],
-      },
-    ] as unknown as TOrderListing[];
-    menu.value = [
-      {
-        id: 'i-coke',
-        name: 'Coca-Cola',
-        description: '',
-        price: 9,
-        category: 'BEBIDA',
-        requiresPreparation: false,
-        available: true,
-        ingredientIds: [],
-      },
-      {
-        id: 'i-calabresa',
-        name: 'Calabresa',
-        description: '',
-        price: 45,
-        category: 'PIZZA',
-        requiresPreparation: true,
-        available: true,
-        ingredientIds: [],
-      },
-    ] as unknown as TMenuListing;
-    tables.value = [
-      { id: 't1', number: 5, openOrder: null },
-    ] as unknown as TTableListing;
+  it('should cancel an item through a plain confirmation, without collecting a reason', async () => {
+    seedDefaults();
+    seedMenu([
+      { id: 'i-coke', name: 'Coca-Cola', price: 9, category: 'DRINK' },
+    ]);
+    seedOrder({
+      totalPrice: 9,
+      items: [
+        {
+          id: 'oi-coke',
+          itemId: 'i-coke',
+          quantity: 1,
+          status: null,
+          unitPrice: 9,
+        },
+      ],
+    });
     cancelItemMock.mockResolvedValue(undefined);
 
     const user = renderOrderDetail();
 
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
-
-    const dialog = screen.getByRole('dialog', {
-      name: 'Cancelar Coca-Cola',
-    });
-    await user.type(screen.getByLabelText('Motivo'), 'Cliente desistiu');
+    const dialog = screen.getByRole('dialog', { name: 'Cancelar Coca-Cola' });
+    expect(within(dialog).queryByLabelText('Motivo')).not.toBeInTheDocument();
     await user.click(
       within(dialog).getByRole('button', { name: 'Cancelar item' }),
     );
@@ -135,80 +160,75 @@ describe('OrderDetailPage', () => {
     expect(cancelItemMock).toHaveBeenCalledWith({
       orderId: 'o1',
       orderItemId: 'oi-coke',
-      reason: 'Cliente desistiu',
     });
   });
 
+  it('should cancel the whole open order through a plain confirmation and return to the tables screen', async () => {
+    seedDefaults();
+    seedMenu([
+      { id: 'i-coke', name: 'Coca-Cola', price: 9, category: 'DRINK' },
+    ]);
+    seedOrder({
+      totalPrice: 9,
+      items: [
+        {
+          id: 'oi-coke',
+          itemId: 'i-coke',
+          quantity: 1,
+          status: null,
+          unitPrice: 9,
+        },
+      ],
+    });
+    cancelOrderMock.mockResolvedValue(undefined);
+
+    const user = renderOrderDetail();
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar pedido' }));
+    const dialog = screen.getByRole('dialog', {
+      name: 'Cancelar pedido da mesa 5',
+    });
+    expect(within(dialog).queryByLabelText('Motivo')).not.toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Cancelar pedido' }),
+    );
+
+    expect(cancelOrderMock).toHaveBeenCalledWith({ orderId: 'o1' });
+    expect(await screen.findByText('Mesas')).toBeInTheDocument();
+  });
+
   it('should show a composed pizza with its composition and the recorded price', () => {
-    orders.value = [
-      {
-        id: 'o1',
-        waiterName: null,
-        type: 'Local',
-        status: 'Open',
-        tableId: 't1',
-        createdAt: '2026-09-09T12:00:00.000Z',
-        totalPrice: 61,
-        items: [
-          {
-            id: 'oi-split',
-            itemId: 'i-mussarela-g',
-            quantity: 1,
-            status: null,
-            // Recorded at the max-flavor price (Chocolate G), not the base's
-            // catalog price — the line must show what was charged.
-            unitPrice: 52,
-            parts: [
-              { name: 'Mussarela G', pieces: 4 },
-              { name: 'Chocolate G', pieces: 4 },
-            ],
-          },
-          {
-            id: 'oi-coke',
-            itemId: 'i-coke',
-            quantity: 1,
-            status: null,
-            unitPrice: 9,
-            parts: [],
-          },
-        ],
-      },
-    ] as unknown as TOrderListing[];
-    menu.value = [
-      {
-        id: 'i-mussarela-g',
-        name: 'Mussarela G',
-        description: '',
-        price: 40,
-        category: 'PIZZA',
-        requiresPreparation: true,
-        available: true,
-        ingredientIds: [],
-      },
-      {
-        id: 'i-chocolate-g',
-        name: 'Chocolate G',
-        description: '',
-        price: 52,
-        category: 'PIZZA',
-        requiresPreparation: true,
-        available: true,
-        ingredientIds: [],
-      },
-      {
-        id: 'i-coke',
-        name: 'Coca-Cola',
-        description: '',
-        price: 9,
-        category: 'BEBIDA',
-        requiresPreparation: false,
-        available: true,
-        ingredientIds: [],
-      },
-    ] as unknown as TMenuListing;
-    tables.value = [
-      { id: 't1', number: 5, openOrder: null },
-    ] as unknown as TTableListing;
+    seedDefaults();
+    seedMenu([
+      { id: 'i-mussarela-g', name: 'Mussarela G', price: 40 },
+      { id: 'i-chocolate-g', name: 'Chocolate G', price: 52 },
+      { id: 'i-coke', name: 'Coca-Cola', price: 9, category: 'DRINK' },
+    ]);
+    seedOrder({
+      totalPrice: 61,
+      items: [
+        {
+          id: 'oi-split',
+          itemId: 'i-mussarela-g',
+          quantity: 1,
+          status: null,
+          // Recorded at the max-flavor price (Chocolate G), not the base's
+          // catalog price — the line must show what was charged.
+          unitPrice: 52,
+          parts: [
+            { name: 'Mussarela G', pieces: 4 },
+            { name: 'Chocolate G', pieces: 4 },
+          ],
+        },
+        {
+          id: 'oi-coke',
+          itemId: 'i-coke',
+          quantity: 1,
+          status: null,
+          unitPrice: 9,
+        },
+      ],
+    });
 
     renderOrderDetail();
 
@@ -234,48 +254,160 @@ describe('OrderDetailPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('should offer no cancellation action for an item whose preparation started', async () => {
-    orders.value = [
-      {
-        id: 'o1',
-        waiterName: null,
-        type: 'Local',
-        status: 'Open',
-        tableId: 't1',
-        createdAt: '2026-09-09T12:00:00.000Z',
-        totalPrice: 45,
-        items: [
-          {
-            id: 'oi-calabresa',
-            itemId: 'i-calabresa',
-            quantity: 1,
-            status: 'Preparing',
-            unitPrice: 45,
-            parts: [],
-          },
-        ],
-      },
-    ] as unknown as TOrderListing[];
-    menu.value = [
-      {
-        id: 'i-calabresa',
-        name: 'Calabresa',
-        description: '',
-        price: 45,
-        category: 'PIZZA',
-        requiresPreparation: true,
-        available: true,
-        ingredientIds: [],
-      },
-    ] as unknown as TMenuListing;
-    tables.value = [
-      { id: 't1', number: 5, openOrder: null },
-    ] as unknown as TTableListing;
+  it('should offer no cancellation action for an item whose preparation started', () => {
+    seedDefaults();
+    seedMenu([{ id: 'i-calabresa', name: 'Calabresa', price: 45 }]);
+    seedOrder({
+      totalPrice: 45,
+      items: [
+        {
+          id: 'oi-calabresa',
+          itemId: 'i-calabresa',
+          quantity: 1,
+          status: 'Preparing',
+          unitPrice: 45,
+        },
+      ],
+    });
 
     renderOrderDetail();
 
     expect(
       screen.queryByRole('button', { name: 'Cancelar' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('should show no close action to a waiter', () => {
+    seedDefaults();
+    seedMenu([{ id: 'i-calabresa', name: 'Calabresa', price: 45 }]);
+    seedOrder({
+      totalPrice: 45,
+      items: [
+        {
+          id: 'oi-calabresa',
+          itemId: 'i-calabresa',
+          quantity: 1,
+          status: 'Pending',
+          unitPrice: 45,
+        },
+      ],
+    });
+
+    renderOrderDetail();
+
+    expect(
+      screen.queryByRole('button', { name: 'Fechar conta' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('should disable Fechar conta with the hint while an item is still in preparation', () => {
+    seedDefaults();
+    seedMenu([{ id: 'i-calabresa', name: 'Calabresa', price: 45 }]);
+    seedOrder({
+      totalPrice: 45,
+      items: [
+        {
+          id: 'oi-calabresa',
+          itemId: 'i-calabresa',
+          quantity: 1,
+          status: 'Pending',
+          unitPrice: 45,
+        },
+      ],
+    });
+
+    renderOrderDetail(true);
+
+    expect(screen.getByRole('button', { name: 'Fechar conta' })).toBeDisabled();
+    expect(
+      screen.getByText('Ainda há itens em preparação'),
+    ).toBeInTheDocument();
+  });
+
+  it('should enable Fechar conta once every kitchen item is Ready', () => {
+    seedDefaults();
+    seedMenu([{ id: 'i-calabresa', name: 'Calabresa', price: 45 }]);
+    seedOrder({
+      totalPrice: 45,
+      items: [
+        {
+          id: 'oi-calabresa',
+          itemId: 'i-calabresa',
+          quantity: 1,
+          status: 'Ready',
+          unitPrice: 45,
+        },
+      ],
+    });
+
+    renderOrderDetail(true);
+
+    expect(screen.getByRole('button', { name: 'Fechar conta' })).toBeEnabled();
+    expect(
+      screen.queryByText('Ainda há itens em preparação'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('should enable Fechar conta for an order that never entered the kitchen', () => {
+    seedDefaults();
+    seedMenu([
+      { id: 'i-coke', name: 'Coca-Cola', price: 9, category: 'DRINK' },
+    ]);
+    seedOrder({
+      totalPrice: 18,
+      items: [
+        {
+          id: 'oi-coke',
+          itemId: 'i-coke',
+          quantity: 2,
+          status: null,
+          unitPrice: 9,
+        },
+      ],
+    });
+
+    renderOrderDetail(true);
+
+    expect(screen.getByRole('button', { name: 'Fechar conta' })).toBeEnabled();
+    expect(
+      screen.queryByText('Ainda há itens em preparação'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('should surface a backend close refusal verbatim in the close dialog', async () => {
+    seedDefaults();
+    seedMenu([
+      { id: 'i-coke', name: 'Coca-Cola', price: 9, category: 'DRINK' },
+    ]);
+    seedOrder({
+      totalPrice: 18,
+      items: [
+        {
+          id: 'oi-coke',
+          itemId: 'i-coke',
+          quantity: 2,
+          status: null,
+          unitPrice: 9,
+        },
+      ],
+    });
+    closeOrderMock.mockRejectedValue(
+      new ApiError(409, 'Cannot close an order with items in preparation'),
+    );
+
+    const user = renderOrderDetail(true);
+
+    await user.click(screen.getByRole('button', { name: 'Fechar conta' }));
+    const dialog = screen.getByRole('dialog', {
+      name: 'Fechar conta da mesa 5',
+    });
+    await user.click(within(dialog).getByRole('radio', { name: 'Cartão' }));
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Fechar conta' }),
+    );
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Cannot close an order with items in preparation',
+    );
   });
 });

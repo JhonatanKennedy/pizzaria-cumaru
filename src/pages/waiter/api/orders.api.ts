@@ -31,21 +31,15 @@ export async function addItemToOrder(
 export async function cancelOrderItem(
   orderId: string,
   orderItemId: string,
-  reason: string,
 ): Promise<void> {
   await apiRequest(`/orders/${orderId}/items/${orderItemId}/cancellation`, {
     method: 'POST',
-    body: JSON.stringify({ reason }),
   });
 }
 
-export async function cancelOrder(
-  orderId: string,
-  reason: string,
-): Promise<void> {
+export async function cancelOrder(orderId: string): Promise<void> {
   await apiRequest(`/orders/${orderId}/cancellation`, {
     method: 'POST',
-    body: JSON.stringify({ reason }),
   });
 }
 

@@ -65,10 +65,8 @@ export async function finishItemPreparation(
 export async function cancelItemPreparation(
   orderId: string,
   orderItemId: string,
-  reason: string,
 ): Promise<void> {
   await apiRequest(`/kitchen/orders/${orderId}/items/${orderItemId}/cancel`, {
     method: 'POST',
-    body: JSON.stringify({ reason }),
   });
 }

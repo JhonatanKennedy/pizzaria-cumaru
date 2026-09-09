@@ -134,21 +134,17 @@ describe('ItemTile', () => {
     expect(onFinishMock).toHaveBeenCalledWith('order-1', 'order-item-2');
   });
 
-  it('should cancel a preparation through the dialog with the reason', async () => {
+  it('should cancel a preparation through a plain confirmation', async () => {
     onCancelMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderTile(PREPARING_ITEM);
 
     await user.click(screen.getByRole('button', { name: 'Cancelar preparo' }));
     const dialog = within(screen.getByRole('dialog'));
-    await user.type(dialog.getByLabelText('Motivo'), 'Item queimado');
+    expect(dialog.queryByLabelText('Motivo')).not.toBeInTheDocument();
     await user.click(dialog.getByRole('button', { name: 'Cancelar preparo' }));
 
-    expect(onCancelMock).toHaveBeenCalledWith(
-      'order-1',
-      'order-item-2',
-      'Item queimado',
-    );
+    expect(onCancelMock).toHaveBeenCalledWith('order-1', 'order-item-2');
   });
 
   it('should disable the actions while the tile is busy', () => {

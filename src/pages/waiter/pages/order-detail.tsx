@@ -21,6 +21,7 @@ import { useOrders } from '../hooks/use-orders';
 import { useTables } from '../hooks/use-tables';
 import { useUpdateItemQuantity } from '../hooks/use-update-item-quantity';
 import { canCancelOrderItem } from '../business/can-cancel-order-item';
+import { hasItemsInPreparation } from '../business/has-items-in-preparation';
 
 const OPEN_STATUS = 'Open';
 const CANCELLED_STATUS = 'Cancelled';
@@ -77,9 +78,14 @@ export function OrderDetailPage({
     '—';
   const isOpen = enriched.status === OPEN_STATUS;
   const isCancelled = enriched.status === CANCELLED_STATUS;
+  // The close gate mirrors the backend's guard: while any kitchen item is
+  // still Pending or Preparing the manager cannot bill the table — the
+  // disabled action and hint teach that before the dialog opens, and the
+  // backend refusal stays the backstop for the state that goes stale.
+  const blockedByKitchen = isOpen && hasItemsInPreparation(enriched.items);
 
-  const handleCancelConfirm = async (reason: string): Promise<void> => {
-    await cancelOrder.mutateAsync({ orderId: order.id, reason });
+  const handleCancelConfirm = async (): Promise<void> => {
+    await cancelOrder.mutateAsync({ orderId: order.id });
     setCancelRequested(false);
     navigate('/waiter/tables');
   };
@@ -111,14 +117,13 @@ export function OrderDetailPage({
     }
   };
 
-  const handleCancelItemConfirm = async (reason: string): Promise<void> => {
+  const handleCancelItemConfirm = async (): Promise<void> => {
     if (!itemToCancel) {
       return;
     }
     await cancelItem.mutateAsync({
       orderId: enriched.id,
       orderItemId: itemToCancel.id,
-      reason,
     });
     setItemToCancel(null);
   };
@@ -141,12 +146,20 @@ export function OrderDetailPage({
               {orderStatusLabel(enriched.status)}
             </span>
             {isOpen && canCloseOrder && (
-              <Button
-                onClick={() => setCloseRequested(true)}
-                className="px-3 py-1 text-sm"
-              >
-                Fechar conta
-              </Button>
+              <>
+                <Button
+                  onClick={() => setCloseRequested(true)}
+                  disabled={blockedByKitchen}
+                  className="px-3 py-1 text-sm"
+                >
+                  Fechar conta
+                </Button>
+                {blockedByKitchen && (
+                  <span className="text-sm text-stone-600">
+                    Ainda há itens em preparação
+                  </span>
+                )}
+              </>
             )}
             {isOpen && (
               <Button
