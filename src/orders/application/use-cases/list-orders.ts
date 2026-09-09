@@ -15,14 +15,19 @@ export interface IOrderListingOrder {
   type: string;
   status: string;
   tableId?: string;
+  customerName?: string;
+  phone?: string;
+  address?: string;
+  deliveredAt?: Date;
   createdAt: Date;
   totalPrice: number;
   items: IOrderListingItem[];
 }
 
 // List the day's orders, showing the responsible waiter and the preparation
-// status of each item (so the waiter can track them).
-// Features: 05_waiter_profile.feature, 07_manager_profile.feature.
+// status of each item (so the waiter can track them); delivery orders also
+// carry their customer data and delivery time (the manager's delivery screen).
+// Features: 04_delivery_order.feature, 05_waiter_profile.feature, 07_manager_profile.feature.
 @Injectable()
 export class ListOrdersUseCase {
   constructor(
@@ -38,6 +43,10 @@ export class ListOrdersUseCase {
       type: order.getType(),
       status: order.getStatus(),
       tableId: order.getTableId(),
+      customerName: order.getCustomerName(),
+      phone: order.getPhone(),
+      address: order.getAddress(),
+      deliveredAt: order.getDeliveredAt(),
       createdAt: order.getCreatedAt(),
       totalPrice: order.totalPrice,
       items: order.getItems().map((item) => ({

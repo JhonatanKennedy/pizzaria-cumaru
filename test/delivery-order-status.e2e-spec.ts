@@ -65,6 +65,21 @@ describe('Delivery order status (e2e)', () => {
 
     const orderId = created.body.id as string;
 
+    const listingAfterCreate = await request(app.getHttpServer())
+      .get('/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+    const createdEntry = listingAfterCreate.body.find(
+      (entry: { id: string }) => entry.id === orderId,
+    );
+    expect(createdEntry).toEqual(
+      expect.objectContaining({
+        customerName: 'Maria Souza',
+        phone: '(81) 99999-0000',
+        address: 'Rua A',
+      }),
+    );
+
     await request(app.getHttpServer())
       .patch(`/orders/${orderId}/status`)
       .set('Authorization', `Bearer ${authToken}`)
@@ -89,6 +104,15 @@ describe('Delivery order status (e2e)', () => {
     });
     expect(stored.status).toBe('Delivered');
     expect(stored.deliveredAt).toBeInstanceOf(Date);
+
+    const listingAfterDelivery = await request(app.getHttpServer())
+      .get('/orders')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+    const deliveredEntry = listingAfterDelivery.body.find(
+      (entry: { id: string }) => entry.id === orderId,
+    );
+    expect(deliveredEntry.deliveredAt).toEqual(expect.any(String));
   });
 
   it('should refuse the delivery cycle for a local order', async () => {
