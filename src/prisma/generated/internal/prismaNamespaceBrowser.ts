@@ -57,6 +57,7 @@ export const ModelName = {
   User: 'User',
   DeniedToken: 'DeniedToken',
   Order: 'Order',
+  Table: 'Table',
   OrderItem: 'OrderItem',
   OrderCancellation: 'OrderCancellation',
   Item: 'Item',
@@ -115,10 +116,20 @@ export const OrderScalarFieldEnum = {
   createdAt: 'createdAt',
   deliveredAt: 'deliveredAt',
   closedAt: 'closedAt',
+  cancelledReason: 'cancelledReason',
+  cancelledAt: 'cancelledAt',
 } as const;
 
 export type OrderScalarFieldEnum =
   (typeof OrderScalarFieldEnum)[keyof typeof OrderScalarFieldEnum];
+
+export const TableScalarFieldEnum = {
+  id: 'id',
+  number: 'number',
+} as const;
+
+export type TableScalarFieldEnum =
+  (typeof TableScalarFieldEnum)[keyof typeof TableScalarFieldEnum];
 
 export const OrderItemScalarFieldEnum = {
   id: 'id',

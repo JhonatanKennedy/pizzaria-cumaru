@@ -10,6 +10,7 @@
 export type * from './models/User.js';
 export type * from './models/DeniedToken.js';
 export type * from './models/Order.js';
+export type * from './models/Table.js';
 export type * from './models/OrderItem.js';
 export type * from './models/OrderCancellation.js';
 export type * from './models/Item.js';

@@ -430,6 +430,7 @@ export const ModelName = {
   User: 'User',
   DeniedToken: 'DeniedToken',
   Order: 'Order',
+  Table: 'Table',
   OrderItem: 'OrderItem',
   OrderCancellation: 'OrderCancellation',
   Item: 'Item',
@@ -460,6 +461,7 @@ export type TypeMap<
       | 'user'
       | 'deniedToken'
       | 'order'
+      | 'table'
       | 'orderItem'
       | 'orderCancellation'
       | 'item'
@@ -692,6 +694,82 @@ export type TypeMap<
           args: Prisma.OrderCountArgs<ExtArgs>;
           result:
             | runtime.Types.Utils.Optional<Prisma.OrderCountAggregateOutputType>
+            | number;
+        };
+      };
+    };
+    Table: {
+      payload: Prisma.$TablePayload<ExtArgs>;
+      fields: Prisma.TableFieldRefs;
+      operations: {
+        findUnique: {
+          args: Prisma.TableFindUniqueArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload> | null;
+        };
+        findUniqueOrThrow: {
+          args: Prisma.TableFindUniqueOrThrowArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload>;
+        };
+        findFirst: {
+          args: Prisma.TableFindFirstArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload> | null;
+        };
+        findFirstOrThrow: {
+          args: Prisma.TableFindFirstOrThrowArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload>;
+        };
+        findMany: {
+          args: Prisma.TableFindManyArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload>[];
+        };
+        create: {
+          args: Prisma.TableCreateArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload>;
+        };
+        createMany: {
+          args: Prisma.TableCreateManyArgs<ExtArgs>;
+          result: BatchPayload;
+        };
+        createManyAndReturn: {
+          args: Prisma.TableCreateManyAndReturnArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload>[];
+        };
+        delete: {
+          args: Prisma.TableDeleteArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload>;
+        };
+        update: {
+          args: Prisma.TableUpdateArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload>;
+        };
+        deleteMany: {
+          args: Prisma.TableDeleteManyArgs<ExtArgs>;
+          result: BatchPayload;
+        };
+        updateMany: {
+          args: Prisma.TableUpdateManyArgs<ExtArgs>;
+          result: BatchPayload;
+        };
+        updateManyAndReturn: {
+          args: Prisma.TableUpdateManyAndReturnArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload>[];
+        };
+        upsert: {
+          args: Prisma.TableUpsertArgs<ExtArgs>;
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TablePayload>;
+        };
+        aggregate: {
+          args: Prisma.TableAggregateArgs<ExtArgs>;
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTable>;
+        };
+        groupBy: {
+          args: Prisma.TableGroupByArgs<ExtArgs>;
+          result: runtime.Types.Utils.Optional<Prisma.TableGroupByOutputType>[];
+        };
+        count: {
+          args: Prisma.TableCountArgs<ExtArgs>;
+          result:
+            | runtime.Types.Utils.Optional<Prisma.TableCountAggregateOutputType>
             | number;
         };
       };
@@ -1150,10 +1228,20 @@ export const OrderScalarFieldEnum = {
   createdAt: 'createdAt',
   deliveredAt: 'deliveredAt',
   closedAt: 'closedAt',
+  cancelledReason: 'cancelledReason',
+  cancelledAt: 'cancelledAt',
 } as const;
 
 export type OrderScalarFieldEnum =
   (typeof OrderScalarFieldEnum)[keyof typeof OrderScalarFieldEnum];
+
+export const TableScalarFieldEnum = {
+  id: 'id',
+  number: 'number',
+} as const;
+
+export type TableScalarFieldEnum =
+  (typeof TableScalarFieldEnum)[keyof typeof TableScalarFieldEnum];
 
 export const OrderItemScalarFieldEnum = {
   id: 'id',
@@ -1468,6 +1556,7 @@ export type GlobalOmitConfig = {
   user?: Prisma.UserOmit;
   deniedToken?: Prisma.DeniedTokenOmit;
   order?: Prisma.OrderOmit;
+  table?: Prisma.TableOmit;
   orderItem?: Prisma.OrderItemOmit;
   orderCancellation?: Prisma.OrderCancellationOmit;
   item?: Prisma.ItemOmit;

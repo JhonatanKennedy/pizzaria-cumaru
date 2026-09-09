@@ -62,6 +62,11 @@ export type DeniedToken = Prisma.DeniedTokenModel;
  */
 export type Order = Prisma.OrderModel;
 /**
+ * Model Table
+ *
+ */
+export type Table = Prisma.TableModel;
+/**
  * Model OrderItem
  *
  */

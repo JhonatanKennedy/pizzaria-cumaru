@@ -48,6 +48,8 @@ export type OrderMinAggregateOutputType = {
   createdAt: Date | null;
   deliveredAt: Date | null;
   closedAt: Date | null;
+  cancelledReason: string | null;
+  cancelledAt: Date | null;
 };
 
 export type OrderMaxAggregateOutputType = {
@@ -64,6 +66,8 @@ export type OrderMaxAggregateOutputType = {
   createdAt: Date | null;
   deliveredAt: Date | null;
   closedAt: Date | null;
+  cancelledReason: string | null;
+  cancelledAt: Date | null;
 };
 
 export type OrderCountAggregateOutputType = {
@@ -80,6 +84,8 @@ export type OrderCountAggregateOutputType = {
   createdAt: number;
   deliveredAt: number;
   closedAt: number;
+  cancelledReason: number;
+  cancelledAt: number;
   _all: number;
 };
 
@@ -105,6 +111,8 @@ export type OrderMinAggregateInputType = {
   createdAt?: true;
   deliveredAt?: true;
   closedAt?: true;
+  cancelledReason?: true;
+  cancelledAt?: true;
 };
 
 export type OrderMaxAggregateInputType = {
@@ -121,6 +129,8 @@ export type OrderMaxAggregateInputType = {
   createdAt?: true;
   deliveredAt?: true;
   closedAt?: true;
+  cancelledReason?: true;
+  cancelledAt?: true;
 };
 
 export type OrderCountAggregateInputType = {
@@ -137,6 +147,8 @@ export type OrderCountAggregateInputType = {
   createdAt?: true;
   deliveredAt?: true;
   closedAt?: true;
+  cancelledReason?: true;
+  cancelledAt?: true;
   _all?: true;
 };
 
@@ -247,6 +259,8 @@ export type OrderGroupByOutputType = {
   createdAt: Date;
   deliveredAt: Date | null;
   closedAt: Date | null;
+  cancelledReason: string | null;
+  cancelledAt: Date | null;
   _count: OrderCountAggregateOutputType | null;
   _avg: OrderAvgAggregateOutputType | null;
   _sum: OrderSumAggregateOutputType | null;
@@ -284,6 +298,12 @@ export type OrderWhereInput = {
   createdAt?: Prisma.DateTimeFilter<'Order'> | Date | string;
   deliveredAt?: Prisma.DateTimeNullableFilter<'Order'> | Date | string | null;
   closedAt?: Prisma.DateTimeNullableFilter<'Order'> | Date | string | null;
+  cancelledReason?: Prisma.StringNullableFilter<'Order'> | string | null;
+  cancelledAt?: Prisma.DateTimeNullableFilter<'Order'> | Date | string | null;
+  table?: Prisma.XOR<
+    Prisma.TableNullableScalarRelationFilter,
+    Prisma.TableWhereInput
+  > | null;
   items?: Prisma.OrderItemListRelationFilter;
   cancellations?: Prisma.OrderCancellationListRelationFilter;
 };
@@ -302,6 +322,9 @@ export type OrderOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder;
   deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder;
   closedAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+  cancelledReason?: Prisma.SortOrderInput | Prisma.SortOrder;
+  cancelledAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+  table?: Prisma.TableOrderByWithRelationInput;
   items?: Prisma.OrderItemOrderByRelationAggregateInput;
   cancellations?: Prisma.OrderCancellationOrderByRelationAggregateInput;
 };
@@ -324,6 +347,12 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<
     createdAt?: Prisma.DateTimeFilter<'Order'> | Date | string;
     deliveredAt?: Prisma.DateTimeNullableFilter<'Order'> | Date | string | null;
     closedAt?: Prisma.DateTimeNullableFilter<'Order'> | Date | string | null;
+    cancelledReason?: Prisma.StringNullableFilter<'Order'> | string | null;
+    cancelledAt?: Prisma.DateTimeNullableFilter<'Order'> | Date | string | null;
+    table?: Prisma.XOR<
+      Prisma.TableNullableScalarRelationFilter,
+      Prisma.TableWhereInput
+    > | null;
     items?: Prisma.OrderItemListRelationFilter;
     cancellations?: Prisma.OrderCancellationListRelationFilter;
   },
@@ -344,6 +373,8 @@ export type OrderOrderByWithAggregationInput = {
   createdAt?: Prisma.SortOrder;
   deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder;
   closedAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+  cancelledReason?: Prisma.SortOrderInput | Prisma.SortOrder;
+  cancelledAt?: Prisma.SortOrderInput | Prisma.SortOrder;
   _count?: Prisma.OrderCountOrderByAggregateInput;
   _avg?: Prisma.OrderAvgOrderByAggregateInput;
   _max?: Prisma.OrderMaxOrderByAggregateInput;
@@ -376,6 +407,10 @@ export type OrderScalarWhereWithAggregatesInput = {
     Prisma.DateTimeNullableWithAggregatesFilter<'Order'> | Date | string | null;
   closedAt?:
     Prisma.DateTimeNullableWithAggregatesFilter<'Order'> | Date | string | null;
+  cancelledReason?:
+    Prisma.StringNullableWithAggregatesFilter<'Order'> | string | null;
+  cancelledAt?:
+    Prisma.DateTimeNullableWithAggregatesFilter<'Order'> | Date | string | null;
 };
 
 export type OrderCreateInput = {
@@ -384,7 +419,6 @@ export type OrderCreateInput = {
   type: string;
   status: string;
   paymentType?: string | null;
-  tableId?: string | null;
   customerName?: string | null;
   phone?: string | null;
   address?: string | null;
@@ -392,6 +426,9 @@ export type OrderCreateInput = {
   createdAt: Date | string;
   deliveredAt?: Date | string | null;
   closedAt?: Date | string | null;
+  cancelledReason?: string | null;
+  cancelledAt?: Date | string | null;
+  table?: Prisma.TableCreateNestedOneWithoutOrdersInput;
   items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput;
   cancellations?: Prisma.OrderCancellationCreateNestedManyWithoutOrderInput;
 };
@@ -410,6 +447,8 @@ export type OrderUncheckedCreateInput = {
   createdAt: Date | string;
   deliveredAt?: Date | string | null;
   closedAt?: Date | string | null;
+  cancelledReason?: string | null;
+  cancelledAt?: Date | string | null;
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput;
   cancellations?: Prisma.OrderCancellationUncheckedCreateNestedManyWithoutOrderInput;
 };
@@ -420,7 +459,6 @@ export type OrderUpdateInput = {
   type?: Prisma.StringFieldUpdateOperationsInput | string;
   status?: Prisma.StringFieldUpdateOperationsInput | string;
   paymentType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   customerName?:
     Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -431,6 +469,11 @@ export type OrderUpdateInput = {
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   closedAt?:
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  table?: Prisma.TableUpdateOneWithoutOrdersNestedInput;
   items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput;
   cancellations?: Prisma.OrderCancellationUpdateManyWithoutOrderNestedInput;
 };
@@ -452,6 +495,10 @@ export type OrderUncheckedUpdateInput = {
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   closedAt?:
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput;
   cancellations?: Prisma.OrderCancellationUncheckedUpdateManyWithoutOrderNestedInput;
 };
@@ -470,6 +517,8 @@ export type OrderCreateManyInput = {
   createdAt: Date | string;
   deliveredAt?: Date | string | null;
   closedAt?: Date | string | null;
+  cancelledReason?: string | null;
+  cancelledAt?: Date | string | null;
 };
 
 export type OrderUpdateManyMutationInput = {
@@ -478,7 +527,6 @@ export type OrderUpdateManyMutationInput = {
   type?: Prisma.StringFieldUpdateOperationsInput | string;
   status?: Prisma.StringFieldUpdateOperationsInput | string;
   paymentType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   customerName?:
     Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -488,6 +536,10 @@ export type OrderUpdateManyMutationInput = {
   deliveredAt?:
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   closedAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
 };
 
@@ -508,6 +560,10 @@ export type OrderUncheckedUpdateManyInput = {
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   closedAt?:
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
 };
 
 export type OrderCountOrderByAggregateInput = {
@@ -524,6 +580,8 @@ export type OrderCountOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder;
   deliveredAt?: Prisma.SortOrder;
   closedAt?: Prisma.SortOrder;
+  cancelledReason?: Prisma.SortOrder;
+  cancelledAt?: Prisma.SortOrder;
 };
 
 export type OrderAvgOrderByAggregateInput = {
@@ -544,6 +602,8 @@ export type OrderMaxOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder;
   deliveredAt?: Prisma.SortOrder;
   closedAt?: Prisma.SortOrder;
+  cancelledReason?: Prisma.SortOrder;
+  cancelledAt?: Prisma.SortOrder;
 };
 
 export type OrderMinOrderByAggregateInput = {
@@ -560,15 +620,113 @@ export type OrderMinOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder;
   deliveredAt?: Prisma.SortOrder;
   closedAt?: Prisma.SortOrder;
+  cancelledReason?: Prisma.SortOrder;
+  cancelledAt?: Prisma.SortOrder;
 };
 
 export type OrderSumOrderByAggregateInput = {
   userId?: Prisma.SortOrder;
 };
 
+export type OrderListRelationFilter = {
+  every?: Prisma.OrderWhereInput;
+  some?: Prisma.OrderWhereInput;
+  none?: Prisma.OrderWhereInput;
+};
+
+export type OrderOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder;
+};
+
 export type OrderScalarRelationFilter = {
   is?: Prisma.OrderWhereInput;
   isNot?: Prisma.OrderWhereInput;
+};
+
+export type OrderCreateNestedManyWithoutTableInput = {
+  create?:
+    | Prisma.XOR<
+        Prisma.OrderCreateWithoutTableInput,
+        Prisma.OrderUncheckedCreateWithoutTableInput
+      >
+    | Prisma.OrderCreateWithoutTableInput[]
+    | Prisma.OrderUncheckedCreateWithoutTableInput[];
+  connectOrCreate?:
+    | Prisma.OrderCreateOrConnectWithoutTableInput
+    | Prisma.OrderCreateOrConnectWithoutTableInput[];
+  createMany?: Prisma.OrderCreateManyTableInputEnvelope;
+  connect?: Prisma.OrderWhereUniqueInput | Prisma.OrderWhereUniqueInput[];
+};
+
+export type OrderUncheckedCreateNestedManyWithoutTableInput = {
+  create?:
+    | Prisma.XOR<
+        Prisma.OrderCreateWithoutTableInput,
+        Prisma.OrderUncheckedCreateWithoutTableInput
+      >
+    | Prisma.OrderCreateWithoutTableInput[]
+    | Prisma.OrderUncheckedCreateWithoutTableInput[];
+  connectOrCreate?:
+    | Prisma.OrderCreateOrConnectWithoutTableInput
+    | Prisma.OrderCreateOrConnectWithoutTableInput[];
+  createMany?: Prisma.OrderCreateManyTableInputEnvelope;
+  connect?: Prisma.OrderWhereUniqueInput | Prisma.OrderWhereUniqueInput[];
+};
+
+export type OrderUpdateManyWithoutTableNestedInput = {
+  create?:
+    | Prisma.XOR<
+        Prisma.OrderCreateWithoutTableInput,
+        Prisma.OrderUncheckedCreateWithoutTableInput
+      >
+    | Prisma.OrderCreateWithoutTableInput[]
+    | Prisma.OrderUncheckedCreateWithoutTableInput[];
+  connectOrCreate?:
+    | Prisma.OrderCreateOrConnectWithoutTableInput
+    | Prisma.OrderCreateOrConnectWithoutTableInput[];
+  upsert?:
+    | Prisma.OrderUpsertWithWhereUniqueWithoutTableInput
+    | Prisma.OrderUpsertWithWhereUniqueWithoutTableInput[];
+  createMany?: Prisma.OrderCreateManyTableInputEnvelope;
+  set?: Prisma.OrderWhereUniqueInput | Prisma.OrderWhereUniqueInput[];
+  disconnect?: Prisma.OrderWhereUniqueInput | Prisma.OrderWhereUniqueInput[];
+  delete?: Prisma.OrderWhereUniqueInput | Prisma.OrderWhereUniqueInput[];
+  connect?: Prisma.OrderWhereUniqueInput | Prisma.OrderWhereUniqueInput[];
+  update?:
+    | Prisma.OrderUpdateWithWhereUniqueWithoutTableInput
+    | Prisma.OrderUpdateWithWhereUniqueWithoutTableInput[];
+  updateMany?:
+    | Prisma.OrderUpdateManyWithWhereWithoutTableInput
+    | Prisma.OrderUpdateManyWithWhereWithoutTableInput[];
+  deleteMany?: Prisma.OrderScalarWhereInput | Prisma.OrderScalarWhereInput[];
+};
+
+export type OrderUncheckedUpdateManyWithoutTableNestedInput = {
+  create?:
+    | Prisma.XOR<
+        Prisma.OrderCreateWithoutTableInput,
+        Prisma.OrderUncheckedCreateWithoutTableInput
+      >
+    | Prisma.OrderCreateWithoutTableInput[]
+    | Prisma.OrderUncheckedCreateWithoutTableInput[];
+  connectOrCreate?:
+    | Prisma.OrderCreateOrConnectWithoutTableInput
+    | Prisma.OrderCreateOrConnectWithoutTableInput[];
+  upsert?:
+    | Prisma.OrderUpsertWithWhereUniqueWithoutTableInput
+    | Prisma.OrderUpsertWithWhereUniqueWithoutTableInput[];
+  createMany?: Prisma.OrderCreateManyTableInputEnvelope;
+  set?: Prisma.OrderWhereUniqueInput | Prisma.OrderWhereUniqueInput[];
+  disconnect?: Prisma.OrderWhereUniqueInput | Prisma.OrderWhereUniqueInput[];
+  delete?: Prisma.OrderWhereUniqueInput | Prisma.OrderWhereUniqueInput[];
+  connect?: Prisma.OrderWhereUniqueInput | Prisma.OrderWhereUniqueInput[];
+  update?:
+    | Prisma.OrderUpdateWithWhereUniqueWithoutTableInput
+    | Prisma.OrderUpdateWithWhereUniqueWithoutTableInput[];
+  updateMany?:
+    | Prisma.OrderUpdateManyWithWhereWithoutTableInput
+    | Prisma.OrderUpdateManyWithWhereWithoutTableInput[];
+  deleteMany?: Prisma.OrderScalarWhereInput | Prisma.OrderScalarWhereInput[];
 };
 
 export type OrderCreateNestedOneWithoutItemsInput = {
@@ -623,13 +781,12 @@ export type OrderUpdateOneRequiredWithoutCancellationsNestedInput = {
   >;
 };
 
-export type OrderCreateWithoutItemsInput = {
+export type OrderCreateWithoutTableInput = {
   id?: string;
   userId: number;
   type: string;
   status: string;
   paymentType?: string | null;
-  tableId?: string | null;
   customerName?: string | null;
   phone?: string | null;
   address?: string | null;
@@ -637,6 +794,109 @@ export type OrderCreateWithoutItemsInput = {
   createdAt: Date | string;
   deliveredAt?: Date | string | null;
   closedAt?: Date | string | null;
+  cancelledReason?: string | null;
+  cancelledAt?: Date | string | null;
+  items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput;
+  cancellations?: Prisma.OrderCancellationCreateNestedManyWithoutOrderInput;
+};
+
+export type OrderUncheckedCreateWithoutTableInput = {
+  id?: string;
+  userId: number;
+  type: string;
+  status: string;
+  paymentType?: string | null;
+  customerName?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  createdAt: Date | string;
+  deliveredAt?: Date | string | null;
+  closedAt?: Date | string | null;
+  cancelledReason?: string | null;
+  cancelledAt?: Date | string | null;
+  items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput;
+  cancellations?: Prisma.OrderCancellationUncheckedCreateNestedManyWithoutOrderInput;
+};
+
+export type OrderCreateOrConnectWithoutTableInput = {
+  where: Prisma.OrderWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.OrderCreateWithoutTableInput,
+    Prisma.OrderUncheckedCreateWithoutTableInput
+  >;
+};
+
+export type OrderCreateManyTableInputEnvelope = {
+  data: Prisma.OrderCreateManyTableInput | Prisma.OrderCreateManyTableInput[];
+  skipDuplicates?: boolean;
+};
+
+export type OrderUpsertWithWhereUniqueWithoutTableInput = {
+  where: Prisma.OrderWhereUniqueInput;
+  update: Prisma.XOR<
+    Prisma.OrderUpdateWithoutTableInput,
+    Prisma.OrderUncheckedUpdateWithoutTableInput
+  >;
+  create: Prisma.XOR<
+    Prisma.OrderCreateWithoutTableInput,
+    Prisma.OrderUncheckedCreateWithoutTableInput
+  >;
+};
+
+export type OrderUpdateWithWhereUniqueWithoutTableInput = {
+  where: Prisma.OrderWhereUniqueInput;
+  data: Prisma.XOR<
+    Prisma.OrderUpdateWithoutTableInput,
+    Prisma.OrderUncheckedUpdateWithoutTableInput
+  >;
+};
+
+export type OrderUpdateManyWithWhereWithoutTableInput = {
+  where: Prisma.OrderScalarWhereInput;
+  data: Prisma.XOR<
+    Prisma.OrderUpdateManyMutationInput,
+    Prisma.OrderUncheckedUpdateManyWithoutTableInput
+  >;
+};
+
+export type OrderScalarWhereInput = {
+  AND?: Prisma.OrderScalarWhereInput | Prisma.OrderScalarWhereInput[];
+  OR?: Prisma.OrderScalarWhereInput[];
+  NOT?: Prisma.OrderScalarWhereInput | Prisma.OrderScalarWhereInput[];
+  id?: Prisma.StringFilter<'Order'> | string;
+  userId?: Prisma.IntFilter<'Order'> | number;
+  type?: Prisma.StringFilter<'Order'> | string;
+  status?: Prisma.StringFilter<'Order'> | string;
+  paymentType?: Prisma.StringNullableFilter<'Order'> | string | null;
+  tableId?: Prisma.StringNullableFilter<'Order'> | string | null;
+  customerName?: Prisma.StringNullableFilter<'Order'> | string | null;
+  phone?: Prisma.StringNullableFilter<'Order'> | string | null;
+  address?: Prisma.StringNullableFilter<'Order'> | string | null;
+  notes?: Prisma.StringNullableFilter<'Order'> | string | null;
+  createdAt?: Prisma.DateTimeFilter<'Order'> | Date | string;
+  deliveredAt?: Prisma.DateTimeNullableFilter<'Order'> | Date | string | null;
+  closedAt?: Prisma.DateTimeNullableFilter<'Order'> | Date | string | null;
+  cancelledReason?: Prisma.StringNullableFilter<'Order'> | string | null;
+  cancelledAt?: Prisma.DateTimeNullableFilter<'Order'> | Date | string | null;
+};
+
+export type OrderCreateWithoutItemsInput = {
+  id?: string;
+  userId: number;
+  type: string;
+  status: string;
+  paymentType?: string | null;
+  customerName?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  createdAt: Date | string;
+  deliveredAt?: Date | string | null;
+  closedAt?: Date | string | null;
+  cancelledReason?: string | null;
+  cancelledAt?: Date | string | null;
+  table?: Prisma.TableCreateNestedOneWithoutOrdersInput;
   cancellations?: Prisma.OrderCancellationCreateNestedManyWithoutOrderInput;
 };
 
@@ -654,6 +914,8 @@ export type OrderUncheckedCreateWithoutItemsInput = {
   createdAt: Date | string;
   deliveredAt?: Date | string | null;
   closedAt?: Date | string | null;
+  cancelledReason?: string | null;
+  cancelledAt?: Date | string | null;
   cancellations?: Prisma.OrderCancellationUncheckedCreateNestedManyWithoutOrderInput;
 };
 
@@ -691,7 +953,6 @@ export type OrderUpdateWithoutItemsInput = {
   type?: Prisma.StringFieldUpdateOperationsInput | string;
   status?: Prisma.StringFieldUpdateOperationsInput | string;
   paymentType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   customerName?:
     Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -702,6 +963,11 @@ export type OrderUpdateWithoutItemsInput = {
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   closedAt?:
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  table?: Prisma.TableUpdateOneWithoutOrdersNestedInput;
   cancellations?: Prisma.OrderCancellationUpdateManyWithoutOrderNestedInput;
 };
 
@@ -722,6 +988,10 @@ export type OrderUncheckedUpdateWithoutItemsInput = {
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   closedAt?:
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   cancellations?: Prisma.OrderCancellationUncheckedUpdateManyWithoutOrderNestedInput;
 };
 
@@ -731,7 +1001,6 @@ export type OrderCreateWithoutCancellationsInput = {
   type: string;
   status: string;
   paymentType?: string | null;
-  tableId?: string | null;
   customerName?: string | null;
   phone?: string | null;
   address?: string | null;
@@ -739,6 +1008,9 @@ export type OrderCreateWithoutCancellationsInput = {
   createdAt: Date | string;
   deliveredAt?: Date | string | null;
   closedAt?: Date | string | null;
+  cancelledReason?: string | null;
+  cancelledAt?: Date | string | null;
+  table?: Prisma.TableCreateNestedOneWithoutOrdersInput;
   items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput;
 };
 
@@ -756,6 +1028,8 @@ export type OrderUncheckedCreateWithoutCancellationsInput = {
   createdAt: Date | string;
   deliveredAt?: Date | string | null;
   closedAt?: Date | string | null;
+  cancelledReason?: string | null;
+  cancelledAt?: Date | string | null;
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput;
 };
 
@@ -793,7 +1067,6 @@ export type OrderUpdateWithoutCancellationsInput = {
   type?: Prisma.StringFieldUpdateOperationsInput | string;
   status?: Prisma.StringFieldUpdateOperationsInput | string;
   paymentType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  tableId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   customerName?:
     Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -804,6 +1077,11 @@ export type OrderUpdateWithoutCancellationsInput = {
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   closedAt?:
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  table?: Prisma.TableUpdateOneWithoutOrdersNestedInput;
   items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput;
 };
 
@@ -824,7 +1102,98 @@ export type OrderUncheckedUpdateWithoutCancellationsInput = {
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   closedAt?:
     Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput;
+};
+
+export type OrderCreateManyTableInput = {
+  id?: string;
+  userId: number;
+  type: string;
+  status: string;
+  paymentType?: string | null;
+  customerName?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  createdAt: Date | string;
+  deliveredAt?: Date | string | null;
+  closedAt?: Date | string | null;
+  cancelledReason?: string | null;
+  cancelledAt?: Date | string | null;
+};
+
+export type OrderUpdateWithoutTableInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  userId?: Prisma.IntFieldUpdateOperationsInput | number;
+  type?: Prisma.StringFieldUpdateOperationsInput | string;
+  status?: Prisma.StringFieldUpdateOperationsInput | string;
+  paymentType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  customerName?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  deliveredAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  closedAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput;
+  cancellations?: Prisma.OrderCancellationUpdateManyWithoutOrderNestedInput;
+};
+
+export type OrderUncheckedUpdateWithoutTableInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  userId?: Prisma.IntFieldUpdateOperationsInput | number;
+  type?: Prisma.StringFieldUpdateOperationsInput | string;
+  status?: Prisma.StringFieldUpdateOperationsInput | string;
+  paymentType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  customerName?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  deliveredAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  closedAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput;
+  cancellations?: Prisma.OrderCancellationUncheckedUpdateManyWithoutOrderNestedInput;
+};
+
+export type OrderUncheckedUpdateManyWithoutTableInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  userId?: Prisma.IntFieldUpdateOperationsInput | number;
+  type?: Prisma.StringFieldUpdateOperationsInput | string;
+  status?: Prisma.StringFieldUpdateOperationsInput | string;
+  paymentType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  customerName?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  deliveredAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  closedAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  cancelledReason?:
+    Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  cancelledAt?:
+    Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
 };
 
 /**
@@ -895,6 +1264,9 @@ export type OrderSelect<
     createdAt?: boolean;
     deliveredAt?: boolean;
     closedAt?: boolean;
+    cancelledReason?: boolean;
+    cancelledAt?: boolean;
+    table?: boolean | Prisma.Order$tableArgs<ExtArgs>;
     items?: boolean | Prisma.Order$itemsArgs<ExtArgs>;
     cancellations?: boolean | Prisma.Order$cancellationsArgs<ExtArgs>;
     _count?: boolean | Prisma.OrderCountOutputTypeDefaultArgs<ExtArgs>;
@@ -920,6 +1292,9 @@ export type OrderSelectCreateManyAndReturn<
     createdAt?: boolean;
     deliveredAt?: boolean;
     closedAt?: boolean;
+    cancelledReason?: boolean;
+    cancelledAt?: boolean;
+    table?: boolean | Prisma.Order$tableArgs<ExtArgs>;
   },
   ExtArgs['result']['order']
 >;
@@ -942,6 +1317,9 @@ export type OrderSelectUpdateManyAndReturn<
     createdAt?: boolean;
     deliveredAt?: boolean;
     closedAt?: boolean;
+    cancelledReason?: boolean;
+    cancelledAt?: boolean;
+    table?: boolean | Prisma.Order$tableArgs<ExtArgs>;
   },
   ExtArgs['result']['order']
 >;
@@ -960,6 +1338,8 @@ export type OrderSelectScalar = {
   createdAt?: boolean;
   deliveredAt?: boolean;
   closedAt?: boolean;
+  cancelledReason?: boolean;
+  cancelledAt?: boolean;
 };
 
 export type OrderOmit<
@@ -978,13 +1358,16 @@ export type OrderOmit<
   | 'notes'
   | 'createdAt'
   | 'deliveredAt'
-  | 'closedAt',
+  | 'closedAt'
+  | 'cancelledReason'
+  | 'cancelledAt',
   ExtArgs['result']['order']
 >;
 export type OrderInclude<
   ExtArgs extends runtime.Types.Extensions.InternalArgs =
     runtime.Types.Extensions.DefaultArgs,
 > = {
+  table?: boolean | Prisma.Order$tableArgs<ExtArgs>;
   items?: boolean | Prisma.Order$itemsArgs<ExtArgs>;
   cancellations?: boolean | Prisma.Order$cancellationsArgs<ExtArgs>;
   _count?: boolean | Prisma.OrderCountOutputTypeDefaultArgs<ExtArgs>;
@@ -992,11 +1375,15 @@ export type OrderInclude<
 export type OrderIncludeCreateManyAndReturn<
   ExtArgs extends runtime.Types.Extensions.InternalArgs =
     runtime.Types.Extensions.DefaultArgs,
-> = {};
+> = {
+  table?: boolean | Prisma.Order$tableArgs<ExtArgs>;
+};
 export type OrderIncludeUpdateManyAndReturn<
   ExtArgs extends runtime.Types.Extensions.InternalArgs =
     runtime.Types.Extensions.DefaultArgs,
-> = {};
+> = {
+  table?: boolean | Prisma.Order$tableArgs<ExtArgs>;
+};
 
 export type $OrderPayload<
   ExtArgs extends runtime.Types.Extensions.InternalArgs =
@@ -1004,6 +1391,7 @@ export type $OrderPayload<
 > = {
   name: 'Order';
   objects: {
+    table: Prisma.$TablePayload<ExtArgs> | null;
     items: Prisma.$OrderItemPayload<ExtArgs>[];
     cancellations: Prisma.$OrderCancellationPayload<ExtArgs>[];
   };
@@ -1022,6 +1410,8 @@ export type $OrderPayload<
       createdAt: Date;
       deliveredAt: Date | null;
       closedAt: Date | null;
+      cancelledReason: string | null;
+      cancelledAt: Date | null;
     },
     ExtArgs['result']['order']
   >;
@@ -1572,6 +1962,19 @@ export interface Prisma__OrderClient<
   GlobalOmitOptions = {},
 > extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: 'PrismaPromise';
+  table<T extends Prisma.Order$tableArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.Order$tableArgs<ExtArgs>>,
+  ): Prisma.Prisma__TableClient<
+    runtime.Types.Result.GetResult<
+      Prisma.$TablePayload<ExtArgs>,
+      T,
+      'findUniqueOrThrow',
+      GlobalOmitOptions
+    > | null,
+    null,
+    ExtArgs,
+    GlobalOmitOptions
+  >;
   items<T extends Prisma.Order$itemsArgs<ExtArgs> = {}>(
     args?: Prisma.Subset<T, Prisma.Order$itemsArgs<ExtArgs>>,
   ): Prisma.PrismaPromise<
@@ -1643,6 +2046,8 @@ export interface OrderFieldRefs {
   readonly createdAt: Prisma.FieldRef<'Order', 'DateTime'>;
   readonly deliveredAt: Prisma.FieldRef<'Order', 'DateTime'>;
   readonly closedAt: Prisma.FieldRef<'Order', 'DateTime'>;
+  readonly cancelledReason: Prisma.FieldRef<'Order', 'String'>;
+  readonly cancelledAt: Prisma.FieldRef<'Order', 'DateTime'>;
 }
 
 // Custom InputTypes
@@ -1926,6 +2331,10 @@ export type OrderCreateManyAndReturnArgs<
    */
   data: Prisma.OrderCreateManyInput | Prisma.OrderCreateManyInput[];
   skipDuplicates?: boolean;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrderIncludeCreateManyAndReturn<ExtArgs> | null;
 };
 
 /**
@@ -2011,6 +2420,10 @@ export type OrderUpdateManyAndReturnArgs<
    * Limit how many Orders to update.
    */
   limit?: number;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrderIncludeUpdateManyAndReturn<ExtArgs> | null;
 };
 
 /**
@@ -2086,6 +2499,28 @@ export type OrderDeleteManyArgs<
    * Limit how many Orders to delete.
    */
   limit?: number;
+};
+
+/**
+ * Order.table
+ */
+export type Order$tableArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs =
+    runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the Table
+   */
+  select?: Prisma.TableSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the Table
+   */
+  omit?: Prisma.TableOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TableInclude<ExtArgs> | null;
+  where?: Prisma.TableWhereInput;
 };
 
 /**
