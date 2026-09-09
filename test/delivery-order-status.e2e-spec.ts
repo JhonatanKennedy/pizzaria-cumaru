@@ -25,6 +25,8 @@ describe('Delivery order status (e2e)', () => {
     await prisma.orderItem.deleteMany();
     await prisma.orderCancellation.deleteMany();
     await prisma.order.deleteMany();
+    await prisma.table.deleteMany();
+    await prisma.table.create({ data: { id: '2', number: 2 } });
     await prisma.user.upsert({
       where: { email: 'ana.gerente' },
       update: { role: 'Manager', passwordHash: MANAGER_PASSWORD_HASH },

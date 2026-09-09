@@ -26,10 +26,17 @@ describe('Orders checkout (e2e)', () => {
     await prisma.orderItem.deleteMany();
     await prisma.orderCancellation.deleteMany();
     await prisma.order.deleteMany();
+    await prisma.table.deleteMany();
     await prisma.itemIngredient.deleteMany();
     await prisma.item.deleteMany();
     await prisma.ingredient.deleteMany();
     await prisma.user.deleteMany();
+
+    for (const tableId of ['12', '10', '9']) {
+      await prisma.table.create({
+        data: { id: tableId, number: Number(tableId) },
+      });
+    }
 
     const waiter = await prisma.user.create({
       data: {

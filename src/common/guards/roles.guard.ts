@@ -46,6 +46,8 @@ export interface IAuthenticatedPayload {
 //   menu / ingredient listings   Waiter, Manager
 //   stock and price changes      Manager
 //   create / edit / remove items and ingredients, link ingredients  Manager
+//   list tables (free/busy)      Waiter, Manager
+//   register / renumber / delete tables  Manager
 // Future endpoints MUST declare their roles here and in @Roles.
 @Injectable()
 export class RolesGuard implements CanActivate {

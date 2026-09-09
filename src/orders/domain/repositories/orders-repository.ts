@@ -9,6 +9,7 @@ export interface IOrdersRepository {
   findById(id: string): Promise<Order | null>;
   findAllOpen(): Promise<Order[]>;
   findOpenByTableId(tableId: string): Promise<Order | null>;
+  existsOrderForTable(tableId: string): Promise<boolean>;
   findCompleted(day: Date): Promise<Order[]>;
   findAllForListing(day: Date): Promise<IOrderListingEntry[]>;
   save(order: Order): Promise<void>;

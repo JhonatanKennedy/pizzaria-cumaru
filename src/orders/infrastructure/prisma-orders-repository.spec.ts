@@ -50,6 +50,7 @@ describe('PrismaOrdersRepository', () => {
     await prisma.orderItem.deleteMany();
     await prisma.orderCancellation.deleteMany();
     await prisma.order.deleteMany();
+    await prisma.table.deleteMany();
     await prisma.user.deleteMany();
     repository = new PrismaOrdersRepository(prisma as never);
   });
@@ -90,6 +91,26 @@ describe('PrismaOrdersRepository', () => {
     expect(loaded?.getCancellationHistory()).toEqual([
       { itemId: item.getId(), reason: 'Customer gave up', cancelledAt },
     ]);
+  });
+
+  it('should round-trip a cancelled order with its reason and time', async () => {
+    const order = makeOrder();
+    const item = makeItem();
+    order.addItem(item);
+    item.startPreparation();
+    await repository.save(order);
+
+    const cancelledAt = new Date('2026-09-07T12:30:00Z');
+    order.cancelOrder('Customer gave up', cancelledAt);
+    await repository.save(order);
+
+    const loaded = await repository.findById('order-1');
+
+    expect(loaded).not.toBeNull();
+    expect(loaded?.getStatus()).toBe(EOrderStatus.CANCELLED);
+    expect(loaded?.getItems()).toHaveLength(0);
+    expect(loaded?.getCancelledReason()).toBe('Customer gave up');
+    expect(loaded?.getCancelledAt()?.getTime()).toBe(cancelledAt.getTime());
   });
 
   it('should persist the optional status of non-prepared items', async () => {
@@ -156,12 +177,18 @@ describe('PrismaOrdersRepository', () => {
     closedOrder.close(EPaymentType.CASH, CREATED_AT);
     await repository.save(closedOrder);
 
+    const cancelledOrder = makeOrder('cancelled-order');
+    cancelledOrder.addItem(makeItem('cancelled-item'));
+    cancelledOrder.cancelOrder('Customer gave up', CREATED_AT);
+    await repository.save(cancelledOrder);
+
     const openOrders = await repository.findAllOpen();
 
     expect(openOrders.map((order) => order.getId())).toEqual(['open-order']);
   });
 
   it('should find the open order of a table', async () => {
+    await prisma.table.create({ data: { id: '3', number: 3 } });
     await prisma.order.create({
       data: {
         id: 'table-order',
@@ -184,6 +211,36 @@ describe('PrismaOrdersRepository', () => {
     const loaded = await repository.findById('unknown-order');
 
     expect(loaded).toBeNull();
+  });
+
+  it('should translate an unknown table into a domain error on save', async () => {
+    const order = Order.create({
+      id: 'ghost-table-order',
+      userId: 1,
+      type: EOrderType.LOCAL,
+      createdAt: CREATED_AT,
+      tableId: 'ghost',
+    });
+
+    await expect(repository.save(order)).rejects.toThrow('Table not found');
+  });
+
+  it('should report whether a table has any order', async () => {
+    await prisma.table.create({ data: { id: '3', number: 3 } });
+    await prisma.table.create({ data: { id: '4', number: 4 } });
+    await prisma.order.create({
+      data: {
+        id: 'closed-table-order',
+        userId: 1,
+        type: 'Local',
+        status: 'Closed',
+        tableId: '3',
+        createdAt: CREATED_AT,
+      },
+    });
+
+    expect(await repository.existsOrderForTable('3')).toBe(true);
+    expect(await repository.existsOrderForTable('4')).toBe(false);
   });
 
   it('should find orders completed within a day', async () => {

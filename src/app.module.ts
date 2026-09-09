@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
 import { OrdersModule } from './orders/orders.module.js';
 import { KitchenModule } from './kitchen/kitchen.module.js';
+import { TablesModule } from './tables/tables.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ConfigModule } from '@nestjs/config';
 import { DomainErrorFilter } from './common/filters/domain-error.filter.js';
@@ -30,6 +31,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     PrismaModule,
     OrdersModule,
     KitchenModule,
+    TablesModule,
     UsersModule,
   ],
   providers: [

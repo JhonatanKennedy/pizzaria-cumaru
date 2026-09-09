@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { Prisma } from '../../prisma/generated/client.js';
 import {
   IOrdersRepository,
   IOrderListingEntry,
@@ -53,11 +54,28 @@ export class PrismaOrdersRepository implements IOrdersRepository {
   }
 
   async save(order: Order): Promise<void> {
-    await this.prisma.order.upsert({
-      where: { id: order.getId() },
-      update: orderDomainToUpdate(order),
-      create: orderDomainToCreate(order),
-    });
+    try {
+      await this.prisma.order.upsert({
+        where: { id: order.getId() },
+        update: orderDomainToUpdate(order),
+        create: orderDomainToCreate(order),
+      });
+    } catch (error) {
+      // Only the create branch can raise a foreign-key violation, and tableId
+      // is the only FK on Order — so P2003 means the table does not exist.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      ) {
+        throw new Error('Table not found');
+      }
+      throw error;
+    }
+  }
+
+  async existsOrderForTable(tableId: string): Promise<boolean> {
+    const count = await this.prisma.order.count({ where: { tableId } });
+    return count > 0;
   }
   async findCompleted(day: Date): Promise<Order[]> {
     const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());

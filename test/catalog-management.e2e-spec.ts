@@ -25,9 +25,16 @@ describe('Catalog management (e2e)', () => {
     await prisma.orderItem.deleteMany();
     await prisma.orderCancellation.deleteMany();
     await prisma.order.deleteMany();
+    await prisma.table.deleteMany();
     await prisma.itemIngredient.deleteMany();
     await prisma.item.deleteMany();
     await prisma.ingredient.deleteMany();
+
+    for (const tableId of ['3', '7', '5', '11']) {
+      await prisma.table.create({
+        data: { id: tableId, number: Number(tableId) },
+      });
+    }
 
     const mussarela = await prisma.ingredient.create({
       data: { name: 'Mussarela', inStock: true },

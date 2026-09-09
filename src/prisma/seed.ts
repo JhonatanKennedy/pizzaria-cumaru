@@ -144,6 +144,8 @@ const SEED_ITEMS: SeedItem[] = [
   },
 ];
 
+const SEED_TABLES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
@@ -224,6 +226,14 @@ for (const seed of SEED_ITEMS) {
   }
 }
 
+// --- tables ---
+for (const number of SEED_TABLES) {
+  const existing = await prisma.table.findUnique({ where: { number } });
+  if (!existing) {
+    await prisma.table.create({ data: { number } });
+  }
+}
+
 await prisma.$disconnect();
 console.log(
   `Seeded ${SEED_USERS.length} users with password "${SEED_PASSWORD}"`,
@@ -231,3 +241,4 @@ console.log(
 console.log(
   `Seeded ${SEED_INGREDIENTS.length} ingredients, ${SEED_ITEMS.length} items and ${linkCount} item-ingredient links`,
 );
+console.log(`Seeded ${SEED_TABLES.length} tables`);
