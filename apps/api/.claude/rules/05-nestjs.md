@@ -88,12 +88,14 @@ Resource nouns, HTTP verbs as actions, sub-resources nested. Never verbs in path
 POST  /orders
 GET   /orders
 POST  /orders/:orderId/items
-PATCH /orders/:orderId/items/:itemId/status
+PATCH /orders/:orderId/items/:itemId/quantity
 
 // ❌
 POST /createOrder
 POST /orders/:orderId/addItem
 ```
+
+Item *status* is not a routable sub-resource — the kitchen drives it through its own verbs (`POST /kitchen/orders/:orderId/items/:orderItemId/start|finish|cancel`), so there is no `PATCH .../items/:itemId/status`.
 
 ## 5. Constructor injection — never `new` a Nest provider
 

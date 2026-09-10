@@ -47,7 +47,7 @@ No setters, no public mutable fields. Mutations are domain verbs with invariant 
 The same rule that guards creation guards later mutations — a valid object can never drift into an invalid state. `OrderItems` is the model:
 
 ```ts
-// ✅ — create and mutate enforce the same invariant (order-items.ts, as-is)
+// ✅ — creation validates every field it owns (order-items.ts, as-is)
 static create(params: CreateOrderItemParams): OrderItems {
   if (params.quantity <= 0) {
     throw new Error('Quantity must be greater than zero');
@@ -57,21 +57,11 @@ static create(params: CreateOrderItemParams): OrderItems {
   }
   return new OrderItems(/* ... */);
 }
-
-const MINIMUM_ITEM_QUANTITY = 1;
-
-decreaseQuantity(quantity: number): void {
-  if (quantity <= 0) {
-    throw new Error('Quantity must be greater than zero');
-  }
-  if (this.quantity - quantity < MINIMUM_ITEM_QUANTITY) {
-    throw new Error('Quantity cannot be less than one');
-  }
-  this.quantity -= quantity;
-}
 ```
 
-The shared minimum lives in a named constant (see the [no-magic-numbers rule](03-javascript.md#1-no-magic-numbers)). Guarded transitions also live on the aggregate: `Order.close(paymentType, closedAt)` rejects already-closed and empty orders, and the delivery-cycle verbs (`startDeliveryPreparation`, `sendOutForDelivery`, `markDelivered`) each throw `'Invalid delivery status transition'` when the order is not in the expected state.
+The mutations carry the same guards: `decreaseQuantity` re-checks `quantity <= 0` *and* the `MINIMUM_ITEM_QUANTITY` floor, so a `create`-valid item can never be driven below the minimum by a later call. That paired example lives in the [no-magic-numbers rule](03-javascript.md#1-no-magic-numbers) — read it there rather than expecting the mutation half repeated here.
+
+Guarded transitions live on the aggregate the same way: `Order.close(paymentType, closedAt)` rejects already-closed and empty orders, and the delivery-cycle verbs (`startDeliveryPreparation`, `sendOutForDelivery`, `markDelivered`) each throw `'Invalid delivery status transition'` when the order is not in the expected state.
 
 ## 4. Enums: `E` prefix, SCREAMING_SNAKE members, title-cased string values
 
@@ -81,6 +71,7 @@ One enum per file in `domain/enums/`:
 export enum EOrderStatus {
   OPEN = 'Open',
   CLOSED = 'Closed',
+  CANCELLED = 'Cancelled',
   PREPARING = 'Preparing',
   OUT_FOR_DELIVERY = 'Out for delivery',
   DELIVERED = 'Delivered',
@@ -94,6 +85,8 @@ export enum EPaymentType {
 ```
 
 Known style exceptions: `EItemCategory` uses all-caps values (`PIZZA = 'PIZZA'`), `EPaymentType.PIX = 'Pix'`, and delivery-cycle members may contain spaces (`OUT_FOR_DELIVERY = 'Out for delivery'`). Enum values are what get persisted — see [07-prisma.md](07-prisma.md). Stay consistent with the existing files.
+
+`EOrderStatus` mixes the order lifecycle with the delivery cycle; `PrismaOrdersRepository.findAllOpen` compensates with type-aware status filters, and splitting the two axes is an open question recorded in [08-conventions.md](08-conventions.md) — not a licence to add a seventh member casually.
 
 ## 5. Ids are constructor params — persistence owns generation
 

@@ -7,63 +7,73 @@ The compiler is the first reviewer — `strict: true` plus these rules keep type
 `any` switches the compiler off exactly where it matters. Use `unknown` + narrowing, or generics.
 
 ```ts
-// ❌ — any turns off all checking downstream
-function parseOrderPayload(body: any): CreateOrderDto {
-  return {
-    userId: body.userId,
-    type: body.type,
-    paymentType: body.paymentType,
-  };
+// ❌ — any turns off all checking downstream: nothing is actually validated
+function parseFlavorParts(value: any): TFlavorPart[] {
+  return value;
 }
 
-// ✅ — unknown forces validation before use
-function parseOrderPayload(body: unknown): CreateOrderDto {
-  if (!isCreateOrderBody(body)) {
-    throw new Error('Invalid order payload');
+// ✅ — unknown forces validation before use (order-mapper.ts, as-is)
+function parseFlavorParts(value: unknown): TFlavorPart[] {
+  if (!Array.isArray(value) || !value.every(isFlavorPart)) {
+    throw new Error('Invalid flavor parts on order item');
   }
-  return {
-    userId: body.userId,
-    type: body.type,
-    paymentType: body.paymentType,
-  };
+  return value;
 }
 
-function isCreateOrderBody(value: unknown): value is CreateOrderDto {
-  if (typeof value !== 'object' || value === null) return false;
+function isFlavorPart(value: unknown): value is TFlavorPart {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
   const candidate = value as Record<string, unknown>;
   return (
-    'userId' in candidate && 'type' in candidate && 'paymentType' in candidate
+    typeof candidate.name === 'string' &&
+    typeof candidate.pieces === 'number' &&
+    Number.isInteger(candidate.pieces) &&
+    candidate.pieces > 0
   );
 }
 ```
+
+That `as Record<string, unknown>` is the one acceptable cast — it follows a `typeof` check, so it narrows rather than lies (see rule 5).
 
 ## 2. `interface` vs `type`
 
 - **`interface`** — object contracts meant to be implemented or extended (entity param contracts, repository interfaces, DTO shapes).
 - **`type`** — what interfaces can't express: unions, tuples, primitive aliases, mapped types.
 
-The codebase already follows this: `CreateOrderItemParams` is an `interface`; `TCreateOrderParams` / `TOrderItemStatus` are type aliases.
-
 ```ts
-// ✅ interface — the shape of an object to construct
-export interface CreateOrderItemParams {
-  id: string;
-  orderId: string;
-  itemId: string;
-  unitPrice: number;
-  quantity: number;
-  requiresPreparation: boolean;
+// ✅ interface — a contract for something the caller hands a use-case
+// (exactly one per use-case, so use-cases are easy to find and mock)
+export interface ICreateOrderParams {
+  userId: number;
+  type: EOrderType;
+  paymentType: EPaymentType;
   createdAt: Date;
-  flavors?: string[];
-  notes?: string;
 }
 
+// ✅ type — the entity factory's input; a shape, not a contract to implement
+export type TCreateOrderParams = {
+  id: string;
+  userId: number;
+  type: EOrderType;
+  paymentType: EPaymentType;
+  createdAt: Date;
+};
+
 // ✅ type — a union, which interfaces cannot express
-export type PaymentResult =
-  { ok: true; transactionId: string } | { ok: false; reason: string };
+export type TOrderItemStatus = EOrderItemStatus | undefined;
 ```
 
-**Repo convention:** type aliases are prefixed with `T` (`TCreateOrderParams`, `TOrderItemStatus`, `TRestoreOrderParams`); interfaces keep plain names.
+**Repo convention — the prefix says which side of the boundary the name lives on:**
+
+| Prefix | Kind      | What it names                                                                                                                                    |
+| ------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `I`    | interface | Use-case inputs (`ICreateOrderParams`), repository contracts (`IOrdersRepository`), results and listing entries (`IAuthenticateResult`, `IOrderListingOrder`, `IKitchenQueueOrder`) |
+| `T`    | type      | Unions and derived aliases (`TOrderItemStatus`, `TFlavorPart`, `TPizzaSize`), row shapes (`TOrderRow`), and the entity factories' param objects (`TCreateOrderParams`, `TCreateItemParams`) |
+
+So `ICreateOrderParams` and `TCreateOrderParams` are not a duplicate pair: the first is what `CreateOrderUseCase` receives, the second what `Order.create` receives.
+
+Two outliers, left alone: `TRestoreOrderParams` is an `interface` despite the `T`, and `CreateOrderItemParams` is an unprefixed `interface` where the table above would say `I`.
 
 ## 3. `readonly` everything that must not change
 

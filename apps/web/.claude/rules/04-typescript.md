@@ -32,18 +32,28 @@ function isStoredUser(value: unknown): value is StoredUser {
 - **`type`** — what interfaces can't express: unions, tuples, primitive aliases, mapped types, `z.infer` results.
 
 ```ts
-// ✅ interface — the shape of an object to construct
-export interface StoredUser {
-  id: number;
-  login: string;
-  role: UserRole;
+// ✅ interface — a contract for something the caller hands a hook or api module
+export interface IUpdateItemQuantityInput {
+  orderId: string;
+  orderItemId: string;
+  quantity: number;
 }
 
 // ✅ type — a union, which interfaces cannot express
 export type UserRole = (typeof USER_ROLES)[number];
 ```
 
-**Repo convention:** type aliases are prefixed with `T` (`TLoginFormValues`, `TLoginResponse`); interfaces keep plain names.
+**Repo convention — the prefix says which side of the boundary the name lives on:**
+
+| Prefix        | Kind      | What it names                                                                                                              |
+| ------------- | --------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `I`           | interface | Hook inputs and api payloads (`IUpdateItemQuantityInput`, `IAddItemPayload`), shared listing entries (`ITableListingEntry`) |
+| `T`           | type      | `z.infer` results (`TMenuItem`, `TOrderListing`), unions (`TOrderType`, `TPaymentType`), derived shapes (`TEnrichedOrder`)  |
+| *(no prefix)* | interface | Component props (`ButtonProps`, `SaleCardProps`), context and session shapes (`AuthContextValue`, `StoredUser`)             |
+
+So `ButtonProps` takes no prefix while `IAddItemInput` does — props are a component's public surface, hook inputs are a module contract.
+
+Three outliers, left alone: `TDaySalesFilters` and `TCategoryQuantity` are `interface`s despite the `T`; `TEnrichedOrder` is an `interface`-shaped `type` and is fine either way.
 
 ## 3. `readonly` everything that must not change
 
@@ -92,24 +102,14 @@ const data = await apiRequest('/auth/login', { method: 'POST', body: ... });
 return loginResponseSchema.parse(data);
 ```
 
-## 6. Exhaustive `switch` over unions
+## 6. Every union member is handled
 
-When switching on a union, the `default` branch must use `never` — adding a union member becomes a compile error instead of a silent bug.
+Adding a member to a union must break the build, not slip through at runtime. A `Record<Union, T>` map gets that for free with no branch at all — the shape `role.ts` uses (see [03-javascript.md](03-javascript.md#2-no-nested-ternaries)). When the branches genuinely differ in behaviour and you reach for a `switch`, the `default` branch must be `never`, so the forgotten member becomes a compile error:
 
 ```ts
-function getRoleLabel(role: UserRole): string {
-  switch (role) {
-    case 'Manager':
-      return 'Manager';
-    case 'Waiter':
-      return 'Waiter';
-    case 'Cook':
-      return 'Cook';
-    default: {
-      const unreachable: never = role;
-      throw new Error(`Unhandled role: ${unreachable}`);
-    }
-  }
+default: {
+  const unreachable: never = role;
+  throw new Error(`Unhandled role: ${unreachable}`);
 }
 ```
 

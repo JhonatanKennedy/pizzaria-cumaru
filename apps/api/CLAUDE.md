@@ -12,3 +12,4 @@ This file is an index. The rules live in `.claude/rules/`, one file per topic, e
 @.claude/rules/06-domain.md
 @.claude/rules/07-prisma.md
 @.claude/rules/08-conventions.md
+@.claude/rules/09-comments.md

@@ -145,34 +145,6 @@ describe('LoginForm', () => {
 });
 ```
 
-## Full example — unit spec for the role helpers
-
-`src/pages/auth/business/specs/role.spec.ts`, faithful to the current `role.ts` implementation — pure functions, no fixtures, no I/O:
-
-```ts
-import { isUserRole, roleHomePath } from '../role';
-
-describe('role helpers', () => {
-  it('should accept the three known roles', () => {
-    expect(isUserRole('Waiter')).toBe(true);
-    expect(isUserRole('Cook')).toBe(true);
-    expect(isUserRole('Manager')).toBe(true);
-  });
-
-  it('should reject unknown role values', () => {
-    expect(isUserRole('Admin')).toBe(false);
-    expect(isUserRole(42)).toBe(false);
-    expect(isUserRole(null)).toBe(false);
-  });
-
-  it('should map each role to its home screen', () => {
-    expect(roleHomePath('Manager')).toBe('/manager');
-    expect(roleHomePath('Waiter')).toBe('/waiter');
-    expect(roleHomePath('Cook')).toBe('/kitchen');
-  });
-});
-```
-
 ## Full example — component spec for the login form
 
 `src/pages/auth/pages/login/parts/LoginForm/login-form.spec.tsx` — mocks the `useAuth` hook at the module boundary and asserts against the rendered output:
@@ -181,12 +153,12 @@ describe('role helpers', () => {
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { ApiError } from '../../shared/api/http-client';
+import { ApiError } from '@api/http-client';
 import { LoginForm } from './index';
 
 const { loginMock } = vi.hoisted(() => ({ loginMock: vi.fn() }));
 
-vi.mock('../../../../../../pages/auth/use-auth', () => ({
+vi.mock('@pages/auth/use-auth', () => ({
   useAuth: () => ({ login: loginMock }),
 }));
 
@@ -203,18 +175,6 @@ function renderLoginForm(): ReturnType<typeof userEvent.setup> {
 }
 
 describe('LoginForm', () => {
-  it('should redirect to the role home screen on success', async () => {
-    loginMock.mockResolvedValue({ id: 1, login: 'joao.garcom', role: 'Waiter' });
-    const user = renderLoginForm();
-
-    await user.type(screen.getByLabelText('Login'), 'joao.garcom');
-    await user.type(screen.getByLabelText('Password'), 'SenhaSegura123');
-    await user.click(screen.getByRole('button', { name: 'Entrar' }));
-
-    expect(await screen.findByText('Painel do garçom')).toBeInTheDocument();
-    expect(loginMock).toHaveBeenCalledWith('joao.garcom', 'SenhaSegura123');
-  });
-
   it('should display the backend error message when login fails', async () => {
     loginMock.mockRejectedValue(new ApiError(400, 'Invalid username or password'));
     const user = renderLoginForm();
@@ -227,3 +187,5 @@ describe('LoginForm', () => {
   });
 });
 ```
+
+The success case is the same harness with `loginMock.mockResolvedValue(...)` and a `findByText('Painel do garçom')` — the redirect is asserted against the sibling route, not by spying on `navigate`. Pure-function specs (`role.spec.ts`) need no fixtures and are not worth an example here.

@@ -34,8 +34,6 @@ decreaseQuantity(quantity: number): void {
 
 Applies to time math too: `24 * 60 * 60 * 1000` becomes `const MS_PER_DAY = 24 * 60 * 60 * 1000;`. The rule targets literals with business meaning — trivial `0`/`1` as indexes or loop bounds are fine. (`User` also does this: `MAX_FAILED_ATTEMPTS = 5`, `LOCKOUT_MS = 15 * 60 * 1000`.)
 
-Applies to time math too: `24 * 60 * 60 * 1000` becomes `const MS_PER_DAY = 24 * 60 * 60 * 1000;`. The rule targets literals with business meaning — trivial `0`/`1` as indexes or loop bounds are fine.
-
 ## 2. No nested ternaries
 
 At most one `?:` per expression. Anything more becomes `if`/`else` or a named helper.

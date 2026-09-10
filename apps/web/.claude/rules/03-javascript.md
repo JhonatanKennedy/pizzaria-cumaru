@@ -7,15 +7,16 @@ These are language-level rules that apply to every `.ts` / `.tsx` file in the pr
 A literal whose meaning isn't obvious from context goes into a named `const` — the name documents the _why_.
 
 ```ts
-// ❌ — what does 15 mean here? A lockout duration, not an arbitrary number.
-setTimeout(refresh, 15 * 60 * 1000);
+// ❌ — what does 15000 mean here? A polling cadence, not an arbitrary number.
+refetchInterval: 15 * 1000,
 
-// ✅ — the constant says what 15 stands for
-const LOCKOUT_MINUTES = 15;
-const MS_PER_MINUTE = 60 * 1000;
+// ✅ — the constant says what the interval is (use-kitchen-queue.ts, as-is)
+const REFRESH_INTERVAL_MS = 15 * 1000;
 
-setTimeout(refresh, LOCKOUT_MINUTES * MS_PER_MINUTE);
+refetchInterval: REFRESH_INTERVAL_MS,
 ```
+
+The same constant appears in `use-orders.ts` — two screens poll on the same cadence, each naming it locally rather than importing a shared one. That is the intended shape: the constant documents the value, it does not have to be centralised.
 
 Applies to time math too: `24 * 60 * 60 * 1000` becomes `const MS_PER_DAY = 24 * 60 * 60 * 1000;`. The rule targets literals with business meaning — trivial `0`/`1` as indexes or loop bounds are fine.
 
@@ -32,11 +33,15 @@ const badge =
       ? 'Garçom'
       : 'Cozinheiro';
 
-// ✅ — early returns, one branch per line (role.ts, as-is)
-function getRoleLabel(role: UserRole): string {
-  if (role === 'Manager') return 'Gerente';
-  if (role === 'Waiter') return 'Garçom';
-  return 'Cozinheiro';
+// ✅ — the mapping is data, not a branch chain (role.ts, as-is)
+const ROLE_LABELS: Record<UserRole, string> = {
+  Waiter: 'Garçom',
+  Cook: 'Cozinheiro',
+  Manager: 'Gerente',
+};
+
+export function getRoleLabel(role: UserRole): string {
+  return ROLE_LABELS[role];
 }
 ```
 
@@ -91,13 +96,18 @@ if (user.role === 'Manager') { ... }
 Defaults via `??`, optional access via `?.` — not hand-rolled ternary checks.
 
 ```tsx
-// ❌
+// ❌ — a hand-rolled default
 const label = user.login !== undefined ? user.login : '';
-const home = user ? roleHomePath(user.role) : '/login';
 
-// ✅
+// ✅ — the default operator says it directly
 const label = user.login ?? '';
-const home = user ? roleHomePath(user.role) : '/login'; // (the second is a branch, not a default — already right)
+```
+
+The operators replace *defaults*, not *branches*. Two genuinely different outcomes still need a real condition — `??` would be wrong here, because a missing user is not a default home path:
+
+```tsx
+// ✅ — a branch, and rightly a ternary
+const home = user ? roleHomePath(user.role) : '/login';
 ```
 
 ## 7. Data transforms via `map`/`filter`/`reduce`, not manual loops
