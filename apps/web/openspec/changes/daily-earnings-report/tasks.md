@@ -1,0 +1,17 @@
+## 1. Report contract and hook
+
+- [x] 1.1 Create `pages/manager/api/reports.api.ts` — the first module in the manager context's `api/` folder (the context so far consumed only the shared `@api/catalog.api.ts` / `@api/tables.api.ts`): `dailyEarningsReportSchema` (zod, `{ grandTotal, localTotal, deliveryTotal }` numbers), the `Local`/`Delivery` type union derived from an `as const` array, `DAILY_EARNINGS_QUERY_KEY`, and `getDailyEarningsReport(type?)` that calls `apiRequest('/reports/daily-earnings')` adding `?type=` when set and parses the response. Verify: colocated `reports.api.spec.ts` accepts a full payload, accepts both type values, and rejects a payload with a missing or non-numeric field; `npm test` green.
+
+## 2. Screen
+
+- [x] 2.1 Create `pages/manager/hooks/use-daily-earnings.ts` — `useDailyEarnings(type: TReportType | undefined)` over a query key shaped `['reports', 'daily-earnings', type]` (one cached entry per filter), following the context's hook style (no mutation, exposes `refetch` for the retry path). Verify: `tsc` passes and the page consumes it.
+- [x] 2.2 Replace the placeholder in `pages/manager/pages/daily-earnings-page.tsx` — "Relatório de Ganhos Diários", filter chips for `Local` / `Entrega` (delivery, matching the kitchen-queue wording) plus the clear-all state, and three totals when unfiltered — grand total "Total do dia" plus the Local and Entrega subtotals, all via `formatBRL` from `@lib/format` (its first caller). While a type filter is active only that type's total is shown. Pending → "Carregando…"; failed load → verbatim banner via `toErrorMessage` with an "Tentar novamente" retry wired to `refetch`; the active chip and the fetched data always agree (same state drives both). Verify: colocated page spec mocks `use-daily-earnings` (vi.hoisted) and asserts the three totals render (R$ 480,00 / R$ 210,00 / R$ 690,00 style), a type chip switches the fetch argument and shows only that total, clearing restores all three, and the error state shows the backend message verbatim with a working retry; `npm test` green and `grep -rn "FeaturePlaceholder" src/pages/manager/pages/daily-earnings-page.tsx` returns nothing.
+
+## 3. Rules sync
+
+- [x] 3.1 Update `.claude/rules/01-project-context.md` — the `/reports/daily-earnings` route row to implemented (totals + type filter against `GET /reports/daily-earnings`) and the `07_manager_profile` mapping note to mention the report screen; add the new `pages/manager/api/` module to the manager tree line. Verify: doc matches `find src -type f` for the named files.
+- [x] 3.2 Update `.claude/rules/08-conventions.md` — drop the "`formatBRL` ... is unused so far" debt bullet now that the report formats with it. Verify: the bullet is gone and `grep -rn "formatBRL" src/lib/format.ts` has callers elsewhere in `src`.
+
+## 4. Final gate
+
+- [x] 4.1 Run `npx prettier --check src`, `npm run lint`, `npm test`, `npm run build` — all green, zero warnings — and smoke-check the dev server against the real backend: logging in as `ana.gerente` (or the DevLogin Manager entry) and opening `/reports/daily-earnings` shows the day's seeded totals formatted in BRL, each type chip narrows the report to its total, and clearing the filter restores the three totals. (Smoke: manager login + all three `GET /reports/daily-earnings` states return schema-valid payloads; a Cook token gets the 403 guard message. The seed has no closed orders, so the day shows `R$ 0,00` until an order is closed — rendering and chip behavior are asserted by the page spec.)
