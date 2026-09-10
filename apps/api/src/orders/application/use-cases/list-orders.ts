@@ -29,9 +29,10 @@ export interface IOrderListingOrder {
   items: IOrderListingItem[];
 }
 
-// List the day's orders, showing the responsible waiter and the preparation
-// status of each item (so the waiter can track them); delivery orders also
-// carry their customer data and delivery time (the manager's delivery screen).
+// List the day's orders plus any order still in progress, showing the
+// responsible waiter and the preparation status of each item (so the waiter
+// can track them); delivery orders also carry their customer data and
+// delivery time (the manager's delivery screen).
 // Features: 04_delivery_order.feature, 05_waiter_profile.feature, 07_manager_profile.feature.
 @Injectable()
 export class ListOrdersUseCase {

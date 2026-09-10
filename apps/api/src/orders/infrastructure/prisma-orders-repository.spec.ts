@@ -333,6 +333,121 @@ describe('PrismaOrdersRepository', () => {
     expect(listing[0].waiterName).toBeNull();
   });
 
+  it("should list an earlier day's order that is still open", async () => {
+    const day = new Date('2026-09-07T09:00:00Z');
+    await prisma.order.create({
+      data: {
+        id: 'overnight-local',
+        userId: 1,
+        type: 'Local',
+        status: 'Open',
+        createdAt: new Date('2026-09-06T14:00:00Z'),
+      },
+    });
+
+    const listing = await repository.findAllForListing(day);
+
+    expect(listing.map((entry) => entry.order.getId())).toEqual([
+      'overnight-local',
+    ]);
+  });
+
+  it("should list an earlier day's delivery order still in its cycle", async () => {
+    const day = new Date('2026-09-07T09:00:00Z');
+    await prisma.order.create({
+      data: {
+        id: 'overnight-preparing',
+        userId: 1,
+        type: 'Delivery',
+        status: 'Preparing',
+        customerName: 'Maria Souza',
+        address: 'Rua A',
+        createdAt: new Date('2026-09-06T14:00:00Z'),
+      },
+    });
+    await prisma.order.create({
+      data: {
+        id: 'overnight-out',
+        userId: 1,
+        type: 'Delivery',
+        status: 'Out for delivery',
+        customerName: 'João Lima',
+        address: 'Rua B',
+        createdAt: new Date('2026-09-06T15:00:00Z'),
+      },
+    });
+
+    const listing = await repository.findAllForListing(day);
+
+    expect(listing.map((entry) => entry.order.getId())).toEqual([
+      'overnight-preparing',
+      'overnight-out',
+    ]);
+  });
+
+  it("should keep an earlier day's completed orders out of the listing", async () => {
+    const day = new Date('2026-09-07T09:00:00Z');
+    const previousDay = new Date('2026-09-06T14:00:00Z');
+    await prisma.order.create({
+      data: {
+        id: 'yesterday-closed',
+        userId: 1,
+        type: 'Local',
+        status: 'Closed',
+        paymentType: 'Pix',
+        closedAt: previousDay,
+        createdAt: previousDay,
+      },
+    });
+    await prisma.order.create({
+      data: {
+        id: 'yesterday-delivered',
+        userId: 1,
+        type: 'Delivery',
+        status: 'Delivered',
+        customerName: 'Maria Souza',
+        address: 'Rua A',
+        deliveredAt: previousDay,
+        createdAt: previousDay,
+      },
+    });
+
+    const listing = await repository.findAllForListing(day);
+
+    expect(listing).toEqual([]);
+  });
+
+  it("should list the requested day's orders whatever their status", async () => {
+    const day = new Date('2026-09-07T09:00:00Z');
+    await prisma.order.create({
+      data: {
+        id: 'today-open',
+        userId: 1,
+        type: 'Local',
+        status: 'Open',
+        createdAt: new Date('2026-09-07T14:00:00Z'),
+      },
+    });
+    await prisma.order.create({
+      data: {
+        id: 'today-closed',
+        userId: 1,
+        type: 'Local',
+        status: 'Closed',
+        paymentType: 'Pix',
+        closedAt: new Date('2026-09-07T15:00:00Z'),
+        createdAt: new Date('2026-09-07T15:00:00Z'),
+      },
+    });
+
+    const listing = await repository.findAllForListing(day);
+
+    expect(listing.map((entry) => entry.order.getId())).toEqual([
+      'today-open',
+      'today-closed',
+    ]);
+  });
+
   it("should list the day's sales with waiter, payment and sale time", async () => {
     const day = new Date('2026-09-07T09:00:00Z');
     const inDay = new Date('2026-09-07T14:00:00Z');
@@ -418,5 +533,38 @@ describe('PrismaOrdersRepository', () => {
     const sales = await repository.findDaySales(day);
 
     expect(sales).toEqual([]);
+  });
+
+  it("should keep an earlier day's open order out of the day's sales", async () => {
+    const day = new Date('2026-09-07T09:00:00Z');
+    const previousDay = new Date('2026-09-06T14:00:00Z');
+    await prisma.order.create({
+      data: {
+        id: 'overnight-open',
+        userId: 1,
+        type: 'Local',
+        status: 'Open',
+        createdAt: previousDay,
+      },
+    });
+    await prisma.order.create({
+      data: {
+        id: 'closed-today',
+        userId: 1,
+        type: 'Local',
+        status: 'Closed',
+        paymentType: 'Pix',
+        closedAt: new Date('2026-09-07T14:00:00Z'),
+        createdAt: previousDay,
+      },
+    });
+
+    const listing = await repository.findAllForListing(day);
+    const sales = await repository.findDaySales(day);
+
+    expect(listing.map((entry) => entry.order.getId())).toEqual([
+      'overnight-open',
+    ]);
+    expect(sales.map((entry) => entry.order.getId())).toEqual(['closed-today']);
   });
 });

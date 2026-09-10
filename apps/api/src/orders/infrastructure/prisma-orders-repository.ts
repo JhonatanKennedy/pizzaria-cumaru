@@ -29,15 +29,7 @@ export class PrismaOrdersRepository implements IOrdersRepository {
 
   async findAllOpen(): Promise<Order[]> {
     const rows = await this.prisma.order.findMany({
-      where: {
-        OR: [
-          { type: 'Local', status: 'Open' },
-          {
-            type: 'Delivery',
-            status: { in: ['Open', 'Preparing', 'Out for delivery'] },
-          },
-        ],
-      },
+      where: { OR: this.openOrderConditions() },
       include: ORDER_WITH_RELATIONS,
       orderBy: { createdAt: 'asc' },
     });
@@ -86,10 +78,18 @@ export class PrismaOrdersRepository implements IOrdersRepository {
     return rows.map(orderRowToDomain);
   }
 
+  // The day's orders plus anything still in progress, so an order left open
+  // overnight keeps its table reachable. Completed orders from earlier days
+  // stay out — the day's trade is the sales report's job, not the listing's.
   async findAllForListing(day: Date): Promise<IOrderListingEntry[]> {
     const { start, end } = this.dayWindow(day);
     const rows = await this.prisma.order.findMany({
-      where: { createdAt: { gte: start, lt: end } },
+      where: {
+        OR: [
+          { createdAt: { gte: start, lt: end } },
+          ...this.openOrderConditions(),
+        ],
+      },
       include: ORDER_WITH_RELATIONS,
       orderBy: { createdAt: 'asc' },
     });
@@ -112,6 +112,18 @@ export class PrismaOrdersRepository implements IOrdersRepository {
   private dayWindow(day: Date): { start: Date; end: Date } {
     const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
     return { start, end: new Date(start.getTime() + MS_PER_DAY) };
+  }
+
+  // Shared by the floor view's open-order query and the orders listing: an
+  // order both surfaces show must answer to one definition of "in progress".
+  private openOrderConditions(): Prisma.OrderWhereInput[] {
+    return [
+      { type: 'Local', status: 'Open' },
+      {
+        type: 'Delivery',
+        status: { in: ['Open', 'Preparing', 'Out for delivery'] },
+      },
+    ];
   }
 
   private completedWhere(start: Date, end: Date): Prisma.OrderWhereInput {
