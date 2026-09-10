@@ -277,6 +277,78 @@ describe('OrderDetailPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should disable the increase step on an item the kitchen has finished, keeping the decrease step', () => {
+    seedDefaults();
+    seedMenu([{ id: 'i-calabresa', name: 'Calabresa', price: 45 }]);
+    seedOrder({
+      totalPrice: 90,
+      items: [
+        {
+          id: 'oi-calabresa',
+          itemId: 'i-calabresa',
+          quantity: 2,
+          status: 'Ready',
+          unitPrice: 45,
+        },
+      ],
+    });
+
+    renderOrderDetail();
+
+    expect(
+      screen.getByRole('button', { name: 'Aumentar quantidade' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Diminuir quantidade' }),
+    ).not.toBeDisabled();
+  });
+
+  it('should keep the increase step available on an item still pending', () => {
+    seedDefaults();
+    seedMenu([{ id: 'i-calabresa', name: 'Calabresa', price: 45 }]);
+    seedOrder({
+      totalPrice: 45,
+      items: [
+        {
+          id: 'oi-calabresa',
+          itemId: 'i-calabresa',
+          quantity: 1,
+          status: 'Pending',
+          unitPrice: 45,
+        },
+      ],
+    });
+
+    renderOrderDetail();
+
+    expect(
+      screen.getByRole('button', { name: 'Aumentar quantidade' }),
+    ).not.toBeDisabled();
+  });
+
+  it('should keep the add-item panel reachable beside a finished item', () => {
+    seedDefaults();
+    seedMenu([{ id: 'i-calabresa', name: 'Calabresa', price: 45 }]);
+    seedOrder({
+      totalPrice: 45,
+      items: [
+        {
+          id: 'oi-calabresa',
+          itemId: 'i-calabresa',
+          quantity: 1,
+          status: 'Ready',
+          unitPrice: 45,
+        },
+      ],
+    });
+
+    renderOrderDetail();
+
+    expect(
+      screen.getByRole('heading', { name: 'Adicionar item' }),
+    ).toBeInTheDocument();
+  });
+
   it('should show no close action to a waiter', () => {
     seedDefaults();
     seedMenu([{ id: 'i-calabresa', name: 'Calabresa', price: 45 }]);

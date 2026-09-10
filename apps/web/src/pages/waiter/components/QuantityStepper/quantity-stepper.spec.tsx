@@ -20,6 +20,20 @@ function renderStepper(
   return userEvent.setup();
 }
 
+function renderStepperThatCannotIncrease(
+  quantity: number,
+): ReturnType<typeof userEvent.setup> {
+  render(
+    <QuantityStepper
+      quantity={quantity}
+      canIncrease={false}
+      onDecrease={onDecreaseMock}
+      onIncrease={onIncreaseMock}
+    />,
+  );
+  return userEvent.setup();
+}
+
 describe('QuantityStepper', () => {
   it('should show the current quantity', () => {
     renderStepper(2);
@@ -71,5 +85,19 @@ describe('QuantityStepper', () => {
 
     expect(onIncreaseMock).not.toHaveBeenCalled();
     expect(onDecreaseMock).not.toHaveBeenCalled();
+  });
+
+  it('should disable only the increase button when the increase is unavailable', async () => {
+    const user = renderStepperThatCannotIncrease(2);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Aumentar quantidade' }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Diminuir quantidade' }),
+    );
+
+    expect(onIncreaseMock).not.toHaveBeenCalled();
+    expect(onDecreaseMock).toHaveBeenCalledTimes(1);
   });
 });

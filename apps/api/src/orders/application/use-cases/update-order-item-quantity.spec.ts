@@ -105,6 +105,66 @@ describe('UpdateOrderItemQuantityUseCase', () => {
     expect(pizza?.getQuantity()).toBe(2);
   });
 
+  it('should refuse increasing an item the kitchen has finished', async () => {
+    const order = makeOpenOrderWithItems();
+    const pizza = order
+      .getItems()
+      .find((item) => item.getId() === PIZZA_ITEM_ID);
+    pizza?.startPreparation();
+    pizza?.finishPreparation();
+    const repository = makeFakeRepository(order);
+    const useCase = new UpdateOrderItemQuantityUseCase(repository);
+
+    await expect(
+      useCase.execute({
+        orderId: ORDER_ID,
+        orderItemId: PIZZA_ITEM_ID,
+        quantity: 2,
+      }),
+    ).rejects.toThrow('Cannot change a ready item');
+    expect(pizza?.getQuantity()).toBe(1);
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it('should still increase a pizza that is only pending', async () => {
+    const order = makeOpenOrderWithItems();
+    const repository = makeFakeRepository(order);
+    const useCase = new UpdateOrderItemQuantityUseCase(repository);
+
+    await useCase.execute({
+      orderId: ORDER_ID,
+      orderItemId: PIZZA_ITEM_ID,
+      quantity: 3,
+    });
+
+    const pizza = order
+      .getItems()
+      .find((item) => item.getId() === PIZZA_ITEM_ID);
+    expect(pizza?.getQuantity()).toBe(3);
+    expect(repository.save).toHaveBeenCalledWith(order);
+  });
+
+  it('should still decrease an item the kitchen has finished', async () => {
+    const order = makeOpenOrderWithItems();
+    const pizza = order
+      .getItems()
+      .find((item) => item.getId() === PIZZA_ITEM_ID);
+    pizza?.increaseQuantity(1);
+    pizza?.startPreparation();
+    pizza?.finishPreparation();
+    const repository = makeFakeRepository(order);
+    const useCase = new UpdateOrderItemQuantityUseCase(repository);
+
+    await useCase.execute({
+      orderId: ORDER_ID,
+      orderItemId: PIZZA_ITEM_ID,
+      quantity: 1,
+    });
+
+    expect(pizza?.getQuantity()).toBe(1);
+    expect(repository.save).toHaveBeenCalledWith(order);
+  });
+
   it('should not save when the target equals the current quantity', async () => {
     const order = makeOpenOrderWithItems();
     const repository = makeFakeRepository(order);

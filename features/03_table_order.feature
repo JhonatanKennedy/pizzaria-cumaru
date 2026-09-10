@@ -61,6 +61,12 @@ Feature: Table orders (local service)
     When the waiter increases the quantity of the pizza "Calabresa" from "1" to "2"
     Then the order of table "5" must record the pizza "Calabresa" with quantity "2"
 
+  Scenario: It is not possible to increase an item the kitchen has finished
+    Given there is an open order for table "5" with a pizza "Calabresa" that the kitchen has finished
+    When the waiter tries to increase the quantity of the pizza "Calabresa"
+    Then the increase must not be available
+    And the waiter must still be able to decrease the pizza "Calabresa"
+
   Scenario: It is not possible to adjust items of a closed order
     Given the order of table "5" has status "Closed"
     When the waiter tries to change the quantity of an item of the order of table "5"

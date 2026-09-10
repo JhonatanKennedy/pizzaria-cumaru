@@ -3,6 +3,7 @@ import { Button } from '@components/Button';
 interface QuantityStepperProps {
   quantity: number;
   busy?: boolean;
+  canIncrease?: boolean;
   onDecrease: () => void;
   onIncrease: () => void;
 }
@@ -10,6 +11,7 @@ interface QuantityStepperProps {
 export function QuantityStepper({
   quantity,
   busy = false,
+  canIncrease = true,
   onDecrease,
   onIncrease,
 }: QuantityStepperProps): React.ReactNode {
@@ -30,7 +32,7 @@ export function QuantityStepper({
       </span>
       <Button
         aria-label="Aumentar quantidade"
-        disabled={busy}
+        disabled={busy || !canIncrease}
         onClick={onIncrease}
         className="px-2 py-0.5 text-sm"
       >

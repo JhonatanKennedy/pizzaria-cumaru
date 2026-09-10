@@ -10,8 +10,11 @@ export interface IUpdateOrderItemQuantityParams {
 }
 
 // Set an item's quantity to an absolute target (>= 1) while the order is
-// open, whatever the item's preparation status — the kitchen reads live
-// order items. Frozen orders refuse; a no-op target saves nothing.
+// open. Increasing is refused once the item reached Ready — the kitchen has
+// already finished it, so the extra portion would never be made; the bound
+// lives on OrderItems.increaseQuantity, not here. Decreasing stays available
+// whatever the item's preparation status. Frozen orders refuse; a no-op
+// target saves nothing.
 // Feature: 03_table_order.feature.
 @Injectable()
 export class UpdateOrderItemQuantityUseCase {

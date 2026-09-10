@@ -162,6 +162,61 @@ describe('OrderItems', () => {
     expect(item.getCreatedAt()).toBe(CREATED_AT);
   });
 
+  it('should increase the quantity of a Pending item', () => {
+    const item = makePreparedItem();
+
+    item.increaseQuantity(2);
+
+    expect(item.getQuantity()).toBe(3);
+  });
+
+  it('should increase the quantity of an item in preparation', () => {
+    const item = makePreparedItem();
+    item.startPreparation();
+
+    item.increaseQuantity(1);
+
+    expect(item.getQuantity()).toBe(2);
+  });
+
+  it('should increase a non-prepared item that never entered the kitchen', () => {
+    const drink = makeDrink();
+
+    drink.increaseQuantity(3);
+
+    expect(drink.getQuantity()).toBe(4);
+  });
+
+  it('should refuse increasing a Ready item', () => {
+    const item = makePreparedItem();
+    item.startPreparation();
+    item.finishPreparation();
+
+    expect(() => item.increaseQuantity(1)).toThrow(
+      'Cannot change a ready item',
+    );
+  });
+
+  it('should keep the quantity when a Ready increase is refused', () => {
+    const item = makePreparedItem();
+    item.startPreparation();
+    item.finishPreparation();
+
+    expect(() => item.increaseQuantity(1)).toThrow();
+    expect(item.getQuantity()).toBe(1);
+  });
+
+  it('should still decrease a Ready item', () => {
+    const item = makePreparedItem();
+    item.increaseQuantity(1);
+    item.startPreparation();
+    item.finishPreparation();
+
+    item.decreaseQuantity(1);
+
+    expect(item.getQuantity()).toBe(1);
+  });
+
   it('should default to no parts and record a whole-canvas or composed pizza when given', () => {
     const plain = makePreparedItem();
     const whole = OrderItems.create({

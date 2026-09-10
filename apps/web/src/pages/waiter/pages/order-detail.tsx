@@ -21,6 +21,7 @@ import { useOrders } from '../hooks/use-orders';
 import { useTables } from '../hooks/use-tables';
 import { useUpdateItemQuantity } from '../hooks/use-update-item-quantity';
 import { canCancelOrderItem } from '../business/can-cancel-order-item';
+import { canIncreaseItemQuantity } from '../business/can-increase-item-quantity';
 import { hasItemsInPreparation } from '../business/has-items-in-preparation';
 
 const OPEN_STATUS = 'Open';
@@ -201,6 +202,7 @@ export function OrderDetailPage({
                 <QuantityStepper
                   quantity={item.quantity}
                   busy={busyQuantityItemId === item.id}
+                  canIncrease={canIncreaseItemQuantity(item.status)}
                   onDecrease={() =>
                     handleQuantityChange(item.id, item.quantity - 1)
                   }

@@ -113,6 +113,10 @@ export class OrderItems {
   }
 
   increaseQuantity(quantity: number): void {
+    if (this.status === EOrderItemStatus.READY) {
+      throw new Error('Cannot change a ready item');
+    }
+
     if (quantity <= 0) {
       throw new Error('Quantity must be greater than zero');
     }
