@@ -41,6 +41,11 @@ Run from the root — npm workspaces hoists both apps' dependencies there, and t
 
 Environment stays per app: `apps/web/.env.local` (`VITE_API_URL`, default `http://localhost:3000`) and `apps/api/.env.local`. Neither tool reads a root `.env` — don't create one. Seeded logins: `ana.gerente` (Manager), `joao.garcom` (Waiter), `carlos.cozinha` (Cook), password `SenhaSegura123`.
 
+Two things the layout requires and that are easy to undo by accident:
+
+- **`vitest` is a root `devDependency` on purpose.** Both apps must stay on the same major. Two majors makes npm nest the copies, which splits `@testing-library/jest-dom`'s type augmentation away from the `vitest` the specs resolve — tests still pass but `tsc -b` fails. See "What the functional gate caught" in the runbook.
+- **`.env.local` files are gitignored, so they never travelled with the migration.** A fresh clone needs both recreated from `.env.example`; `apps/api/.env.local` is required for the api suite to run at all.
+
 ## Open
 
 - **`packages/` is empty.** The API contract is still hand-mirrored: `apps/web/src/api/*.api.ts` re-declares the wire shapes in zod and const unions (`ORDER_TYPES`) while `apps/api/src/**/domain/enums/*` declares the same values as TS enums (`EOrderType`, `EOrderStatus`, `EUserRole`). Hoisting them into a shared package is the next planned step — the runbook's Phase 6 in [docs/monorepo-migration.md](docs/monorepo-migration.md).

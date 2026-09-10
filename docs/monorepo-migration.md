@@ -13,9 +13,46 @@
 | 2c — hoist `.claude` tooling | done; the identical `openspec-*` skills and `opsx` commands live at the root, each app keeps its own `rules/` |
 | 2d — root index | done; root `CLAUDE.md`, root `.gitignore` |
 | 3 — npm workspaces | done; one root lockfile, deps hoisted |
-| 4 — pure-move gate | done; `git diff import/*:apps/* HEAD:apps/* -- src` is empty for both apps |
+| 4 — pure-move gate | done; `git diff import/*:apps/* HEAD:apps/* -- src` is empty for both apps, and the functional gate is green (api 244/244, web 279/279, both builds, both lints) — after the two repairs below |
 | 5 — set `origin`, push | see below |
 | 6 — `packages/contracts` | not started |
+
+### What the functional gate caught that the structural gate could not
+
+The structural gate compares *committed* trees, so by construction it cannot see anything
+that never entered git. Both failures were of that kind, and both were invisible until the
+suite actually ran.
+
+**1. Gitignored local config does not travel.** `git subtree` grafts committed content
+only, so every ignored file stayed behind — and `.env.local` is where the database
+credentials live. `apps/api/.env.local` (holding `DATABASE_URL`, `TEST_DATABASE_URL`,
+`JWT_SECRET`) had to be copied by hand from the old checkout; without it 30 of 244 api
+tests failed on Prisma connection errors, with Postgres itself running fine. The frontend's
+`.claude/settings.local.json` was copied the same way. Any other ignored-but-needed file
+would have the same problem — the fix is per-file, there is no general one.
+
+**2. Two vitest majors, and hoisting split the type augmentation.**
+`apps/web` pinned `vitest ^5.0.0` and `apps/api` pinned `^4.1.2`. npm hoisted api's v4 to
+`node_modules/vitest` and nested web's v5 under `apps/web/node_modules/`, while
+`@testing-library/jest-dom` sat at the root. Because its `vitest.d.ts` does
+`import ... from 'vitest'`, resolved *relative to itself*, the augmentation landed on v4's
+`Assertion` — while the web specs' global `expect` came from the v5 they resolved locally.
+`npm test -w apps/web` passed (the runtime never consults those types) but
+`npm run build -w apps/web` failed with ~20 `Property 'toBeInTheDocument' does not exist on
+type 'Assertion'` errors. The old standalone repo had a single vitest, which is why it built.
+
+Two changes were needed, and the second is not obvious:
+
+1. `apps/api` moved to `vitest ^5.0.0` + `@vitest/coverage-v8 ^5.0.0`. Its 244 tests pass
+   unchanged on v5 — no config or test edits were required.
+2. Aligning versions alone made it *worse*: npm then nested v5 in **both** apps and left
+   nothing at the root, so jest-dom could not resolve `vitest` at all. Worse still, this
+   survived a clean `rm -rf node_modules && npm install`, so it is npm's hoisting decision
+   rather than a stale tree. Declaring `vitest` in the root `devDependencies` pins one copy
+   at `node_modules/vitest` where the augmentation resolves, and both apps dedupe onto it.
+
+Neither failure is reachable by inspecting the source diff, which is the point: a
+structural gate proves the move was pure, not that it was *complete*.
 
 ## Deviation from the plan as written
 
@@ -219,6 +256,9 @@ Create the root `package.json`:
   "name": "pizzaria-cumaru",
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
+  "devDependencies": {
+    "vitest": "^5.0.0"
+  },
   "scripts": {
     "dev:api": "npm run start:dev -w apps/api",
     "dev:web": "npm run dev -w apps/web",
@@ -349,4 +389,10 @@ same mistake Phase 0 exists to avoid.
   `apps/web`. Copy the directory if any of it is worth keeping.
 - **npm hoisting is a real change** to where modules resolve from, even though it's
   invisible when it works. If either app breaks after Phase 3, the diff to inspect is
-  `node_modules` layout, not source.
+  `node_modules` layout, not source. Concretely: **keep shared test tooling on one major
+  version across the workspace and declare it at the root.** Two majors of one runner is
+  what broke the web build — see the two repairs above.
+- **The functional gate must run in the new tree, and it must include `build`.** Two of the
+  three defects this migration actually shipped with were invisible to tests: the api tests
+  needed a file that never travelled, and the web failure showed up only under `tsc -b`.
+  `npm test` alone would have passed on a tree that could not be built.
