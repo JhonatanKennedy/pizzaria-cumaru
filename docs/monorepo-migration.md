@@ -387,6 +387,14 @@ same mistake Phase 0 exists to avoid.
 - **Claude Code project memory is keyed by directory path.** Notes accumulated against
   `-home-jhonatan-Development-pizzaria-cumaru-frontend` don't follow the code into
   `apps/web`. Copy the directory if any of it is worth keeping.
+- **Path-scoped `git log` stops at the graft.** All 80 commits are reachable and `git blame`
+  walks the boundary correctly — it attributes current lines to the original commits, shown
+  with their old `src/…` paths. But `git log -- apps/api/src/…` returns only the graft
+  commit, because the pre-graft commits store the original root-relative paths and history
+  simplification prunes the walk there. To go further back, address the graft's second
+  parent directly (`git log 8375873 -- src/orders/…`) or browse the `import/api` tag's
+  parent. This is the known cost of `git subtree` over a `git filter-repo` rewrite; it is
+  provenance, not data loss.
 - **npm hoisting is a real change** to where modules resolve from, even though it's
   invisible when it works. If either app breaks after Phase 3, the diff to inspect is
   `node_modules` layout, not source. Concretely: **keep shared test tooling on one major
