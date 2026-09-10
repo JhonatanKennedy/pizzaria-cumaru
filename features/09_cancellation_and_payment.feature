@@ -10,6 +10,7 @@ Feature: Item cancellation and bill splitting
     Given the pizza "Calabresa" requires preparation and has status "Pending"
     When the waiter cancels the item "Calabresa" through the plain confirmation
     Then the item "Calabresa" must be removed from the order
+    And the order history must record the cancelled item and the cancellation time
 
   Scenario: It is not possible to cancel an item that is already in preparation
     Given the pizza "Calabresa" requires preparation and has status "Preparing"
@@ -22,7 +23,7 @@ Feature: Item cancellation and bill splitting
     When the waiter cancels the item "Água" through the plain confirmation
     Then the item "Água" must be removed from the order, regardless of the progress of the other items
 
-  Scenario: Cancel the whole order because the customer gave up
+  Scenario: Cancel the whole open order
     Given there is an open order for table "12" with a pizza "Calabresa" that is being prepared and an "Água"
     When the waiter cancels the order of table "12" through the plain confirmation
     Then the order of table "12" must be marked as "Cancelled"

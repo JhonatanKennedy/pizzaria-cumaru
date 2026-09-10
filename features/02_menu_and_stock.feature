@@ -53,7 +53,7 @@ Feature: Menu and ingredient stock management
     When the manager "ana.gerente" marks the ingredient "Mussarela" as available again
     Then the items that depend on "Mussarela" must appear normally again for the waiter and for the kitchen
 
-  Scenario: Manager registers a new item
+  Scenario: Manager adds a new item to the menu
     Given the manager "ana.gerente" is authenticated
     When she registers the pizza "Calabresa Especial" with the price "R$ 55.00" depending on the ingredient "Mussarela"
     Then the pizza "Calabresa Especial" must appear in the menu with the price "R$ 55.00"
@@ -64,28 +64,39 @@ Feature: Menu and ingredient stock management
     Then the system must refuse the operation
     And the message "Item name already in use" must be displayed
 
-  Scenario: Manager edits an item through its single edit dialog
-    When the manager "ana.gerente" edits the pizza "Calabresa" through its "Editar" dialog, pre-filled with the item's name, description, price, preparation flag and linked ingredients
-    And she renames it to "Calabresa Reforçada"
-    Then the menu must show "Calabresa Reforçada"
-    And the kitchen queue must display "Calabresa Reforçada" for that item
+  Scenario: The system refuses a negative price
+    When the manager "ana.gerente" tries to update the pizza "Calabresa" with the price "-R$ 5.00"
+    Then the system must refuse the operation
+    And the message "Price cannot be negative" must be displayed
 
-  Scenario: Manager updates an item price inside the edit dialog
+  Scenario: Manager updates the price of an item through its "Editar" dialog
     Given the manager "ana.gerente" is authenticated
     When she changes the price of the pizza "Calabresa" to "R$ 45.00" inside its "Editar" dialog
     Then the menu must show the pizza "Calabresa" with the price "R$ 45.00"
     And new orders with the pizza "Calabresa" must consider the value "R$ 45.00"
 
-  Scenario: Manager links an ingredient to a dish through its edit dialog
+  Scenario: Manager changes everything about an item in one request through its "Editar" dialog
+    Given the manager "ana.gerente" is authenticated
+    When she edits the pizza "Calabresa" through its "Editar" dialog, pre-filled with the item's name, description, price, preparation flag and linked ingredients
+    And she changes its name to "Calabresa Reforçada", its description, its price to "R$ 48.00" and its preparation flag at once
+    Then the menu must show "Calabresa Reforçada" with the new description, price and preparation flag
+    And the kitchen queue must display "Calabresa Reforçada" for that item
+    And new orders with the pizza "Calabresa Reforçada" must consider the value "R$ 48.00"
+
+  Scenario: An item keeps the category it was created with
+    When the manager "ana.gerente" tries to update the pizza "Calabresa" with the category "Drink"
+    Then the pizza "Calabresa" must remain in the menu as a pizza
+
+  Scenario: Manager links an ingredient to a dish with a single update
     Given the dish "Parmegiana de Frango" does not depend on "Mussarela"
-    When the manager "ana.gerente" edits the dish "Parmegiana de Frango" and selects the ingredient "Mussarela"
+    When the manager "ana.gerente" updates the dish "Parmegiana de Frango" through its "Editar" dialog, selecting the ingredient "Mussarela"
     Then the dish "Parmegiana de Frango" must be unavailable whenever "Mussarela" is unavailable
     And it must become available again when "Mussarela" is restored
 
-  Scenario: Manager unlinks an ingredient from a dish through its edit dialog
+  Scenario: Manager unlinks an ingredient from a dish with a single update
     Given the ingredient "Mussarela" is unavailable in stock
     And the dish "Parmegiana de Frango" depends on "Mussarela"
-    When the manager "ana.gerente" edits the dish "Parmegiana de Frango" and deselects the ingredient "Mussarela"
+    When the manager "ana.gerente" updates the dish "Parmegiana de Frango" through its "Editar" dialog, deselecting the ingredient "Mussarela"
     Then the dish "Parmegiana de Frango" must become available again
 
   Scenario: Kitchen items demand the preparation flag
