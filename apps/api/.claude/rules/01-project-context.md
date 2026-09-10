@@ -1,6 +1,6 @@
 # Project context
 
-`pizzaria-cumaru-backend` — backend for a pizzeria management system ("Pizzaria Cumaru"). Orders, catalog, tables, and users flows are implemented end-to-end (HTTP controller → application use-case → domain aggregate → repository interface → Prisma-backed implementation); kitchen is a thin context that drives `OrderItems` through orders use-cases. Feature specs live in `features/*.feature` (Gherkin, English) — read the relevant file before building an endpoint. Remaining stubs and open design questions are tracked in [08-conventions.md](08-conventions.md).
+`apps/api` — the NestJS backend for a pizzeria management system ("Pizzaria Cumaru"), formerly the standalone `pizzaria-cumaru-backend` repo. Orders, catalog, tables, and users flows are implemented end-to-end (HTTP controller → application use-case → domain aggregate → repository interface → Prisma-backed implementation); kitchen is a thin context that drives `OrderItems` through orders use-cases. Feature specs live in the repo-root `features/*.feature` (Gherkin, English) — read the relevant file before building an endpoint. Remaining stubs and open design questions are tracked in [08-conventions.md](08-conventions.md).
 
 ## Stack & tooling
 
@@ -107,4 +107,4 @@ The Prisma schema mirrors the aggregates — 9 models (`User`, `DeniedToken`, `O
 
 ## Feature specs
 
-`features/*.feature` are the product specs — one file per flow: `01_authentication`, `02_menu_and_stock`, `03_table_order`, `04_delivery_order`, `05_waiter_profile`, `06_cook_profile`, `07_manager_profile`, `09_cancellation_and_payment`, `10_table_management` (there is no `08`). Endpoints and e2e tests should trace back to scenarios in these files.
+The repo-root `features/*.feature` are the product specs — one file per flow: `01_authentication`, `02_menu_and_stock`, `03_table_order`, `04_delivery_order`, `05_waiter_profile`, `06_cook_profile`, `07_manager_profile`, `09_cancellation_and_payment`, `10_table_management` (there is no `08`). Endpoints and e2e tests should trace back to scenarios in these files.

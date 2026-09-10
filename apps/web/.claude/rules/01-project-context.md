@@ -1,6 +1,6 @@
 # Project context
 
-`pizzaria-cumaru-frontend` — the web SPA for the pizzeria management system ("Pizzaria Cumaru"). It consumes the REST API of [`pizzaria-cumaru-backend`](../../pizzaria-cumaru-backend/) (NestJS, JWT auth). The product specs live in `features/*.feature` (Gherkin, English) — **read the relevant feature file before building a screen**, and every screen/route should trace back to a scenario there. Remaining debt and open design questions are tracked in [08-conventions.md](08-conventions.md).
+`apps/web` — the web SPA for the pizzeria management system ("Pizzaria Cumaru"), formerly the standalone `pizzaria-cumaru-frontend` repo. It consumes the REST API of [`apps/api`](../../../apps/api/) (NestJS, JWT auth). The product specs live in the repo-root `features/*.feature` (Gherkin, English) — **read the relevant feature file before building a screen**, and every screen/route should trace back to a scenario there. Remaining debt and open design questions are tracked in [08-conventions.md](08-conventions.md).
 
 ## Stack & tooling
 
@@ -127,4 +127,4 @@ One context per product area — the folder is the context, and each screen name
 
 ## Feature specs
 
-`features/*.feature` are the product specs — one file per flow (`01_authentication` through `09_cancellation_and_payment`, no `08`). Screens, routes, user-visible messages and component tests should trace back to scenarios in these files. If you can't name the scenario a screen implements, the screen doesn't belong.
+The repo-root `features/*.feature` are the product specs — one file per flow (`01_authentication` through `10_table_management`, no `08`). Screens, routes, user-visible messages and component tests should trace back to scenarios in these files. If you can't name the scenario a screen implements, the screen doesn't belong.

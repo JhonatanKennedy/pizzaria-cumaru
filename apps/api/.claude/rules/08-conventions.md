@@ -27,7 +27,7 @@ import { OrderItems } from './order-items.ts';
 
 ## 3. Language
 
-Code, identifiers, comments, tests, and the Gherkin specs in `features/` are all in English.
+Code, identifiers, comments, tests, and the Gherkin specs in the repo-root `features/` are all in English.
 
 ## 4. Format & lint before committing
 

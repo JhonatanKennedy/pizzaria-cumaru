@@ -1,0 +1,15 @@
+# npm workspaces hoists dependencies to the root
+node_modules/
+
+# Build output and test artifacts
+dist/
+coverage/
+
+# Environment: each app reads its own — the tools never look at the root
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*

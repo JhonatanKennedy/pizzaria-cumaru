@@ -55,7 +55,7 @@ One exported component per file; the context object itself lives in a plain `.ts
 
 ## 3. Language
 
-Code, identifiers, comments, tests, and the Gherkin specs in `features/` are all in English. **Every user-facing label authored in the frontend — buttons, headings, screen names, form labels, placeholder text, validation messages — is written in Portuguese (pt-BR).** Role display labels are mapped in `pages/auth/business/role.ts` (`Waiter → Garçom`, `Cook → Cozinheiro`, `Manager → Gerente`); screen names follow the same convention (`Waiter Panel → Painel do Garçom`, `Kitchen Panel → Painel da Cozinha`, `Manager Panel → Painel do Gerente`, `Daily Earnings Report → Relatório de Ganhos Diários`).
+Code, identifiers, comments, tests, and the Gherkin specs in the repo-root `features/` are all in English. **Every user-facing label authored in the frontend — buttons, headings, screen names, form labels, placeholder text, validation messages — is written in Portuguese (pt-BR).** Role display labels are mapped in `pages/auth/business/role.ts` (`Waiter → Garçom`, `Cook → Cozinheiro`, `Manager → Gerente`); screen names follow the same convention (`Waiter Panel → Painel do Garçom`, `Kitchen Panel → Painel da Cozinha`, `Manager Panel → Painel do Gerente`, `Daily Earnings Report → Relatório de Ganhos Diários`).
 
 Two things stay exactly as they come: **backend error messages** are surfaced verbatim, never translated (see §5), and **product data** (menu items, customer names) arrives from the backend as-is.
 
