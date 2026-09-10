@@ -9,12 +9,12 @@
 | --- | --- |
 | 1 — graft both histories | done; reference tags `import/api` and `import/web` |
 | 2a — merge `features/` | done; the five drifted files were merged as a **union**, not a pick-a-winner (the web copy had gained UI behavior, the api copy domain behavior) — see commit `docs(features)` |
-| 2b — union `openspec/` | done; names were disjoint, so a plain union (12 active changes, 10 capabilities, 16 archived) |
+| 2b — union `openspec/` | done; names were disjoint, so a plain union. At migration time: 12 active changes, 10 capabilities, 16 archived — today: none active, 14 capabilities (20 `spec.md`, as `orders/` carries seven), 31 archived |
 | 2c — hoist `.claude` tooling | done; the identical `openspec-*` skills and `opsx` commands live at the root, each app keeps its own `rules/` |
 | 2d — root index | done; root `CLAUDE.md`, root `.gitignore` |
 | 3 — npm workspaces | done; one root lockfile, deps hoisted |
 | 4 — pure-move gate | done; `git diff import/*:apps/* HEAD:apps/* -- src` is empty for both apps, and the functional gate is green (api 244/244, web 279/279, both builds, both lints) — after the two repairs below |
-| 5 — set `origin`, push | see below |
+| 5 — set `origin`, push | done; `master` is pushed to `origin` (`git@github.com:JhonatanKennedy/pizzaria-cumaru.git`), and the two old repos are archived rather than deleted |
 | 6 — `packages/contracts` | not started |
 
 ### What the functional gate caught that the structural gate could not
@@ -72,7 +72,12 @@ Layer-specific mechanics that crept into the specs belong in each layer's own te
 
 ---
 
-# Monorepo migration runbook
+# Appendix — the plan as written
+
+Kept verbatim for provenance: this is the plan that was followed, not a description of
+the current tree. Where it disagrees with the status table above, **the status wins** —
+in particular Phase 0 (the listing fix) was not landed first, and the "Known residuals"
+at the end are the state at execution time, several of which have since changed.
 
 Merge `pizzaria-cumaru-frontend` and `pizzaria-cumaru-backend` into one repository
 (`pizzaria-cumaru`) with npm workspaces.

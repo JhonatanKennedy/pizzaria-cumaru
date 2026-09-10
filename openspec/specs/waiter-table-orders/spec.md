@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The waiter's table-order flow: register and manage one order per table, add menu items with category filtering, follow the preparation status of each item, and cancel pending items with a reason. Traces to `features/03_table_order.feature`, `05_waiter_profile.feature` and `09_cancellation_and_payment.feature`.
+The waiter's table-order flow: register and manage one order per table, add menu items with category filtering, follow the preparation status of each item, and cancel pending items through a plain confirmation — no reason is collected. Traces to `features/03_table_order.feature`, `05_waiter_profile.feature` and `09_cancellation_and_payment.feature`.
 
 ## Requirements
 
@@ -62,18 +62,6 @@ The detail screen MUST reflect what the kitchen is doing with each item.
 - **WHEN** the kitchen finishes preparing an item of an open order
 - **THEN** the waiter sees that item with status "Pronto" in the order detail
 
-### Requirement: Cancel a pending item
-
-Mistaken items MUST be removable while the order is open and the item has not started preparation.
-
-#### Scenario: Cancelling a pending item with a reason
-- **WHEN** the waiter cancels a Pending item informing a reason
-- **THEN** the item is removed from the order and the reason is recorded in the order history
-
-#### Scenario: No cancellation for items in preparation
-- **WHEN** an item is not Pending
-- **THEN** the detail screen offers no cancellation action for it
-
 ### Requirement: Removed menu items stay displayable
 
 An item deleted from the menu MUST NOT break the display of an open order that contains it.
@@ -84,15 +72,15 @@ An item deleted from the menu MUST NOT break the display of an open order that c
 
 ### Requirement: Cancel an open table order
 
-The waiter MUST be able to cancel the whole open order from its detail screen, informing a reason. On success the screen MUST return to the tables screen, where the freed table shows without an open order. Refusals from the backend (order no longer open) MUST be displayed verbatim.
+The waiter MUST be able to cancel the whole open order from its detail screen through a plain confirmation — no reason is collected and none is sent. On success the screen MUST return to the tables screen, where the freed table shows without an open order. Refusals from the backend (order no longer open) MUST be displayed verbatim.
 
 #### Scenario: Cancelling an order because the customer gave up
-- **WHEN** the waiter cancels the open order of table "5" from its detail screen informing the reason "Customer gave up"
+- **WHEN** the waiter cancels the open order of table "5" from its detail screen and confirms the cancellation
 - **THEN** the screen returns to the tables screen and table "5" shows without an open order
 
 #### Scenario: Cancelling without a reason
-- **WHEN** the waiter tries to cancel an open order without informing a reason
-- **THEN** the order is not cancelled and the dialog shows the validation message "Motivo é obrigatório"
+- **WHEN** the waiter cancels an open order without informing a reason, since the confirmation does not ask for one
+- **THEN** the order is cancelled: the screen returns to the tables screen and the freed table shows without an open order
 
 #### Scenario: Backend refuses the cancellation
 - **WHEN** the backend refuses the order cancellation
@@ -137,3 +125,19 @@ While the order is open, the waiter MUST be able to increase or decrease the qua
 #### Scenario: Backend refuses an increase on a finished item
 - **WHEN** the backend receives a request to increase the quantity of an item that has reached the "Ready" status
 - **THEN** the change is refused and the item keeps its current quantity
+
+### Requirement: Cancelling a pending item
+
+A mistaken item MUST be removable from an open order while it is `Pending`, and also while it has no preparation status at all: an item that never requires preparation (drinks, desserts served as-is) carries no kitchen status, so it stays cancellable at any moment, even while other items of the order are being prepared. The confirmation MUST NOT ask for a reason. Items with status `Preparing` or `Ready` MUST offer no cancellation action on the detail screen.
+
+#### Scenario: Cancelling a pending item
+- **WHEN** the waiter cancels a Pending item through the plain confirmation
+- **THEN** the item is removed from the order and no reason is collected
+
+#### Scenario: Cancelling an item that never requires preparation
+- **WHEN** an open order contains an item that never enters the kitchen flow (it has no status) and the waiter cancels it
+- **THEN** the item is removed from the order at any moment, even while other items of the order are being prepared
+
+#### Scenario: No cancellation for items in preparation
+- **WHEN** an item has status "Preparing" or "Ready"
+- **THEN** the detail screen offers no cancellation action for it

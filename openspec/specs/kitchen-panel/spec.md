@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The cook's production panel (Kitchen Panel): two queues of item tiles ordered by arrival showing only the items that require preparation, with start, finish and cancel-preparation actions per item. Traces to `features/06_cook_profile.feature`.
+The cook's production panel (Kitchen Panel): two queues of item tiles ordered by arrival showing only the items that require preparation, with start, finish and a plain-confirmation cancel-preparation action per item. Traces to `features/06_cook_profile.feature`.
 
 ## Requirements
 
@@ -79,25 +79,6 @@ A `Preparing` tile MUST offer a finish action ("Finalizar"). Finishing one item 
 - **WHEN** the Cook finishes a dish that is in preparation while another item of the same order is still `Pending`
 - **THEN** the finished dish's tile leaves the queue and the `Pending` item's tile remains in its position
 
-### Requirement: Cancel a started preparation with a reason
-
-A `Preparing` tile MUST offer a cancel action ("Cancelar preparo") that asks for a required reason before sending it. Cancellation MUST only apply to `Preparing` items; the backend records the reason in the order history and the order remains open.
-
-#### Scenario: Cancelling a preparation with a reason
-
-- **WHEN** the Cook cancels a dish in preparation informing the reason
-- **THEN** the tile leaves the queue, the reason is sent with the request, and the order remains open
-
-#### Scenario: Refusing a cancel without a reason
-
-- **WHEN** the Cook tries to cancel a preparation without informing a reason
-- **THEN** the panel refuses the action and shows the validation message "Motivo é obrigatório"
-
-#### Scenario: Surfacing a backend refusal verbatim
-
-- **WHEN** the backend refuses a start, finish or cancel action
-- **THEN** the panel shows the backend message as-is, and the queues keep their current state
-
 ### Requirement: Keep the queues fresh
 
 The Kitchen Panel MUST refresh its queues automatically every 15 seconds and MUST offer a manual refresh action ("Atualizar"). While an action is in flight its tile MUST be busy (no repeated clicks); while the queues load the panel MUST show a loading state, and a failed load MUST show the backend message with a retry path.
@@ -106,3 +87,15 @@ The Kitchen Panel MUST refresh its queues automatically every 15 seconds and MUS
 
 - **WHEN** the Kitchen Panel is open
 - **THEN** the queues refresh on their own every 15 seconds, and a manual refresh button is available
+
+### Requirement: Cancel a started preparation
+
+A `Preparing` tile MUST offer a cancel action ("Cancelar preparo") that confirms without asking for a reason. Cancellation MUST only apply to `Preparing` items; the cancelled tile leaves the queue and the order remains open. Backend refusals MUST be shown verbatim.
+
+#### Scenario: Cancelling a preparation
+- **WHEN** the Cook cancels a dish in preparation, confirming the action without informing a reason
+- **THEN** the tile leaves the queue and the order remains open
+
+#### Scenario: Surfacing a backend refusal verbatim
+- **WHEN** the backend refuses a start, finish or cancel action
+- **THEN** the panel shows the backend message as-is, and the queues keep their current state

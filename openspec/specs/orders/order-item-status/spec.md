@@ -50,19 +50,27 @@ Confirming one item finished SHALL NOT close the order and SHALL NOT change the 
 - **THEN** the finished item's status is "Ready", the second item's status stays "Pending", and the order as a whole stays "Open"
 
 ### Requirement: Cancellation of prepared items
-The system SHALL cancel a prepared item only while its status is "Pending". On cancellation the item SHALL be removed from the order and the reason SHALL be recorded in the order's history. Cancelling an item with status "Preparing" or "Ready" SHALL be refused with the message "Cannot cancel an item in preparation". A reason is required; cancelling without a reason SHALL be refused.
+The system SHALL cancel a prepared item through the order-side cancellation only while its status is "Pending"; on cancellation the item SHALL be removed from the order and the cancellation recorded in the order's history. An item whose status is "Preparing" SHALL be cancellable by the kitchen panel or by a Manager, with the same removal and history recording. An item in preparation SHALL NOT be cancellable through the order-side cancellation, which SHALL refuse with the message "Cannot cancel an item in preparation". An item whose status is "Ready" SHALL NOT be cancellable through either path. A reason SHALL NOT be required: the cancellation request carries none, and cancelling without one succeeds.
 
 #### Scenario: Cancel a pending prepared item
-- **WHEN** a prepared item with status "Pending" is cancelled with the reason "Customer gave up"
-- **THEN** the item is removed from the order and the order history records the cancellation with the reason "Customer gave up"
+- **WHEN** a prepared item with status "Pending" is cancelled
+- **THEN** the item is removed from the order and the order history records the cancellation
 
 #### Scenario: Cancel an item in preparation
-- **WHEN** a prepared item with status "Preparing" is cancelled
+- **WHEN** a prepared item with status "Preparing" is cancelled through the order-side cancellation
 - **THEN** the system refuses the operation with the message "Cannot cancel an item in preparation"
+
+#### Scenario: Cancel an item in preparation from the kitchen
+- **WHEN** the kitchen panel or a Manager cancels a prepared item with status "Preparing"
+- **THEN** the item is removed from the order, leaves the kitchen queue, and the order history records the cancellation
+
+#### Scenario: Cancel a ready item
+- **WHEN** an item with status "Ready" is cancelled through the kitchen panel or through the order-side cancellation
+- **THEN** the system refuses the operation
 
 #### Scenario: Cancel without a reason
 - **WHEN** an item is cancelled without informing a reason
-- **THEN** the system refuses the operation
+- **THEN** the cancellation succeeds and the item is removed from the order
 
 ### Requirement: Cancellation of non-prepared items
 The system SHALL cancel an item that does not require preparation at any moment while the order is open, regardless of the progress of the order's other items.
@@ -79,11 +87,11 @@ The system SHALL refuse to cancel or change items of a closed order.
 - **THEN** the system refuses the operation
 
 ### Requirement: Cancellation history
-The order SHALL keep a history of every cancelled item, recording the item, the reason, and the cancellation time.
+The order SHALL keep a history of every cancelled item, recording the item and the cancellation time.
 
 #### Scenario: Two cancellations on one order
-- **WHEN** two items of the same order are cancelled with different reasons
-- **THEN** the order history records both cancellations, each with its item, reason, and time
+- **WHEN** two items of the same order are cancelled
+- **THEN** the order history records both cancellations, each with its item and time
 
 ### Requirement: Creation timestamps
 The system SHALL record a creation timestamp when an order is created and when each item is added to an order.
