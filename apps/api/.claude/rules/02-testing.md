@@ -102,21 +102,23 @@ describe('Order', () => {
 
 ### Repeatable
 
-Same result on every run: no real clock, no randomness, no shared external state. Where a rule involves time, inject the clock instead of reading it.
+Same result on every run: no real clock, no randomness, no shared external state. Where a rule involves time, the time is a parameter — and in this codebase it already is: every aggregate takes its timestamps from outside rather than reading `Date.now()`.
 
 ```ts
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-// ❌ reads the real clock — the outcome changes by the hour
-getDueDate(): Date {
-  return new Date(Date.now() + MS_PER_DAY);
+// ❌ — the aggregate reads the clock, so the assertion depends on when it runs
+close(paymentType: EPaymentType): void {
+  this.closedAt = new Date();
 }
 
-// ✅ clock passed in — the test always asserts the same result
-getDueDate(now: Date = new Date()): Date {
-  return new Date(now.getTime() + MS_PER_DAY);
+// ✅ — the caller supplies the instant (orders.ts, as-is)
+close(paymentType: EPaymentType, closedAt: Date): void {
+  this.closedAt = closedAt;
 }
 ```
+
+The spec then pins them, which is why the fixtures at the bottom of this file declare `CREATED_AT` and `CLOSED_AT` as constants instead of calling `new Date()`.
+
+`Order.create` / `OrderItems.create` take `createdAt` for the same reason — and it is enforced by the type, so there is no way to accidentally fall back to the real clock.
 
 ### Self-validating
 
@@ -148,7 +150,7 @@ The "T" is dropped from our F.I.R.S. on purpose: writing the test first (TDD) is
 
 ## Layout & tooling
 
-- Unit/integration tests: colocated `*.spec.ts` next to the code under test. E2E: `test/*.e2e-spec.ts`.
+- Unit/integration tests: colocated `*.spec.ts` next to the code under test. E2E: `test/*.e2e-spec.ts` (7 today — `auth`, `catalog-management`, `delivery-order-status`, `order-creation`, `orders-checkout`, `order-status`, `tables`).
 - Vitest `globals: true` — never import `describe`, `it`, `expect`.
 - E2E specs map to feature files: `test/auth.e2e-spec.ts` implements scenarios from the repo-root `features/01_authentication.feature`, `test/order-creation.e2e-spec.ts` and `test/orders-checkout.e2e-spec.ts` cover the repo-root `features/03_table_order.feature` / `09_cancellation_and_payment.feature`. If you can't name the scenario it covers, the test doesn't belong in e2e.
 
@@ -166,20 +168,11 @@ describe('OrderItems', () => {
 
 ## Full example — unit spec for the Order aggregate
 
-`src/orders/domain/entities/orders.spec.ts`, faithful to the current `Order`/`OrderItems` implementation. Note the named constants (see the [no-magic-numbers rule](03-javascript.md#1-no-magic-numbers)), the fixed clock dates (see Repeatable above), and that the spec touches only the public API (`create`, `close`, `addItem`, `totalPrice`, getters) — never private fields. `Order.create` and `OrderItems.create` require `createdAt`, and item creation requires `requiresPreparation`.
+`src/orders/domain/entities/orders.spec.ts` is the reference; the shape of it is what matters here.
 
 ```ts
-import { Order } from './orders.js';
-import { OrderItems } from './order-items.js';
-import { EOrderStatus } from '../enums/order-status.js';
-import { EOrderType } from '../enums/order-type.js';
-import { EPaymentType } from '../enums/payment-type.js';
-
 const PIZZA_PRICE = 45;
 const WATER_PRICE = 8;
-const ORDER_ID = 'order-1';
-const USER_ID = 1;
-const CATALOG_ITEM_ID = 'catalog-item-1';
 const CREATED_AT = new Date('2026-09-07T12:00:00Z');
 const CLOSED_AT = new Date('2026-09-07T12:30:00Z');
 
@@ -213,14 +206,6 @@ describe('Order', () => {
     expect(order.totalPrice).toBe(0);
   });
 
-  it('should sum the total price of its items', () => {
-    const order = makeOrder();
-    order.addItem(makeItem(PIZZA_PRICE));
-    order.addItem(makeItem(WATER_PRICE, 2));
-
-    expect(order.totalPrice).toBe(PIZZA_PRICE + WATER_PRICE * 2);
-  });
-
   it('should throw when adding an item to a closed order', () => {
     const order = makeOrder();
     order.addItem(makeItem(PIZZA_PRICE));
@@ -230,13 +215,7 @@ describe('Order', () => {
       'Cannot change a closed order',
     );
   });
-
-  it('should throw when closing an order with no items', () => {
-    const order = makeOrder();
-
-    expect(() => order.close(EPaymentType.CASH, CLOSED_AT)).toThrow(
-      'Order must have at least one item',
-    );
-  });
 });
 ```
+
+Named constants (see the [no-magic-numbers rule](03-javascript.md#1-no-magic-numbers)), a fixed clock (see Repeatable above), and only the public API (`create`, `close`, `addItem`, `totalPrice`, getters) — never private fields. `Order.create` and `OrderItems.create` both require `createdAt`, and item creation requires `requiresPreparation`.

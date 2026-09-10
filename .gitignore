@@ -4,6 +4,7 @@ node_modules/
 # Build output and test artifacts
 dist/
 coverage/
+*.tsbuildinfo
 
 # Environment: each app reads its own — the tools never look at the root
 .env

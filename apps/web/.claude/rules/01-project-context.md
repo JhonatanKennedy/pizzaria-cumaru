@@ -14,7 +14,7 @@
 | Forms            | React Hook Form 7 + Zod 4 via `@hookform/resolvers` (`zodResolver`)                                                 |
 | Styling          | Tailwind CSS 4 via `@tailwindcss/vite` — no `tailwind.config.js`; shared classes (`.field-input`, `.btn-primary`, `.card`) live in `src/index.css` |
 | Tests            | Vitest 5 (`globals: true`, jsdom) + Testing Library; `tsconfig.app.json` includes `vitest/globals` in `types`       |
-| Lint             | oxlint (`oxlint.json`)                                                                                               |
+| Lint             | oxlint (`.oxlintrc.json`)                                                                                            |
 | Format           | Prettier — `singleQuote: true`, `trailingComma: "all"` (`.prettierrc`)                                              |
 | Package manager  | npm                                                                                                                  |
 
@@ -52,20 +52,17 @@ src/
       auth.context.tsx, auth-context.ts, use-auth.ts, require-role.tsx  # provider + guards
     waiter/           # waiter context: tables screen + order detail (business, api, hooks, components)
     kitchen/          # kitchen context: the Kitchen Panel (api, hooks, components, screen)
-    manager/          # manager context: hub + menu + delivery + day reports (one screen:
-                      #   daily-earnings shows the earnings totals + the "Vendas do Dia" sales list)
-                      #   (business/ labels, enrich-sales + filter-sales rules, delivery-status +
-                      #   delivery-schemas; api/ reports + daily-sales + delivery-orders;
-                      #   hooks/use-catalog + use-day-sales + use-orders + use-advance-delivery-status;
-                      #   pages/daily-earnings has parts/ SalesFilters, CategoryStrip, SaleCard;
-                      #   pages/delivery/ has the delivery list + detail with parts/
-                      #   DeliveryOrderCard, CreateDeliveryOrderDialog, AddItemsPanel)
+    manager/          # manager context: hub + menu + delivery + tables + day reports
+                      #   (business/ sales + delivery rules; api/ reports, daily-sales,
+                      #   delivery-orders; pages/daily-earnings and pages/delivery, each with parts/)
   routes/              # application assembly (no app/ folder)
     app.tsx           # configureApiClient wiring + QueryClientProvider > AuthProvider > RouterProvider
     router.tsx        # createBrowserRouter — every route, with its role guard
+    order-detail-route.tsx      # loads the order by :orderId, then renders the shared OrderDetailPage
     layout/AppLayout/index.tsx  # the app shell (nav by role, user chip, logout)
     home-redirect.tsx, not-found-page.tsx, query-client.ts
-  components/         # shared UI kit only: Button/, Card/, TextField/, FeaturePlaceholder/ (each with index.tsx)
+  components/         # shared UI kit only: Button/, Card/, TextField/, FeaturePlaceholder/,
+                      # FlavorComposer/ (each with index.tsx)
   api/http-client.ts  # the HTTP seam: fetch wrapper, ApiError, configureApiClient
                       # api/catalog.api.ts — shared catalog contract (schemas, endpoints,
                       # query keys) consumed by the waiter and manager contexts
@@ -73,12 +70,14 @@ src/
                       # api/orders.api.ts — shared orders listing contract (schemas, listOrders,
                       # query key) consumed by the waiter order screens and the manager delivery screens
   lib/                # toErrorMessage, formatBRL + formatTime, catalog.ts (shared menu contract),
-                      # item-labels.ts (item status labels),
-                      # order-labels.ts (order status labels), order-enrich.ts (order + menu join)
+                      # item-labels.ts (item status labels), order-labels.ts (order status labels),
+                      # payment-labels.ts (payment type labels), order-enrich.ts (order + menu join),
+                      # flavor-composition.ts (pizza flavor parts + fatia canvas)
                       # — shared when a second context consumes the rule
   main.tsx            # bootstrap
-  index.css           # Tailwind import + shared component classes + first @theme tokens (item status fills)
+  index.css           # Tailwind import + shared component classes + @theme tokens (item status fills)
   env.d.ts            # ImportMetaEnv typing
+  test/setup.ts       # the single global test setup (jest-dom matchers), wired in vite.config.ts
 ```
 
 ### The API contract (backend shapes)
@@ -113,17 +112,17 @@ The role matrix mirrors the backend's `RolesGuard`: waiters and managers share t
 
 One context per product area — the folder is the context, and each screen names its spec:
 
-| Feature file                  | Context                        | Notes                                                                                   |
-| ----------------------------- | ------------------------------ | --------------------------------------------------------------------------------------- |
-| `01_authentication.feature`   | `pages/auth`                   | Login form (RHF + Zod), role-based redirect, logout, guards. Implemented — the canonical context. |
-| `02_menu_and_stock.feature`   | `pages/manager`                | Items and ingredients tabs implemented (create/delete, stock toggles) plus the item↔ingredient relationship inside a single per-row "Editar" dialog — one `ItemFormDialog` covering name, description, price, "Exige preparo" and the linked ingredients, pre-filled from the item's `ingredientIds` with the category locked on edit — and a client-side category filter (Todas/Pizzas/Pratos/Bebidas/Sobremesas/Acompanhamentos) over the items list; items of kitchen categories must carry the preparation flag, which the form pre-checks when Pizzas/Pratos is picked and refuses with `Pizzas e pratos exigem "Exige preparo"` if unchecked; marking a linked ingredient out of stock flips the item unavailable across the catalog, waiter and delivery surfaces. |
-| `03_table_order.feature`      | `pages/waiter`                 | Floor view (free/occupied tables from `GET /tables`), order detail, add items with flavors and notes, per-row quantity adjustment (`+`/`−`, works while the item is in preparation), item and whole-order cancellation behind plain confirmations that ask no reason. Implemented. |
-| `10_table_management.feature` | `pages/waiter` + `pages/manager` | Floor view implemented; manager's table CRUD screen implemented at `/manager/tables`: tables sorted by number with Livre/Ocupada state (the open order's total when occupied), register/renumber through a shared number dialog (zod positive-int, local pt-BR messages), remove behind an explicit confirmation — refusals surfaced verbatim ("Table number already exists", "Cannot delete a table that has orders"). Mutations share the `['tables']` query key with the waiter floor. |
-| `04_delivery_order.feature`   | `pages/manager`                | Delivery orders implemented as a manager-only flow: list of today's deliveries from `GET /orders` (filtered `type === 'Delivery'`), create dialog (name/phone/address, no local required rules — the backend's exact rejections surface verbatim), detail with items, flavors/notes while open, and a single advance action per step (Iniciar preparo / Saiu para entrega / Marcar como entregue) until Delivered ("Entregue às"). Order contracts/labels/enrich shared from `@api/orders.api` + `@lib` since the waiter flow hoisted them. |
-| `05_waiter_profile.feature`   | `pages/waiter`                 | Tables screen with preparation-status follow-up; waiter cannot close orders.            |
-| `06_cook_profile.feature`     | `pages/kitchen`                | Kitchen Panel implemented: anonymous item tiles in the server's arrival order (Entrega/Local from `GET /kitchen/queue`), per-status color tokens (`@theme`), start/finish verbs and cancel-preparation behind a plain confirmation that asks no reason, 15s auto-refresh + Atualizar. |
-| `07_manager_profile.feature`  | `pages/manager`                | Manager hub; daily report screen implemented — earnings totals from `GET /reports/daily-earnings` (the order-type filter re-keys the totals) plus the "Vendas do Dia" sales list from `GET /reports/daily-sales` (joined with the menu catalog, filterable by type/payment/category, with sold quantities per category); manager close-order flow with payment type implemented on the shared order detail — "Fechar conta" stays disabled with the hint "Ainda há itens em preparação" while any item is `Pending`/`Preparing` and becomes available once every kitchen item reached `Ready` or never entered the kitchen; split bill still pending. |
-| `09_cancellation_and_payment.feature` | `pages/waiter` + `pages/manager` | Item and whole-order cancellation behind plain confirmations that ask no reason implemented in the waiter order detail (a cancelled order renders read-only as "Cancelado" and frees its table); the manager closes orders with a payment method via "Fechar conta" (split bill remains pending). |
+| Feature file                  | Context                          | What the spec covers                                                                                                      |
+| ----------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `01_authentication.feature`   | `pages/auth`                     | Login form, role-based redirect, logout, guards. The canonical context.                                                    |
+| `02_menu_and_stock.feature`   | `pages/manager`                  | Menu tab: items + ingredients, and the item↔ingredient link. Rules: a kitchen-category item must carry "Exige preparo" (refused with `Pizzas e pratos exigem "Exige preparo"`), and an out-of-stock ingredient makes its items unavailable across every surface. |
+| `03_table_order.feature`      | `pages/waiter`                   | Floor view, order detail, add items with flavors and notes, per-row quantity (works while the item is in preparation), item and whole-order cancellation. |
+| `10_table_management.feature` | `pages/waiter` + `pages/manager` | Waiter floor view; manager CRUD at `/manager/tables` (Livre/Ocupada from the open order).                                                 |
+| `04_delivery_order.feature`   | `pages/manager`                  | Manager-only delivery: list, create dialog, detail with one advance action per step until Delivered. No local required rules — the backend's rejections surface verbatim. |
+| `05_waiter_profile.feature`   | `pages/waiter`                   | Tables screen with preparation follow-up; the waiter cannot close orders.                                                  |
+| `06_cook_profile.feature`     | `pages/kitchen`                  | Kitchen Panel: anonymous tiles in the server's arrival order, start/finish, cancel-preparation, 15s auto-refresh.          |
+| `07_manager_profile.feature`  | `pages/manager`                  | Manager hub; daily report (earnings totals + the "Vendas do Dia" list); close-order with payment type on the shared order detail. Split bill still pending. |
+| `09_cancellation_and_payment.feature` | `pages/waiter` + `pages/manager` | Cancellation and payment across the waiter order detail and the manager close-order flow.                          |
 
 ## Feature specs
 

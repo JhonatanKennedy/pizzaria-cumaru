@@ -12,15 +12,17 @@ This file is an index. **Each app carries its own `CLAUDE.md` and its own `.clau
 | `apps/web/` | React 19 + TypeScript + Vite SPA |
 | `features/` | the product specs (Gherkin, English), one file per flow, shared by both apps |
 | `openspec/` | the change store — active changes, the capability specs, the archive |
-| `packages/` | reserved for shared code; empty today (see Open, below) |
+| `packages/` | reserved for shared code — **does not exist yet**; the root `package.json` already globs `packages/*`, so creating the folder is all it takes (see Open, below) |
 | `docs/` | the monorepo migration runbook |
 
 ## Rulebooks
 
 | App | Rules | Deliberately different because |
 | --- | --- | --- |
-| `apps/api` | `.claude/rules/01,02,03,04,05-nestjs,06-domain,07-prisma,08` | mandates NestJS layering, aggregate design and Prisma conventions |
-| `apps/web` | `.claude/rules/01,02,03,04,05-comments,08` | forbids TS enums (`erasableSyntaxOnly`), mandates pt-BR user-facing labels |
+| `apps/api` | `.claude/rules/01,02,03,04,05-nestjs,06-domain,07-prisma,08-conventions,09-comments` | mandates NestJS layering, aggregate design and Prisma conventions |
+| `apps/web` | `.claude/rules/01,02,03,04,05-comments,06-react,08-conventions` | forbids TS enums (`erasableSyntaxOnly`), mandates pt-BR user-facing labels |
+
+Both apps have a comments rule (`05-comments` in web, `09-comments` in api) and they are **not** copies: the web file is about the UI's comments-only-when-needed discipline, the api file adds the mandated use-case header that carries the `Feature:` traceability line. Same for `03`/`04` — shared subject, different examples and different forbidden syntax.
 
 Both index files import their own rule set with `@` paths relative to the app, and `CLAUDE.md` loads hierarchically — so each app's imports keep resolving to its own rulebook. Do not merge the two rule sets.
 

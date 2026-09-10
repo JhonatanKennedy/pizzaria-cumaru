@@ -58,31 +58,25 @@ src/<context>/
 Cross-cutting areas:
 
 - `src/common/` — `guards/roles.guard.ts` (global `RolesGuard` + `@Roles()` / `@Public()` decorators), `filters/domain-error.filter.ts` (global exception → HTTP filter)
-- `src/prisma/` — `PrismaModule` (`@Global()`), `PrismaService` (extends `PrismaClient`), `schema.prisma`, committed `generated/`, `migrations/`, `seed.ts`
+- `src/prisma/` — `PrismaModule` (`@Global()`), `PrismaService` (extends `PrismaClient`), `schema.prisma`, committed `generated/`, `seed.ts`. Migrations sit at the **app root** (`apps/api/migrations/`, wired by `prisma.config.ts`), not under `src/`
 
 ### Module wiring
 
 | Module          | Imports                                         | Controllers (routes)                                                   | Notes                                                                                                                           |
 | --------------- | ----------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `AppModule`     | Config, Observe, Prisma, Orders, Kitchen, Users | —                                                                      | Registers the three global providers: `DomainErrorFilter`, `ValidationPipe({ whitelist: true, transform: true })`, `RolesGuard` |
-| `OrdersModule`  | Catalog                                         | `OrdersController` (`/orders`), `ReportsController` (`/reports`)       | 12 use-cases + `ORDERS_REPOSITORY` → `PrismaOrdersRepository`; exports the repo and the three preparation use-cases for kitchen |
+| `OrdersModule`  | Catalog                                         | `OrdersController` (`/orders`), `ReportsController` (`/reports`)       | 15 use-case files (13 wired; `SplitBillUseCase` and `CreateDeliveryOrderUseCase` are unwired stubs — see [08-conventions.md](08-conventions.md)) + `ORDERS_REPOSITORY` → `PrismaOrdersRepository`; exports the repo and the five use-cases kitchen drives |
 | `CatalogModule` | —                                               | `ItemsController` (`/items`), `IngredientsController` (`/ingredients`) | 10 use-cases + `CATALOG_REPOSITORY` → `PrismaCatalogRepository`                                                                 |
 | `KitchenModule` | Orders, Catalog                                 | `KitchenQueueController` (`/kitchen`)                                  | `ListKitchenQueueUseCase` only — no domain/infrastructure of its own                                                            |
 | `TablesModule`  | Orders                                          | `TablesController` (`/tables`)                                         | 4 use-cases + `TABLES_REPOSITORY` → `PrismaTablesRepository`; imports orders for the busy map and the delete block              |
 | `UsersModule`   | `JwtModule.registerAsync` (`JWT_SECRET`)        | `AuthController` (`/auth`)                                             | `AuthenticateUserUseCase`, `LogoutUserUseCase`, `USER_REPOSITORY` → `PrismaUserRepository`; exports repo + `JwtModule`          |
-
-### The HTTP contract, in three global pieces (all registered in `app.module.ts`)
-
-- **Request shape** — every route's body is validated by the global `ValidationPipe` (`whitelist: true, transform: true`); DTOs are plain classes with class-validator decorators. Route params (`@Param`) and query strings are _not_ validated by the pipe.
-- **Errors** — `DomainErrorFilter`: `HttpException`s keep their status; any other `Error` (domain rules throw plain `Error`s) becomes `400 { statusCode: 400, message }`.
-- **Authorization** — `RolesGuard` runs on every route: `@Public()` skips it; otherwise the `Authorization: Bearer <JWT>` token is verified against `JWT_SECRET` and checked against the `DeniedToken` denylist (logout entries); `@Roles({ roles: [...] })` then gates by `EUserRole`. The role/permission matrix is documented in a comment at the top of `roles.guard.ts`.
 
 ### Routes exposed today
 
 | Controller               | Routes                                                                                                                                                                             | Roles               |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
 | `AuthController`         | `POST /auth/login` (`@Public`), `POST /auth/logout`                                                                                                                                | any / authenticated |
-| `OrdersController`       | `POST /orders`, `GET /orders`, `POST /orders/:orderId/items`, `PATCH /orders/:orderId/status`, `POST /orders/:orderId/items/:itemId/cancellation`                                  | Waiter, Manager     |
+| `OrdersController`       | `POST /orders`, `GET /orders`, `POST /orders/:orderId/items`, `PATCH /orders/:orderId/status`, `PATCH /orders/:orderId/items/:itemId/quantity`, `POST /orders/:orderId/cancellation`, `POST /orders/:orderId/items/:itemId/cancellation` | Waiter, Manager     |
 |                          | `POST /orders/:orderId/close`                                                                                                                                                      | Manager only        |
 | `ReportsController`      | `GET /reports/daily-earnings`, `GET /reports/daily-sales`                                                                                                                           | Manager only        |
 | `ItemsController`        | `GET /items`                                                                                                                                                                       | Waiter, Manager     |
@@ -95,15 +89,17 @@ Cross-cutting areas:
 
 ## Domain model (current state)
 
-- **orders** — `Order` aggregate + `OrderItems` entity. `Order.create` enforces delivery rules (customer name + address required for `DELIVERY`); `Order.restore` / `OrderItems.restore` rehydrate persisted state (items, status, timestamps, cancellation history — item + cancellation time only). Lifecycle: local orders go `Open → Closed`; delivery orders add the cycle `Preparing → Out for delivery → Delivered` — `EOrderStatus` carries all five members and use-cases guard the transitions. `close(paymentType, closedAt)` rejects empty, already-closed orders and orders with a kitchen item still `Pending`/`Preparing` (`'Cannot close an order with items in preparation'`); items that need no preparation never block the close. Item statuses (`EOrderItemStatus`): `Pending → Preparing → Ready`; cancellable only while `Pending` (customer) or `Preparing` (kitchen). Money is a plain `number`; totals derive from `unitPrice * quantity`. Local orders are created against a `tableId` (`'Table is required for local orders'`).
-- **catalog** — `Item` (name, description, price, `EItemCategory`, `requiresPreparation`, linked ingredients) and `Ingredient` (name, in-stock flag). Stock availability checks live in the add-item and kitchen-queue flows, not on the entities.
+- **orders** — `Order` aggregate + `OrderItems` entity. `Order.create` enforces the delivery
+  rules (customer name + address required for `DELIVERY`) and that local orders carry a
+  `tableId`; `Order.restore` / `OrderItems.restore` rehydrate persisted state. Item statuses
+  (`EOrderItemStatus`) run `Pending → Preparing → Ready`, cancellable only while `Pending`
+  (customer) or `Preparing` (kitchen); cancelling a whole order cascades over every remaining
+  item and frees the table. Lifecycle, guarded transitions, money and ids: [06-domain.md](06-domain.md).
+- **pizza composition** — a composed pizza is an `OrderItems` carrying `parts: TFlavorPart[]` (flavor + the fatias it occupies, base flavor first); a plain item carries none. The parts ride a `flavors Json` column on `OrderItem`, not a table of their own.
+- **catalog** — `Item` (name, description, price, `EItemCategory`, `requiresPreparation`, linked ingredients) and `Ingredient` (name, in-stock flag). `domain/sizes.ts` derives a pizza's size from the trailing token of its name (`PIZZA_SIZES = ['M', 'G']`) and maps it to the fatia canvas a composed pizza must cover. Stock availability checks live in the add-item and kitchen-queue flows, not on the entities.
 - **tables** — `Table` (id, unique `number`). `create`/`rename` validate `number >= 1` (`'Table number must be greater than zero'`); free/occupied is derived — a table is occupied while it has an open order, there is no status field.
 - **kitchen** — no domain entities or enums; `KitchenQueueController` + `ListKitchenQueueUseCase` read orders and drive `OrderItems` through the orders context's exported use-cases.
 - **users** — `User` entity (login, bcrypt hash, `EUserRole` Waiter/Cook/Manager) with failed-attempt lockout (`MAX_FAILED_ATTEMPTS = 5`, 15-minute lock). Auth is real: `POST /auth/login` issues a 1-hour JWT, `logout` denylists its `jti`. There is no create-user endpoint — users are seeded (`npm run seed`: `ana.gerente`, `joao.garcom`, `carlos.cozinha`).
-
-## Persistence
-
-The Prisma schema mirrors the aggregates — 9 models (`User`, `DeniedToken`, `Order`, `OrderItem`, `OrderCancellation`, `Item`, `Ingredient`, `ItemIngredient`, `Table`) — with six committed migrations under `migrations/`. Enums are stored as strings and validated by parse guards in the repository/mapper layer on both read and write; `Order.tableId → Table` has a real FK (`onDelete: Restrict`), while the remaining relations stay deliberately denormalized (no FK `Order → User`, `OrderItem → Item`). Ids: `User.id` is an `Int` autoincrement, all other aggregates are `String` with `uuid()` defaults. Details and mapping rules in [07-prisma.md](07-prisma.md).
 
 ## Feature specs
 
