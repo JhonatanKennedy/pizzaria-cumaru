@@ -396,3 +396,11 @@ same mistake Phase 0 exists to avoid.
   three defects this migration actually shipped with were invisible to tests: the api tests
   needed a file that never travelled, and the web failure showed up only under `tsc -b`.
   `npm test` alone would have passed on a tree that could not be built.
+- **The old checkout and the new one compete for the same local ports**, so they cannot both
+  run: the compose project name comes from the directory, so `apps/api`'s stack (`api-db-1`)
+  binds 5432 while `pizzaria-cumaru-backend`'s (`pizzaria-cumaru-backend-db-1`) still holds
+  it, and both APIs want 3000. Bring the old checkout's stack and server down before
+  starting the new ones. `PORT=3001 npm run start -w apps/api` works for a headless check
+  (`src/main.ts` reads `process.env.PORT`), and `.env.local`'s `DATABASE_URL` points at the
+  same database either way — which is convenient for verification and a trap if you expect
+  the two checkouts to be isolated.
