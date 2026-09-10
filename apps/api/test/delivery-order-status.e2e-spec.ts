@@ -42,7 +42,7 @@ describe('Delivery order status (e2e)', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .send({ login: 'ana.gerente', password: 'SenhaSegura123' })
       .expect(201);
-    authToken = loginResponse.body.token as string;
+    authToken = loginResponse.body.accessToken as string;
   });
 
   afterEach(async () => {

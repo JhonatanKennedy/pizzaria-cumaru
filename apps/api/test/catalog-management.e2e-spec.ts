@@ -64,7 +64,7 @@ describe('Catalog management (e2e)', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .send({ login: 'ana.gerente', password: 'SenhaSegura123' })
       .expect(201);
-    authToken = loginResponse.body.token as string;
+    authToken = loginResponse.body.accessToken as string;
   });
 
   afterEach(async () => {
@@ -593,7 +593,7 @@ describe('Catalog management (e2e)', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .send({ login: 'joao.garcom', password: 'SenhaSegura123' })
       .expect(201);
-    const waiterToken = loginResponse.body.token as string;
+    const waiterToken = loginResponse.body.accessToken as string;
 
     const writeRoutes = [
       { method: 'post', path: '/items', body: { name: 'X', price: 1 } },

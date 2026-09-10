@@ -1,4 +1,5 @@
 import { clearSession } from './auth-storage';
+import { clearAccessToken } from './session';
 
 let onSessionExpired: (() => void) | null = null;
 
@@ -8,7 +9,10 @@ export function registerSessionExpiryHandler(
   onSessionExpired = handler;
 }
 
-export function handleUnauthorized(): void {
+// Called once a refresh has already failed — a 401 on its own no longer ends
+// anything, because it is what triggers the refresh in the first place.
+export function handleSessionEnded(): void {
+  clearAccessToken();
   clearSession();
   onSessionExpired?.();
 }

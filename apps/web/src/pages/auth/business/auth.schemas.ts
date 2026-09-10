@@ -8,8 +8,11 @@ export const loginFormSchema = z.object({
 
 export type TLoginFormValues = z.infer<typeof loginFormSchema>;
 
+// `accessToken`, not `token`: with two tokens in play the old name named
+// nothing in particular, and the refresh token is deliberately absent from
+// every response body — it only ever arrives in the cookie.
 export const loginResponseSchema = z.object({
-  token: z.string().min(1),
+  accessToken: z.string().min(1),
   user: z.object({
     id: z.number(),
     login: z.string(),
@@ -18,3 +21,9 @@ export const loginResponseSchema = z.object({
 });
 
 export type TLoginResponse = z.infer<typeof loginResponseSchema>;
+
+export const refreshResponseSchema = z.object({
+  accessToken: z.string().min(1),
+});
+
+export type TRefreshResponse = z.infer<typeof refreshResponseSchema>;

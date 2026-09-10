@@ -35,8 +35,21 @@ Feature: Profile authentication
     Then access must be denied
     And the message "Access not authorized for your profile" must be displayed
 
+  Scenario: The session survives a page reload
+    Given the user "joao.garcom" is authenticated as "Waiter"
+    When the application is reloaded
+    Then the user must still be on the "Waiter Panel" screen
+    And the login screen must not have been displayed
+
   Scenario: End session
     Given the user "carlos.cozinha" is authenticated
     When he logs out
     Then the session must be ended
     And he must be redirected to the login screen
+
+  Scenario: End session with a stale access token
+    Given the user "joao.garcom" is authenticated
+    And the access token has expired
+    When the user logs out
+    Then the session must be ended
+    And the user must be redirected to the login screen

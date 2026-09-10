@@ -6,6 +6,13 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Pinned: the API's CORS allowlist names this exact origin, so a busy port
+  // that quietly moved the dev server to 5174 would fail every request from
+  // the browser with no hint that the origin changed.
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
   resolve: {
     alias: {
       '@api': path.resolve(import.meta.dirname, 'src/api'),

@@ -112,7 +112,7 @@ describe('Order status and kitchen queue (e2e)', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .send({ login: 'ana.gerente', password: 'SenhaSegura123' })
       .expect(201);
-    authToken = loginResponse.body.token as string;
+    authToken = loginResponse.body.accessToken as string;
   });
 
   afterEach(async () => {
@@ -283,7 +283,7 @@ describe('Order status and kitchen queue (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
-      .set('Authorization', `Bearer ${loginResponse.body.token}`)
+      .set('Authorization', `Bearer ${loginResponse.body.accessToken}`)
       .expect(403);
 
     expect(response.body.message).toBe(
@@ -328,7 +328,7 @@ describe('Order status and kitchen queue (e2e)', () => {
       .post('/auth/login')
       .send({ login: 'carlos.cozinha', password: 'SenhaSegura123' })
       .expect(201);
-    const cookToken = loginResponse.body.token as string;
+    const cookToken = loginResponse.body.accessToken as string;
 
     await request(app.getHttpServer())
       .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/start`)
@@ -388,7 +388,7 @@ describe('Order status and kitchen queue (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post(`/kitchen/orders/${LOCAL_ORDER_ID}/items/${PIZZA_ITEM_ID}/cancel`)
-      .set('Authorization', `Bearer ${loginResponse.body.token}`)
+      .set('Authorization', `Bearer ${loginResponse.body.accessToken}`)
       .expect(403);
 
     expect(response.body.message).toBe(
@@ -544,7 +544,7 @@ describe('Order status and kitchen queue (e2e)', () => {
       .post('/auth/login')
       .send({ login: 'carlos.cozinha', password: 'SenhaSegura123' })
       .expect(201);
-    const cookToken = loginResponse.body.token as string;
+    const cookToken = loginResponse.body.accessToken as string;
 
     const cancellation = await request(app.getHttpServer())
       .post(`/orders/${LOCAL_ORDER_ID}/cancellation`)

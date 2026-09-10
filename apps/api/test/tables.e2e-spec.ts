@@ -55,13 +55,13 @@ describe('Table management (e2e)', () => {
       .post('/auth/login')
       .send({ login: 'ana.gerente', password: 'SenhaSegura123' })
       .expect(201);
-    managerToken = managerLogin.body.token as string;
+    managerToken = managerLogin.body.accessToken as string;
 
     const waiterLogin = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ login: 'joao.garcom', password: 'SenhaSegura123' })
       .expect(201);
-    waiterToken = waiterLogin.body.token as string;
+    waiterToken = waiterLogin.body.accessToken as string;
   });
 
   afterEach(async () => {

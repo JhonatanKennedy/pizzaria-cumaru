@@ -1,6 +1,12 @@
-import { Module, ValidationPipe } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  ValidationPipe,
+} from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
+import cookieParser from 'cookie-parser';
 import { OrdersModule } from './orders/orders.module.js';
 import { KitchenModule } from './kitchen/kitchen.module.js';
 import { TablesModule } from './tables/tables.module.js';
@@ -43,4 +49,11 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  // Module middleware rather than `app.use` in `main.ts`: the e2e suites build
+  // their app straight from `AppModule`, so middleware registered in bootstrap
+  // would leave every cookie unparsed there and the session untestable.
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(cookieParser()).forRoutes('*');
+  }
+}

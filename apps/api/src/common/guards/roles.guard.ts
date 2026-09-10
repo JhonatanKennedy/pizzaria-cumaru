@@ -11,6 +11,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { USER_REPOSITORY } from '../../users/domain/repositories/user-repository.js';
 import type { IUserRepository } from '../../users/domain/repositories/user-repository.js';
+import { ETokenKind } from '../../users/domain/enums/token-kind.js';
 import { EUserRole } from '../../users/domain/enums/user-role.js';
 
 export interface IRoleRequirement {
@@ -30,6 +31,7 @@ export interface IAuthenticatedPayload {
   role: EUserRole;
   jti: string;
   exp: number;
+  typ: ETokenKind;
 }
 
 // Boundary guard enforcing the permission matrix:
@@ -79,6 +81,13 @@ export class RolesGuard implements CanActivate {
     try {
       payload = await this.jwtService.verifyAsync<IAuthenticatedPayload>(token);
     } catch {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
+    // The signature check above already refuses a refresh token, because it is
+    // signed with the refresh secret. This claim is what still separates the
+    // two kinds when both secrets are configured to the same value.
+    if (payload.typ !== ETokenKind.ACCESS) {
       throw new UnauthorizedException('Unauthorized');
     }
 

@@ -1,10 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcrypt';
 import { USER_REPOSITORY } from '../../domain/repositories/user-repository.js';
 import type { IUserRepository } from '../../domain/repositories/user-repository.js';
 import { EUserRole } from '../../domain/enums/user-role.js';
+import { SessionTokens } from '../session-tokens.js';
 
 export interface IAuthenticateUserParams {
   login: string;
@@ -12,7 +11,11 @@ export interface IAuthenticateUserParams {
 }
 
 export interface IAuthenticateResult {
-  token: string;
+  accessToken: string;
+  // Kept beside `user` rather than in it: this one is the cookie's payload, and
+  // a body that carried it would put the long-lived half of the session within
+  // reach of the page scripts the access token is short-lived to protect.
+  refreshToken: string;
   user: { id: number; login: string; role: EUserRole };
 }
 
@@ -24,7 +27,7 @@ export class AuthenticateUserUseCase {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
-    private readonly jwtService: JwtService,
+    private readonly sessionTokens: SessionTokens,
   ) {}
 
   async execute(
@@ -53,13 +56,11 @@ export class AuthenticateUserUseCase {
     user.resetFailedAttempts();
     await this.userRepository.save(user);
 
-    const token = await this.jwtService.signAsync(
-      { sub: user.getId(), role: user.getRole() },
-      { jwtid: randomUUID(), expiresIn: '1h' },
-    );
+    const subject = { sub: user.getId(), role: user.getRole() };
 
     return {
-      token,
+      accessToken: await this.sessionTokens.issueAccessToken(subject),
+      refreshToken: await this.sessionTokens.issueRefreshToken(subject),
       user: { id: user.getId(), login: user.getLogin(), role: user.getRole() },
     };
   }

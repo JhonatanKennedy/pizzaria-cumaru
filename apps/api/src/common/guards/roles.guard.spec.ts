@@ -1,5 +1,6 @@
 import { RolesGuard, PUBLIC_KEY, ROLES_KEY } from './roles.guard.js';
 import type { IUserRepository } from '../../users/domain/repositories/user-repository.js';
+import { ETokenKind } from '../../users/domain/enums/token-kind.js';
 import { EUserRole } from '../../users/domain/enums/user-role.js';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -41,6 +42,7 @@ function makeGuard(
           role: EUserRole.COOK,
           jti: 'jti-1',
           exp: 0,
+          typ: ETokenKind.ACCESS,
         }
       );
     }),
@@ -90,10 +92,46 @@ describe('RolesGuard', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
+  it('should refuse a token whose kind is not access', async () => {
+    const guard = makeGuard({
+      payload: {
+        sub: 1,
+        role: EUserRole.COOK,
+        jti: 'jti-1',
+        exp: 0,
+        typ: ETokenKind.REFRESH,
+      },
+    });
+
+    await expect(
+      guard.canActivate(
+        makeExecutionContext({ authorization: 'Bearer token' }),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('should refuse a token with no kind claim', async () => {
+    const guard = makeGuard({
+      payload: { sub: 1, role: EUserRole.COOK, jti: 'jti-1', exp: 0 },
+    });
+
+    await expect(
+      guard.canActivate(
+        makeExecutionContext({ authorization: 'Bearer token' }),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
   it('should refuse a role not in the requirement with the default message', async () => {
     const guard = makeGuard({
       requirement: { roles: [EUserRole.MANAGER] },
-      payload: { sub: 1, role: EUserRole.WAITER, jti: 'jti-1', exp: 0 },
+      payload: {
+        sub: 1,
+        role: EUserRole.WAITER,
+        jti: 'jti-1',
+        exp: 0,
+        typ: ETokenKind.ACCESS,
+      },
     });
 
     const refusal = guard.canActivate(
@@ -111,7 +149,13 @@ describe('RolesGuard', () => {
         roles: [EUserRole.MANAGER],
         message: 'Only the manager can close the order',
       },
-      payload: { sub: 1, role: EUserRole.WAITER, jti: 'jti-1', exp: 0 },
+      payload: {
+        sub: 1,
+        role: EUserRole.WAITER,
+        jti: 'jti-1',
+        exp: 0,
+        typ: ETokenKind.ACCESS,
+      },
     });
 
     const refusal = guard.canActivate(
