@@ -1,570 +1,572 @@
-import { config as loadEnv } from 'dotenv';
-import { PrismaClient } from '../../prisma/generated/client.js';
-import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaOrdersRepository } from './prisma-orders-repository.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { Prisma } from '../../prisma/generated/client.js';
+import type { TOrderRow } from './mappers/order-mapper.js';
 import { Order } from '../domain/entities/orders.js';
 import { OrderItems } from '../domain/entities/order-items.js';
 import { EOrderStatus } from '../domain/enums/order-status.js';
 import { EOrderType } from '../domain/enums/order-type.js';
 import { EPaymentType } from '../domain/enums/payment-type.js';
+import { EOrderItemStatus } from '../domain/enums/order-item-status.js';
 
-loadEnv({ path: '.env.local' });
+// This adapter's contract has two halves: what it makes of the rows Prisma
+// hands back, and what it asks Prisma for. Both are checked here against a
+// double, so the suite says exactly what the adapter promises and no more —
+// whether Postgres honours the `where` is Prisma's to get right, and the e2e
+// suite is where a real database still has a say.
+//
+// Local-time constructors throughout: the day window is a local calendar day,
+// and these specs must pass in any timezone.
 
-const TEST_URL = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
-const CREATED_AT = new Date('2026-09-07T12:00:00Z');
+const ORDER_ID = 'order-1';
+const USER_ID = 1;
+const TABLE_ID = '3';
 
-function makeClient(): PrismaClient {
-  return new PrismaClient({
-    adapter: new PrismaPg({ connectionString: TEST_URL }),
-  });
+const CREATED_AT = new Date(2026, 8, 7, 12);
+const CANCELLED_AT = new Date(2026, 8, 7, 12, 30);
+const SOLD_AT = new Date(2026, 8, 7, 14);
+
+const DAY = new Date(2026, 8, 7, 9);
+const DAY_START = new Date(2026, 8, 7);
+const DAY_END = new Date(2026, 8, 8);
+
+const PIZZA_PRICE = 45;
+const DRINK_PRICE = 8;
+
+const ORDER_WITH_RELATIONS = { items: true, cancellations: true };
+
+type TItemRow = TOrderRow['items'][number];
+type TCancellationRow = TOrderRow['cancellations'][number];
+
+function makeItemRow(overrides: Partial<TItemRow> = {}): TItemRow {
+  return {
+    id: 'order-item-1',
+    orderId: ORDER_ID,
+    itemId: 'catalog-item-1',
+    unitPrice: PIZZA_PRICE,
+    quantity: 1,
+    status: EOrderItemStatus.PREPARING,
+    requiresPreparation: true,
+    flavors: [],
+    notes: null,
+    createdAt: CREATED_AT,
+    ...overrides,
+  };
 }
 
-function makeOrder(id = 'order-1'): Order {
+function makeCancellationRow(
+  overrides: Partial<TCancellationRow> = {},
+): TCancellationRow {
+  return {
+    id: 'cancellation-1',
+    orderId: ORDER_ID,
+    itemId: 'order-item-1',
+    cancelledAt: CANCELLED_AT,
+    ...overrides,
+  };
+}
+
+function makeRow(overrides: Partial<TOrderRow> = {}): TOrderRow {
+  return {
+    id: ORDER_ID,
+    userId: USER_ID,
+    type: EOrderType.LOCAL,
+    status: EOrderStatus.OPEN,
+    paymentType: null,
+    tableId: null,
+    customerName: null,
+    phone: null,
+    address: null,
+    notes: null,
+    createdAt: CREATED_AT,
+    deliveredAt: null,
+    closedAt: null,
+    cancelledAt: null,
+    items: [],
+    cancellations: [],
+    ...overrides,
+  };
+}
+
+function makeOrder(id = ORDER_ID): Order {
   return Order.create({
     id,
-    userId: 1,
+    userId: USER_ID,
     type: EOrderType.LOCAL,
     paymentType: EPaymentType.CASH,
     createdAt: CREATED_AT,
   });
 }
 
-function makeItem(id = 'order-item-1', createdAt = CREATED_AT): OrderItems {
+function makeItem(id = 'order-item-1'): OrderItems {
   return OrderItems.create({
     id,
-    orderId: 'order-1',
+    orderId: ORDER_ID,
     itemId: 'catalog-item-1',
-    unitPrice: 45,
+    unitPrice: PIZZA_PRICE,
     quantity: 1,
     requiresPreparation: true,
-    createdAt,
+    createdAt: CREATED_AT,
   });
 }
 
+function makeDrink(): OrderItems {
+  return OrderItems.create({
+    id: 'drink-1',
+    orderId: ORDER_ID,
+    itemId: 'catalog-drink-1',
+    unitPrice: DRINK_PRICE,
+    quantity: 1,
+    requiresPreparation: false,
+    createdAt: CREATED_AT,
+  });
+}
+
+function makePrismaDouble() {
+  return {
+    order: {
+      findUnique: vi.fn(
+        async (_args: Prisma.OrderFindUniqueArgs): Promise<TOrderRow | null> =>
+          null,
+      ),
+      findFirst: vi.fn(
+        async (_args: Prisma.OrderFindFirstArgs): Promise<TOrderRow | null> =>
+          null,
+      ),
+      findMany: vi.fn(
+        async (_args: Prisma.OrderFindManyArgs): Promise<TOrderRow[]> => [],
+      ),
+      upsert: vi.fn(
+        async (_args: Prisma.OrderUpsertArgs): Promise<void> => undefined,
+      ),
+      count: vi.fn(async (_args: Prisma.OrderCountArgs): Promise<number> => 0),
+    },
+    table: {
+      count: vi.fn(async (_args: Prisma.TableCountArgs): Promise<number> => 0),
+    },
+    user: {
+      findMany: vi.fn(
+        async (
+          _args: Prisma.UserFindManyArgs,
+        ): Promise<Array<{ id: number; name: string | null }>> => [],
+      ),
+    },
+  };
+}
+
+type TPrismaDouble = ReturnType<typeof makePrismaDouble>;
+
+function makeRepository(double: TPrismaDouble): PrismaOrdersRepository {
+  return new PrismaOrdersRepository(double as unknown as PrismaService);
+}
+
 describe('PrismaOrdersRepository', () => {
-  let prisma: PrismaClient;
-  let repository: PrismaOrdersRepository;
+  describe('reading an order', () => {
+    it('should map a stored row into its aggregate', async () => {
+      const double = makePrismaDouble();
+      double.order.findUnique.mockResolvedValue(
+        makeRow({ items: [makeItemRow()] }),
+      );
+      const repository = makeRepository(double);
 
-  beforeEach(async () => {
-    prisma = makeClient();
-    await prisma.orderItem.deleteMany();
-    await prisma.orderCancellation.deleteMany();
-    await prisma.order.deleteMany();
-    await prisma.table.deleteMany();
-    await prisma.user.deleteMany();
-    repository = new PrismaOrdersRepository(prisma as never);
+      const order = await repository.findById(ORDER_ID);
+
+      expect(double.order.findUnique).toHaveBeenCalledWith({
+        where: { id: ORDER_ID },
+        include: ORDER_WITH_RELATIONS,
+      });
+      expect(order?.getStatus()).toBe(EOrderStatus.OPEN);
+      expect(order?.getCreatedAt().getTime()).toBe(CREATED_AT.getTime());
+      expect(order?.getItems()).toHaveLength(1);
+      expect(order?.getItems()[0].getStatus()).toBe(EOrderItemStatus.PREPARING);
+    });
+
+    it('should return null for an unknown id', async () => {
+      const double = makePrismaDouble();
+      const repository = makeRepository(double);
+
+      const order = await repository.findById('unknown-order');
+
+      expect(order).toBeNull();
+    });
+
+    it('should map the stored cancellation history', async () => {
+      const double = makePrismaDouble();
+      double.order.findUnique.mockResolvedValue(
+        makeRow({ cancellations: [makeCancellationRow()] }),
+      );
+      const repository = makeRepository(double);
+
+      const order = await repository.findById(ORDER_ID);
+
+      expect(order?.getCancellationHistory()).toEqual([
+        { itemId: 'order-item-1', cancelledAt: CANCELLED_AT },
+      ]);
+    });
+
+    it('should map a cancelled order with its time', async () => {
+      const double = makePrismaDouble();
+      double.order.findUnique.mockResolvedValue(
+        makeRow({ status: EOrderStatus.CANCELLED, cancelledAt: CANCELLED_AT }),
+      );
+      const repository = makeRepository(double);
+
+      const order = await repository.findById(ORDER_ID);
+
+      expect(order?.getStatus()).toBe(EOrderStatus.CANCELLED);
+      expect(order?.getCancelledAt()?.getTime()).toBe(CANCELLED_AT.getTime());
+    });
   });
 
-  afterEach(async () => {
-    await prisma.$disconnect();
-  });
+  describe('writing an order', () => {
+    it('should upsert the order with its items and cancellation history', async () => {
+      const double = makePrismaDouble();
+      const repository = makeRepository(double);
+      const order = makeOrder();
+      order.addItem(makeItem());
 
-  it('should round-trip an order with items and statuses', async () => {
-    const order = makeOrder();
-    const item = makeItem();
-    order.addItem(item);
-    item.startPreparation();
-    await repository.save(order);
+      await repository.save(order);
 
-    const loaded = await repository.findById('order-1');
-
-    expect(loaded).not.toBeNull();
-    expect(loaded?.getStatus()).toBe(EOrderStatus.OPEN);
-    expect(loaded?.getCreatedAt().getTime()).toBe(CREATED_AT.getTime());
-    expect(loaded?.getItems()).toHaveLength(1);
-    expect(loaded?.getItems()[0].getStatus()).toBe('Preparing');
-  });
-
-  it('should round-trip the cancellation history', async () => {
-    const order = makeOrder();
-    const item = makeItem();
-    order.addItem(item);
-    await repository.save(order);
-
-    const cancelledAt = new Date('2026-09-07T12:30:00Z');
-    order.cancelItem(item.getId(), cancelledAt);
-    await repository.save(order);
-
-    const loaded = await repository.findById('order-1');
-
-    expect(loaded?.getItems()).toHaveLength(0);
-    expect(loaded?.getCancellationHistory()).toEqual([
-      { itemId: item.getId(), cancelledAt },
-    ]);
-  });
-
-  it('should round-trip a cancelled order with its time', async () => {
-    const order = makeOrder();
-    const item = makeItem();
-    order.addItem(item);
-    item.startPreparation();
-    await repository.save(order);
-
-    const cancelledAt = new Date('2026-09-07T12:30:00Z');
-    order.cancelOrder(cancelledAt);
-    await repository.save(order);
-
-    const loaded = await repository.findById('order-1');
-
-    expect(loaded).not.toBeNull();
-    expect(loaded?.getStatus()).toBe(EOrderStatus.CANCELLED);
-    expect(loaded?.getItems()).toHaveLength(0);
-    expect(loaded?.getCancelledAt()?.getTime()).toBe(cancelledAt.getTime());
-  });
-
-  it('should persist the optional status of non-prepared items', async () => {
-    const order = makeOrder();
-    order.addItem(
-      OrderItems.create({
-        id: 'drink-1',
-        orderId: 'order-1',
-        itemId: 'catalog-drink-1',
-        unitPrice: 8,
-        quantity: 1,
-        requiresPreparation: false,
-        createdAt: CREATED_AT,
-      }),
-    );
-    await repository.save(order);
-
-    const loaded = await repository.findById('order-1');
-
-    expect(loaded?.getItems()[0].getStatus()).toBeUndefined();
-  });
-
-  it('should include in-cycle delivery orders in findAllOpen', async () => {
-    await prisma.order.create({
-      data: {
-        id: 'delivering',
-        userId: 1,
-        type: 'Delivery',
-        status: 'Out for delivery',
-        customerName: 'Maria Souza',
-        address: 'Rua A',
-        createdAt: CREATED_AT,
-        items: {
-          create: [
-            {
-              id: 'delivering-item',
-              itemId: 'catalog-item-1',
-              unitPrice: 45,
-              quantity: 1,
-              status: 'Pending',
-              requiresPreparation: true,
-              flavors: [],
-              createdAt: CREATED_AT,
+      expect(double.order.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: ORDER_ID },
+          create: expect.objectContaining({
+            id: ORDER_ID,
+            status: EOrderStatus.OPEN,
+            items: {
+              create: [expect.objectContaining({ id: 'order-item-1' })],
             },
-          ],
+          }),
+          update: expect.objectContaining({
+            status: EOrderStatus.OPEN,
+            items: {
+              deleteMany: {},
+              create: [expect.objectContaining({ id: 'order-item-1' })],
+            },
+          }),
+        }),
+      );
+    });
+
+    it('should write a null status for an item that never enters the kitchen', async () => {
+      const double = makePrismaDouble();
+      const repository = makeRepository(double);
+      const order = makeOrder();
+      order.addItem(makeDrink());
+
+      await repository.save(order);
+
+      expect(double.order.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            items: {
+              create: [
+                expect.objectContaining({ id: 'drink-1', status: null }),
+              ],
+            },
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('table lookups', () => {
+    it('should report whether a table is registered', async () => {
+      const double = makePrismaDouble();
+      double.table.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+      const repository = makeRepository(double);
+
+      expect(await repository.existsTable(TABLE_ID)).toBe(true);
+      expect(await repository.existsTable('404')).toBe(false);
+      expect(double.table.count).toHaveBeenNthCalledWith(1, {
+        where: { id: TABLE_ID },
+      });
+    });
+
+    it('should report whether a table has any order', async () => {
+      const double = makePrismaDouble();
+      double.order.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+      const repository = makeRepository(double);
+
+      expect(await repository.existsOrderForTable(TABLE_ID)).toBe(true);
+      expect(await repository.existsOrderForTable('4')).toBe(false);
+      expect(double.order.count).toHaveBeenNthCalledWith(1, {
+        where: { tableId: TABLE_ID },
+      });
+    });
+  });
+
+  describe('the open orders query', () => {
+    it("should ask for every order type's in-progress statuses", async () => {
+      const double = makePrismaDouble();
+      const repository = makeRepository(double);
+
+      await repository.findAllOpen();
+
+      const { where, orderBy, include } =
+        double.order.findMany.mock.calls[0][0];
+      expect(orderBy).toEqual({ createdAt: 'asc' });
+      expect(include).toEqual(ORDER_WITH_RELATIONS);
+      expect(where?.OR).toEqual([
+        {
+          type: EOrderType.DELIVERY,
+          status: {
+            in: [
+              EOrderStatus.OPEN,
+              EOrderStatus.PREPARING,
+              EOrderStatus.OUT_FOR_DELIVERY,
+            ],
+          },
         },
-      },
+        { type: EOrderType.LOCAL, status: { in: [EOrderStatus.OPEN] } },
+      ]);
     });
 
-    const openOrders = await repository.findAllOpen();
+    it('should map every row it reads', async () => {
+      const double = makePrismaDouble();
+      double.order.findMany.mockResolvedValue([
+        makeRow({ id: 'open-local', items: [makeItemRow()] }),
+        makeRow({
+          id: 'delivering',
+          type: EOrderType.DELIVERY,
+          status: EOrderStatus.OUT_FOR_DELIVERY,
+        }),
+      ]);
+      const repository = makeRepository(double);
 
-    expect(openOrders.map((order) => order.getId())).toContain('delivering');
-    expect(
-      openOrders.find((order) => order.getId() === 'delivering')?.getStatus(),
-    ).toBe('Out for delivery');
+      const openOrders = await repository.findAllOpen();
+
+      expect(openOrders.map((order) => order.getId())).toEqual([
+        'open-local',
+        'delivering',
+      ]);
+      expect(openOrders[0].getItems()).toHaveLength(1);
+      expect(openOrders[1].getStatus()).toBe(EOrderStatus.OUT_FOR_DELIVERY);
+    });
+
+    it("should ask for a table's open order and map it", async () => {
+      const double = makePrismaDouble();
+      double.order.findFirst.mockResolvedValue(makeRow({ tableId: TABLE_ID }));
+      const repository = makeRepository(double);
+
+      const order = await repository.findOpenByTableId(TABLE_ID);
+
+      expect(double.order.findFirst).toHaveBeenCalledWith({
+        where: {
+          type: EOrderType.LOCAL,
+          status: EOrderStatus.OPEN,
+          tableId: TABLE_ID,
+        },
+        include: ORDER_WITH_RELATIONS,
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(order?.getId()).toBe(ORDER_ID);
+    });
+
+    it('should return null when the table has no open order', async () => {
+      const double = makePrismaDouble();
+      const repository = makeRepository(double);
+
+      const order = await repository.findOpenByTableId(TABLE_ID);
+
+      expect(order).toBeNull();
+    });
   });
 
-  it('should return only open orders from findAllOpen', async () => {
-    const openOrder = makeOrder('open-order');
-    openOrder.addItem(makeItem('open-item'));
-    await repository.save(openOrder);
+  describe('the day queries', () => {
+    it("should ask for the day's orders plus anything still in progress", async () => {
+      const double = makePrismaDouble();
+      const repository = makeRepository(double);
 
-    const closedOrder = makeOrder('closed-order');
-    closedOrder.addItem(makeItem('closed-item'));
-    closedOrder.close(EPaymentType.CASH, CREATED_AT);
-    await repository.save(closedOrder);
+      await repository.findAllForListing(DAY);
 
-    const cancelledOrder = makeOrder('cancelled-order');
-    cancelledOrder.addItem(makeItem('cancelled-item'));
-    cancelledOrder.cancelOrder(CREATED_AT);
-    await repository.save(cancelledOrder);
+      const { where, orderBy, include } =
+        double.order.findMany.mock.calls[0][0];
+      expect(orderBy).toEqual({ createdAt: 'asc' });
+      expect(include).toEqual(ORDER_WITH_RELATIONS);
+      expect(where?.OR).toEqual([
+        { createdAt: { gte: DAY_START, lt: DAY_END } },
+        {
+          type: EOrderType.DELIVERY,
+          status: {
+            in: [
+              EOrderStatus.OPEN,
+              EOrderStatus.PREPARING,
+              EOrderStatus.OUT_FOR_DELIVERY,
+            ],
+          },
+        },
+        { type: EOrderType.LOCAL, status: { in: [EOrderStatus.OPEN] } },
+      ]);
+    });
 
-    const openOrders = await repository.findAllOpen();
+    it("should ask for each type's completed statuses on its sale instant", async () => {
+      const double = makePrismaDouble();
+      const repository = makeRepository(double);
 
-    expect(openOrders.map((order) => order.getId())).toEqual(['open-order']);
+      await repository.findCompleted(DAY);
+
+      const { where } = double.order.findMany.mock.calls[0][0];
+      expect(where?.OR).toEqual([
+        {
+          type: EOrderType.DELIVERY,
+          status: { in: [EOrderStatus.DELIVERED] },
+          deliveredAt: { gte: DAY_START, lt: DAY_END },
+        },
+        {
+          type: EOrderType.LOCAL,
+          status: { in: [EOrderStatus.CLOSED] },
+          closedAt: { gte: DAY_START, lt: DAY_END },
+        },
+      ]);
+    });
+
+    it("should ask for the day's sales over the same completed population", async () => {
+      const double = makePrismaDouble();
+      const repository = makeRepository(double);
+
+      await repository.findDaySales(DAY);
+
+      const { where, orderBy, include } =
+        double.order.findMany.mock.calls[0][0];
+      expect(orderBy).toEqual({ createdAt: 'asc' });
+      expect(include).toEqual(ORDER_WITH_RELATIONS);
+      expect(where?.OR).toEqual([
+        {
+          type: EOrderType.DELIVERY,
+          status: { in: [EOrderStatus.DELIVERED] },
+          deliveredAt: { gte: DAY_START, lt: DAY_END },
+        },
+        {
+          type: EOrderType.LOCAL,
+          status: { in: [EOrderStatus.CLOSED] },
+          closedAt: { gte: DAY_START, lt: DAY_END },
+        },
+      ]);
+    });
+
+    it("should map the day's sales with payment and sale time", async () => {
+      const double = makePrismaDouble();
+      double.order.findMany.mockResolvedValue([
+        makeRow({
+          id: 'sold-local',
+          status: EOrderStatus.CLOSED,
+          paymentType: EPaymentType.PIX,
+          closedAt: SOLD_AT,
+        }),
+        makeRow({
+          id: 'sold-delivery',
+          type: EOrderType.DELIVERY,
+          status: EOrderStatus.DELIVERED,
+          deliveredAt: SOLD_AT,
+        }),
+      ]);
+      const repository = makeRepository(double);
+
+      const sales = await repository.findDaySales(DAY);
+
+      expect(sales.map((entry) => entry.order.getId())).toEqual([
+        'sold-local',
+        'sold-delivery',
+      ]);
+      expect(sales[0].order.getPaymentType()).toBe(EPaymentType.PIX);
+      expect(sales[0].order.getClosedAt()?.getTime()).toBe(SOLD_AT.getTime());
+      expect(sales[1].order.getPaymentType()).toBeUndefined();
+      expect(sales[1].order.getDeliveredAt()?.getTime()).toBe(
+        SOLD_AT.getTime(),
+      );
+    });
+
+    it("should name the waiter of each of the day's orders", async () => {
+      const double = makePrismaDouble();
+      double.order.findMany.mockResolvedValue([
+        makeRow({ id: 'listed-order', userId: 7 }),
+      ]);
+      double.user.findMany.mockResolvedValue([{ id: 7, name: 'João Garçom' }]);
+      const repository = makeRepository(double);
+
+      const listing = await repository.findAllForListing(DAY);
+
+      expect(double.user.findMany).toHaveBeenCalledWith({
+        where: { id: { in: [7] } },
+      });
+      expect(listing).toHaveLength(1);
+      expect(listing[0].order.getId()).toBe('listed-order');
+      expect(listing[0].waiterName).toBe('João Garçom');
+    });
+
+    it('should look up each waiter once however many orders they have', async () => {
+      const double = makePrismaDouble();
+      double.order.findMany.mockResolvedValue([
+        makeRow({ id: 'first-order', userId: 7 }),
+        makeRow({ id: 'second-order', userId: 7 }),
+      ]);
+      double.user.findMany.mockResolvedValue([{ id: 7, name: 'João Garçom' }]);
+      const repository = makeRepository(double);
+
+      const listing = await repository.findAllForListing(DAY);
+
+      expect(double.user.findMany).toHaveBeenCalledWith({
+        where: { id: { in: [7] } },
+      });
+      expect(listing.map((entry) => entry.waiterName)).toEqual([
+        'João Garçom',
+        'João Garçom',
+      ]);
+    });
+
+    it('should return a null waiter name when the user row is missing', async () => {
+      const double = makePrismaDouble();
+      double.order.findMany.mockResolvedValue([
+        makeRow({ id: 'orphan-order', userId: 999 }),
+      ]);
+      const repository = makeRepository(double);
+
+      const listing = await repository.findAllForListing(DAY);
+
+      expect(listing[0].waiterName).toBeNull();
+    });
   });
 
-  it('should find the open order of a table', async () => {
-    await prisma.table.create({ data: { id: '3', number: 3 } });
-    await prisma.order.create({
-      data: {
-        id: 'table-order',
-        userId: 1,
-        type: 'Local',
-        status: 'Open',
-        tableId: '3',
-        createdAt: CREATED_AT,
-      },
+  describe('error translation', () => {
+    it('should translate a foreign-key violation into a domain error on save', async () => {
+      const double = makePrismaDouble();
+      double.order.upsert.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError(
+          'Foreign key constraint violated on the fields: (`tableId`)',
+          { code: 'P2003', clientVersion: 'test' },
+        ),
+      );
+      const repository = makeRepository(double);
+
+      await expect(repository.save(makeOrder())).rejects.toThrow(
+        'Table not found',
+      );
     });
 
-    const openOrder = await repository.findOpenByTableId('3');
-    const none = await repository.findOpenByTableId('99');
+    it('should let any other known error through untouched', async () => {
+      const double = makePrismaDouble();
+      double.order.upsert.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Record to update not found', {
+          code: 'P2025',
+          clientVersion: 'test',
+        }),
+      );
+      const repository = makeRepository(double);
 
-    expect(openOrder?.getId()).toBe('table-order');
-    expect(none).toBeNull();
-  });
-
-  it('should return null for an unknown id', async () => {
-    const loaded = await repository.findById('unknown-order');
-
-    expect(loaded).toBeNull();
-  });
-
-  it('should translate an unknown table into a domain error on save', async () => {
-    const order = Order.create({
-      id: 'ghost-table-order',
-      userId: 1,
-      type: EOrderType.LOCAL,
-      createdAt: CREATED_AT,
-      tableId: 'ghost',
+      await expect(repository.save(makeOrder())).rejects.toThrow(
+        'Record to update not found',
+      );
     });
 
-    await expect(repository.save(order)).rejects.toThrow('Table not found');
-  });
+    it('should let an unknown failure through untouched', async () => {
+      const double = makePrismaDouble();
+      double.order.upsert.mockRejectedValue(new Error('Connection lost'));
+      const repository = makeRepository(double);
 
-  it('should report whether a table has any order', async () => {
-    await prisma.table.create({ data: { id: '3', number: 3 } });
-    await prisma.table.create({ data: { id: '4', number: 4 } });
-    await prisma.order.create({
-      data: {
-        id: 'closed-table-order',
-        userId: 1,
-        type: 'Local',
-        status: 'Closed',
-        tableId: '3',
-        createdAt: CREATED_AT,
-      },
+      await expect(repository.save(makeOrder())).rejects.toThrow(
+        'Connection lost',
+      );
     });
-
-    expect(await repository.existsOrderForTable('3')).toBe(true);
-    expect(await repository.existsOrderForTable('4')).toBe(false);
-  });
-
-  it('should find orders completed within a day', async () => {
-    const day = new Date('2026-09-07T09:00:00Z');
-    const inDay = new Date('2026-09-07T14:00:00Z');
-    const otherDay = new Date('2026-09-06T14:00:00Z');
-    await prisma.order.create({
-      data: {
-        id: 'closed-today',
-        userId: 1,
-        type: 'Local',
-        status: 'Closed',
-        closedAt: inDay,
-        createdAt: inDay,
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'closed-yesterday',
-        userId: 1,
-        type: 'Local',
-        status: 'Closed',
-        closedAt: otherDay,
-        createdAt: otherDay,
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'delivered-today',
-        userId: 1,
-        type: 'Delivery',
-        status: 'Delivered',
-        customerName: 'Maria Souza',
-        address: 'Rua A',
-        deliveredAt: inDay,
-        createdAt: inDay,
-      },
-    });
-
-    const completed = await repository.findCompleted(day);
-
-    expect(completed.map((order) => order.getId()).sort()).toEqual([
-      'closed-today',
-      'delivered-today',
-    ]);
-  });
-
-  it("should list the day's orders with the waiter name", async () => {
-    const day = new Date('2026-09-07T09:00:00Z');
-    const inDay = new Date('2026-09-07T14:00:00Z');
-    const user = await prisma.user.create({
-      data: {
-        email: 'waiter@example.com',
-        name: 'João Garçom',
-        role: 'Waiter',
-        passwordHash: 'hashed',
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'listed-order',
-        userId: user.id,
-        type: 'Local',
-        status: 'Open',
-        createdAt: inDay,
-      },
-    });
-
-    const listing = await repository.findAllForListing(day);
-
-    expect(listing).toHaveLength(1);
-    expect(listing[0].order.getId()).toBe('listed-order');
-    expect(listing[0].waiterName).toBe('João Garçom');
-  });
-
-  it('should return a null waiter name when the user row is missing', async () => {
-    const day = new Date('2026-09-07T09:00:00Z');
-    await prisma.order.create({
-      data: {
-        id: 'orphan-order',
-        userId: 999,
-        type: 'Local',
-        status: 'Open',
-        createdAt: new Date('2026-09-07T14:00:00Z'),
-      },
-    });
-
-    const listing = await repository.findAllForListing(day);
-
-    expect(listing[0].waiterName).toBeNull();
-  });
-
-  it("should list an earlier day's order that is still open", async () => {
-    const day = new Date('2026-09-07T09:00:00Z');
-    await prisma.order.create({
-      data: {
-        id: 'overnight-local',
-        userId: 1,
-        type: 'Local',
-        status: 'Open',
-        createdAt: new Date('2026-09-06T14:00:00Z'),
-      },
-    });
-
-    const listing = await repository.findAllForListing(day);
-
-    expect(listing.map((entry) => entry.order.getId())).toEqual([
-      'overnight-local',
-    ]);
-  });
-
-  it("should list an earlier day's delivery order still in its cycle", async () => {
-    const day = new Date('2026-09-07T09:00:00Z');
-    await prisma.order.create({
-      data: {
-        id: 'overnight-preparing',
-        userId: 1,
-        type: 'Delivery',
-        status: 'Preparing',
-        customerName: 'Maria Souza',
-        address: 'Rua A',
-        createdAt: new Date('2026-09-06T14:00:00Z'),
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'overnight-out',
-        userId: 1,
-        type: 'Delivery',
-        status: 'Out for delivery',
-        customerName: 'João Lima',
-        address: 'Rua B',
-        createdAt: new Date('2026-09-06T15:00:00Z'),
-      },
-    });
-
-    const listing = await repository.findAllForListing(day);
-
-    expect(listing.map((entry) => entry.order.getId())).toEqual([
-      'overnight-preparing',
-      'overnight-out',
-    ]);
-  });
-
-  it("should keep an earlier day's completed orders out of the listing", async () => {
-    const day = new Date('2026-09-07T09:00:00Z');
-    const previousDay = new Date('2026-09-06T14:00:00Z');
-    await prisma.order.create({
-      data: {
-        id: 'yesterday-closed',
-        userId: 1,
-        type: 'Local',
-        status: 'Closed',
-        paymentType: 'Pix',
-        closedAt: previousDay,
-        createdAt: previousDay,
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'yesterday-delivered',
-        userId: 1,
-        type: 'Delivery',
-        status: 'Delivered',
-        customerName: 'Maria Souza',
-        address: 'Rua A',
-        deliveredAt: previousDay,
-        createdAt: previousDay,
-      },
-    });
-
-    const listing = await repository.findAllForListing(day);
-
-    expect(listing).toEqual([]);
-  });
-
-  it("should list the requested day's orders whatever their status", async () => {
-    const day = new Date('2026-09-07T09:00:00Z');
-    await prisma.order.create({
-      data: {
-        id: 'today-open',
-        userId: 1,
-        type: 'Local',
-        status: 'Open',
-        createdAt: new Date('2026-09-07T14:00:00Z'),
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'today-closed',
-        userId: 1,
-        type: 'Local',
-        status: 'Closed',
-        paymentType: 'Pix',
-        closedAt: new Date('2026-09-07T15:00:00Z'),
-        createdAt: new Date('2026-09-07T15:00:00Z'),
-      },
-    });
-
-    const listing = await repository.findAllForListing(day);
-
-    expect(listing.map((entry) => entry.order.getId())).toEqual([
-      'today-open',
-      'today-closed',
-    ]);
-  });
-
-  it("should list the day's sales with waiter, payment and sale time", async () => {
-    const day = new Date('2026-09-07T09:00:00Z');
-    const inDay = new Date('2026-09-07T14:00:00Z');
-    const user = await prisma.user.create({
-      data: {
-        email: 'waiter@example.com',
-        name: 'João Garçom',
-        role: 'Waiter',
-        passwordHash: 'hashed',
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'sold-local',
-        userId: user.id,
-        type: 'Local',
-        status: 'Closed',
-        paymentType: 'Pix',
-        closedAt: inDay,
-        createdAt: inDay,
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'sold-delivery',
-        userId: user.id,
-        type: 'Delivery',
-        status: 'Delivered',
-        customerName: 'Maria Souza',
-        address: 'Rua A',
-        deliveredAt: inDay,
-        createdAt: inDay,
-      },
-    });
-
-    const sales = await repository.findDaySales(day);
-
-    expect(sales.map((entry) => entry.order.getId())).toEqual([
-      'sold-local',
-      'sold-delivery',
-    ]);
-    expect(sales[0].waiterName).toBe('João Garçom');
-    expect(sales[0].order.getPaymentType()).toBe(EPaymentType.PIX);
-    expect(sales[0].order.getClosedAt()?.getTime()).toBe(inDay.getTime());
-    expect(sales[1].order.getPaymentType()).toBeUndefined();
-    expect(sales[1].order.getDeliveredAt()?.getTime()).toBe(inDay.getTime());
-  });
-
-  it("should keep incomplete and cancelled orders out of the day's sales", async () => {
-    const day = new Date('2026-09-07T09:00:00Z');
-    const inDay = new Date('2026-09-07T14:00:00Z');
-    await prisma.order.create({
-      data: {
-        id: 'still-open',
-        userId: 1,
-        type: 'Local',
-        status: 'Open',
-        createdAt: inDay,
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'still-delivering',
-        userId: 1,
-        type: 'Delivery',
-        status: 'Out for delivery',
-        customerName: 'Maria Souza',
-        address: 'Rua A',
-        createdAt: inDay,
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'was-cancelled',
-        userId: 1,
-        type: 'Local',
-        status: 'Cancelled',
-        cancelledAt: inDay,
-        createdAt: inDay,
-      },
-    });
-
-    const sales = await repository.findDaySales(day);
-
-    expect(sales).toEqual([]);
-  });
-
-  it("should keep an earlier day's open order out of the day's sales", async () => {
-    const day = new Date('2026-09-07T09:00:00Z');
-    const previousDay = new Date('2026-09-06T14:00:00Z');
-    await prisma.order.create({
-      data: {
-        id: 'overnight-open',
-        userId: 1,
-        type: 'Local',
-        status: 'Open',
-        createdAt: previousDay,
-      },
-    });
-    await prisma.order.create({
-      data: {
-        id: 'closed-today',
-        userId: 1,
-        type: 'Local',
-        status: 'Closed',
-        paymentType: 'Pix',
-        closedAt: new Date('2026-09-07T14:00:00Z'),
-        createdAt: previousDay,
-      },
-    });
-
-    const listing = await repository.findAllForListing(day);
-    const sales = await repository.findDaySales(day);
-
-    expect(listing.map((entry) => entry.order.getId())).toEqual([
-      'overnight-open',
-    ]);
-    expect(sales.map((entry) => entry.order.getId())).toEqual(['closed-today']);
   });
 });

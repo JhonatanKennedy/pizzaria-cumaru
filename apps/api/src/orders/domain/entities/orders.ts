@@ -141,12 +141,6 @@ export class Order {
     this.items.push(item);
   }
 
-  removeItem(itemId: string): void {
-    this.assertNotFrozen();
-
-    this.items = this.items.filter((item) => item.getId() !== itemId);
-  }
-
   cancelItem(itemId: string, cancelledAt: Date): void {
     this.assertNotFrozen();
 

@@ -9,8 +9,5 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
-    // Integration specs (repositories) share the test database and truncate
-    // it in beforeEach; they must never run in parallel.
-    fileParallelism: false,
   },
 });

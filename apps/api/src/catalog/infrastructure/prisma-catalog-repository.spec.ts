@@ -1,65 +1,157 @@
-import { config as loadEnv } from 'dotenv';
-import { PrismaClient } from '../../prisma/generated/client.js';
-import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaCatalogRepository } from './prisma-catalog-repository.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { Prisma } from '../../prisma/generated/client.js';
+import { Item } from '../domain/entities/items.js';
+import { Ingredient } from '../domain/entities/ingredients.js';
+import { EItemCategory } from '../domain/enums/item-category.js';
 
-loadEnv({ path: '.env.local' });
+// This adapter's contract has two halves: what it makes of the rows Prisma
+// hands back, and what it asks Prisma for. Both are checked here against a
+// double, so the suite says exactly what the adapter promises and no more —
+// whether Postgres honours the `where` is Prisma's to get right, and the e2e
+// suite is where a real database still has a say.
 
-const TEST_URL = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+const ITEM_ID = 'item-1';
+const INGREDIENT_ID = 'ingredient-1';
+const PIZZA_PRICE = 45;
 
-function makeClient(): PrismaClient {
-  return new PrismaClient({
-    adapter: new PrismaPg({ connectionString: TEST_URL }),
-  });
+type TItemRow = Prisma.ItemGetPayload<{
+  include: { ingredients: { include: { ingredient: true } } };
+}>;
+type TIngredientRow = Prisma.IngredientGetPayload<Record<string, never>>;
+
+function makeLinkRow(ingredientId = INGREDIENT_ID) {
+  return {
+    itemId: ITEM_ID,
+    ingredientId,
+    ingredient: {
+      id: ingredientId,
+      name: 'Mussarela',
+      inStock: true,
+    },
+  };
+}
+
+function makeItemRow(overrides: Partial<TItemRow> = {}): TItemRow {
+  return {
+    id: ITEM_ID,
+    name: 'Calabresa',
+    description: 'Pizza de calabresa',
+    price: PIZZA_PRICE,
+    category: EItemCategory.PIZZA,
+    requiresPreparation: true,
+    ingredients: [makeLinkRow()],
+    ...overrides,
+  };
+}
+
+function makeIngredientRow(
+  overrides: Partial<TIngredientRow> = {},
+): TIngredientRow {
+  return {
+    id: INGREDIENT_ID,
+    name: 'Mussarela',
+    inStock: true,
+    ...overrides,
+  };
+}
+
+const ITEM_WITH_INGREDIENTS = {
+  ingredients: { include: { ingredient: true } },
+};
+
+function makePrismaDouble() {
+  return {
+    item: {
+      findUnique: vi.fn(
+        async (_args: Prisma.ItemFindUniqueArgs): Promise<TItemRow | null> =>
+          null,
+      ),
+      findFirst: vi.fn(
+        async (_args: Prisma.ItemFindFirstArgs): Promise<TItemRow | null> =>
+          null,
+      ),
+      findMany: vi.fn(
+        async (_args: Prisma.ItemFindManyArgs): Promise<TItemRow[]> => [],
+      ),
+      upsert: vi.fn(
+        async (_args: Prisma.ItemUpsertArgs): Promise<void> => undefined,
+      ),
+      delete: vi.fn(
+        async (_args: Prisma.ItemDeleteArgs): Promise<void> => undefined,
+      ),
+    },
+    ingredient: {
+      findUnique: vi.fn(
+        async (
+          _args: Prisma.IngredientFindUniqueArgs,
+        ): Promise<TIngredientRow | null> => null,
+      ),
+      findFirst: vi.fn(
+        async (
+          _args: Prisma.IngredientFindFirstArgs,
+        ): Promise<TIngredientRow | null> => null,
+      ),
+      findMany: vi.fn(
+        async (
+          _args: Prisma.IngredientFindManyArgs,
+        ): Promise<TIngredientRow[]> => [],
+      ),
+      upsert: vi.fn(
+        async (_args: Prisma.IngredientUpsertArgs): Promise<void> => undefined,
+      ),
+      delete: vi.fn(
+        async (_args: Prisma.IngredientDeleteArgs): Promise<void> => undefined,
+      ),
+    },
+  };
+}
+
+type TPrismaDouble = ReturnType<typeof makePrismaDouble>;
+
+function makeRepository(double: TPrismaDouble): PrismaCatalogRepository {
+  return new PrismaCatalogRepository(double as unknown as PrismaService);
 }
 
 describe('PrismaCatalogRepository', () => {
-  let prisma: PrismaClient;
-  let repository: PrismaCatalogRepository;
-
-  beforeEach(async () => {
-    prisma = makeClient();
-    await prisma.itemIngredient.deleteMany();
-    await prisma.item.deleteMany();
-    await prisma.ingredient.deleteMany();
-    repository = new PrismaCatalogRepository(prisma as never);
-  });
-
-  afterEach(async () => {
-    await prisma.$disconnect();
-  });
-
   it('should load items with their ingredient links', async () => {
-    const ingredient = await prisma.ingredient.create({
-      data: { name: 'Mussarela', inStock: true },
-    });
-    const item = await prisma.item.create({
-      data: {
-        name: 'Calabresa',
-        description: 'Pizza de calabresa',
-        price: 45,
-        category: 'PIZZA',
-        requiresPreparation: true,
-        ingredients: { create: [{ ingredientId: ingredient.id }] },
-      },
-    });
+    const double = makePrismaDouble();
+    double.item.findMany.mockResolvedValue([
+      makeItemRow(),
+      makeItemRow({
+        id: 'item-2',
+        ingredients: [makeLinkRow('ingredient-2'), makeLinkRow('ingredient-3')],
+      }),
+    ]);
+    const repository = makeRepository(double);
 
     const items = await repository.findAllItems();
 
-    expect(items).toHaveLength(1);
-    expect(items[0].getId()).toBe(item.id);
+    expect(double.item.findMany).toHaveBeenCalledWith({
+      include: ITEM_WITH_INGREDIENTS,
+    });
+    expect(items).toHaveLength(2);
+    expect(items[0].getId()).toBe(ITEM_ID);
     expect(items[0].getName()).toBe('Calabresa');
     expect(items[0].getRequiresPreparation()).toBe(true);
-    expect(items[0].getIngredientIds()).toEqual([ingredient.id]);
+    expect(items[0].getIngredientIds()).toEqual([INGREDIENT_ID]);
+    expect(items[1].getIngredientIds()).toEqual([
+      'ingredient-2',
+      'ingredient-3',
+    ]);
   });
 
   it('should load ingredients with their availability', async () => {
-    const available = await prisma.ingredient.create({
-      data: { name: 'Mussarela', inStock: true },
-    });
-    await prisma.ingredient.create({
-      data: { name: 'Oregano', inStock: false },
-    });
+    const double = makePrismaDouble();
+    double.ingredient.findMany.mockResolvedValue([
+      makeIngredientRow(),
+      makeIngredientRow({
+        id: 'ingredient-2',
+        name: 'Oregano',
+        inStock: false,
+      }),
+    ]);
+    const repository = makeRepository(double);
 
     const ingredients = await repository.findAllIngredients();
 
@@ -69,81 +161,105 @@ describe('PrismaCatalogRepository', () => {
     );
     expect(byName.get('Mussarela')?.isAvailable()).toBe(true);
     expect(byName.get('Oregano')?.isAvailable()).toBe(false);
-    expect(byName.get('Mussarela')?.getId()).toBe(available.id);
+    expect(byName.get('Mussarela')?.getId()).toBe(INGREDIENT_ID);
   });
 
   it('should find an item by id and return null for unknown ids', async () => {
-    const ingredient = await prisma.ingredient.create({
-      data: { name: 'Mussarela', inStock: true },
-    });
-    const item = await prisma.item.create({
-      data: {
-        name: 'Calabresa',
-        description: 'Pizza de calabresa',
-        price: 45,
-        category: 'PIZZA',
-        requiresPreparation: true,
-        ingredients: { create: [{ ingredientId: ingredient.id }] },
-      },
-    });
+    const double = makePrismaDouble();
+    double.item.findUnique.mockResolvedValue(makeItemRow());
+    const repository = makeRepository(double);
 
-    const found = await repository.findItemById(item.id);
-    const missing = await repository.findItemById('unknown-item');
+    const found = await repository.findItemById(ITEM_ID);
 
+    expect(double.item.findUnique).toHaveBeenCalledWith({
+      where: { id: ITEM_ID },
+      include: ITEM_WITH_INGREDIENTS,
+    });
     expect(found?.getName()).toBe('Calabresa');
-    expect(found?.getIngredientIds()).toEqual([ingredient.id]);
-    expect(missing).toBeNull();
+    expect(found?.getIngredientIds()).toEqual([INGREDIENT_ID]);
+
+    double.item.findUnique.mockResolvedValue(null);
+    expect(await repository.findItemById('unknown-item')).toBeNull();
   });
 
   it('should find an ingredient by id and return null for unknown ids', async () => {
-    const created = await prisma.ingredient.create({
-      data: { name: 'Mussarela', inStock: true },
+    const double = makePrismaDouble();
+    double.ingredient.findUnique.mockResolvedValue(makeIngredientRow());
+    const repository = makeRepository(double);
+
+    const found = await repository.findIngredientById(INGREDIENT_ID);
+
+    expect(double.ingredient.findUnique).toHaveBeenCalledWith({
+      where: { id: INGREDIENT_ID },
     });
-
-    const found = await repository.findIngredientById(created.id);
-    const missing = await repository.findIngredientById('unknown');
-
     expect(found?.getName()).toBe('Mussarela');
-    expect(missing).toBeNull();
+
+    double.ingredient.findUnique.mockResolvedValue(null);
+    expect(await repository.findIngredientById('unknown')).toBeNull();
   });
 
-  it('should round-trip an item price change through saveItem', async () => {
-    const ingredient = await prisma.ingredient.create({
-      data: { name: 'Mussarela', inStock: true },
-    });
-    const row = await prisma.item.create({
-      data: {
-        name: 'Calabresa',
-        description: 'Pizza de calabresa',
-        price: 40,
-        category: 'PIZZA',
-        requiresPreparation: true,
-        ingredients: { create: [{ ingredientId: ingredient.id }] },
-      },
-    });
-    const items = await repository.findAllItems();
-    const item = items[0];
-    expect(item.getId()).toBe(row.id);
+  it('should refuse an item row carrying an unknown category', async () => {
+    const double = makePrismaDouble();
+    double.item.findMany.mockResolvedValue([
+      makeItemRow({ category: 'Sushi' }),
+    ]);
+    const repository = makeRepository(double);
 
-    item.changePrice(45);
+    await expect(repository.findAllItems()).rejects.toThrow(
+      'Unknown item category: Sushi',
+    );
+  });
+
+  it('should save an item price change on both the update and the create path', async () => {
+    const double = makePrismaDouble();
+    const repository = makeRepository(double);
+    const item = Item.create({
+      id: ITEM_ID,
+      name: 'Calabresa',
+      description: 'Pizza de calabresa',
+      price: PIZZA_PRICE,
+      category: EItemCategory.PIZZA,
+      requiresPreparation: true,
+      ingredientIds: [INGREDIENT_ID],
+    });
+
     await repository.saveItem(item);
 
-    const reloaded = await repository.findItemById(item.getId());
-    expect(reloaded?.getPrice()).toBe(45);
+    expect(double.item.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: ITEM_ID },
+        update: expect.objectContaining({
+          price: PIZZA_PRICE,
+          ingredients: {
+            deleteMany: {},
+            create: [{ ingredientId: INGREDIENT_ID }],
+          },
+        }),
+        create: expect.objectContaining({
+          id: ITEM_ID,
+          price: PIZZA_PRICE,
+          ingredients: { create: [{ ingredientId: INGREDIENT_ID }] },
+        }),
+      }),
+    );
   });
 
-  it('should round-trip ingredient availability through saveIngredient', async () => {
-    const row = await prisma.ingredient.create({
-      data: { name: 'Mussarela', inStock: true },
+  it('should save ingredient availability on both the update and the create path', async () => {
+    const double = makePrismaDouble();
+    const repository = makeRepository(double);
+    const ingredient = Ingredient.create({
+      id: INGREDIENT_ID,
+      name: 'Mussarela',
+      inStock: true,
     });
-    const ingredients = await repository.findAllIngredients();
-    const ingredient = ingredients[0];
-    expect(ingredient.getId()).toBe(row.id);
-
     ingredient.markOutOfStock();
+
     await repository.saveIngredient(ingredient);
 
-    const reloaded = await repository.findIngredientById(ingredient.getId());
-    expect(reloaded?.isAvailable()).toBe(false);
+    expect(double.ingredient.upsert).toHaveBeenCalledWith({
+      where: { id: INGREDIENT_ID },
+      update: { name: 'Mussarela', inStock: false },
+      create: { id: INGREDIENT_ID, name: 'Mussarela', inStock: false },
+    });
   });
 });

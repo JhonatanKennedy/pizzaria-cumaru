@@ -41,6 +41,9 @@ export class CreateOrderUseCase {
       if (!params.tableId) {
         throw new Error('Table is required for local orders');
       }
+      if (!(await this.ordersRepository.existsTable(params.tableId))) {
+        throw new Error('Table not found');
+      }
       const existing = await this.ordersRepository.findOpenByTableId(
         params.tableId,
       );

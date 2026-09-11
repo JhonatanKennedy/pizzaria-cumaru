@@ -24,7 +24,6 @@ function makeSessionTokens(): {
 
 function makeRepository(denied = false) {
   return {
-    findById: vi.fn(async () => null),
     findByLogin: vi.fn(async () => null),
     save: vi.fn(async () => undefined),
     denyToken: vi.fn(async () => undefined),

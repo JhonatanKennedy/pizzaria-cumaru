@@ -46,7 +46,7 @@ Environment stays per app: `apps/web/.env.local` (`VITE_API_URL`, default `http:
 Two things the layout requires and that are easy to undo by accident:
 
 - **`vitest` is a root `devDependency` on purpose.** Both apps must stay on the same major. Two majors makes npm nest the copies, which splits `@testing-library/jest-dom`'s type augmentation away from the `vitest` the specs resolve — tests still pass but `tsc -b` fails. See "What the functional gate caught" in the runbook.
-- **`.env.local` files are gitignored, so they never travelled with the migration.** A fresh clone needs both recreated from `.env.example`; `apps/api/.env.local` is required for the api suite to run at all.
+- **`.env.local` files are gitignored, so they never travelled with the migration.** A fresh clone needs both recreated from `.env.example`; `apps/api/.env.local` is required by `npm run dev:api` and `npm run test:e2e` — but no longer by `npm test -w apps/api`, which runs with no database at all.
 
 ## Open
 

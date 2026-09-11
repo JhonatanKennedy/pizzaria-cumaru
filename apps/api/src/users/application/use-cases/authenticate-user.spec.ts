@@ -39,7 +39,6 @@ function makeUser(overrides: { failedAttempts?: number } = {}): User {
 
 function makeFakeRepository(user: User | null) {
   return {
-    findById: vi.fn(async () => null),
     findByLogin: vi.fn(async () => user),
     save: vi.fn(async () => undefined),
     denyToken: vi.fn(async () => undefined),

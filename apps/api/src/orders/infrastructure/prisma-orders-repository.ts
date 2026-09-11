@@ -6,6 +6,14 @@ import {
   IOrderListingEntry,
 } from '../domain/repositories/orders-repository.js';
 import { Order } from '../domain/entities/orders.js';
+import { dayWindow } from '../domain/day-window.js';
+import { IN_PROGRESS_STATUSES_BY_TYPE } from '../domain/order-progress.js';
+import {
+  SALES_INSTANT_FIELD_BY_TYPE,
+  SALES_STATUSES_BY_TYPE,
+} from '../domain/order-sales.js';
+import { EOrderStatus } from '../domain/enums/order-status.js';
+import { EOrderType } from '../domain/enums/order-type.js';
 import {
   orderDomainToCreate,
   orderDomainToUpdate,
@@ -13,7 +21,6 @@ import {
 } from './mappers/order-mapper.js';
 
 const ORDER_WITH_RELATIONS = { items: true, cancellations: true } as const;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class PrismaOrdersRepository implements IOrdersRepository {
@@ -38,7 +45,7 @@ export class PrismaOrdersRepository implements IOrdersRepository {
 
   async findOpenByTableId(tableId: string): Promise<Order | null> {
     const row = await this.prisma.order.findFirst({
-      where: { status: 'Open', tableId },
+      where: { type: EOrderType.LOCAL, status: EOrderStatus.OPEN, tableId },
       include: ORDER_WITH_RELATIONS,
       orderBy: { createdAt: 'asc' },
     });
@@ -53,8 +60,10 @@ export class PrismaOrdersRepository implements IOrdersRepository {
         create: orderDomainToCreate(order),
       });
     } catch (error) {
-      // Only the create branch can raise a foreign-key violation, and tableId
-      // is the only FK on Order — so P2003 means the table does not exist.
+      // The rule's home is CreateOrderUseCase's existence check; this catch is
+      // the backstop for a table deleted between that check and this insert,
+      // so the race still answers 400 rather than 500. tableId is Order's only
+      // foreign key, so P2003 has no other meaning here.
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2003'
@@ -69,8 +78,13 @@ export class PrismaOrdersRepository implements IOrdersRepository {
     const count = await this.prisma.order.count({ where: { tableId } });
     return count > 0;
   }
+
+  async existsTable(tableId: string): Promise<boolean> {
+    const count = await this.prisma.table.count({ where: { id: tableId } });
+    return count > 0;
+  }
   async findCompleted(day: Date): Promise<Order[]> {
-    const { start, end } = this.dayWindow(day);
+    const { start, end } = dayWindow(day);
     const rows = await this.prisma.order.findMany({
       where: this.completedWhere(start, end),
       include: ORDER_WITH_RELATIONS,
@@ -82,7 +96,7 @@ export class PrismaOrdersRepository implements IOrdersRepository {
   // overnight keeps its table reachable. Completed orders from earlier days
   // stay out — the day's trade is the sales report's job, not the listing's.
   async findAllForListing(day: Date): Promise<IOrderListingEntry[]> {
-    const { start, end } = this.dayWindow(day);
+    const { start, end } = dayWindow(day);
     const rows = await this.prisma.order.findMany({
       where: {
         OR: [
@@ -100,7 +114,7 @@ export class PrismaOrdersRepository implements IOrdersRepository {
   // locals + delivered deliveries in the same day window), plus the waiter
   // attribution and items of the day's listing.
   async findDaySales(day: Date): Promise<IOrderListingEntry[]> {
-    const { start, end } = this.dayWindow(day);
+    const { start, end } = dayWindow(day);
     const rows = await this.prisma.order.findMany({
       where: this.completedWhere(start, end),
       include: ORDER_WITH_RELATIONS,
@@ -109,29 +123,24 @@ export class PrismaOrdersRepository implements IOrdersRepository {
     return this.attachWaiterNames(rows);
   }
 
-  private dayWindow(day: Date): { start: Date; end: Date } {
-    const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-    return { start, end: new Date(start.getTime() + MS_PER_DAY) };
-  }
-
-  // Shared by the floor view's open-order query and the orders listing: an
-  // order both surfaces show must answer to one definition of "in progress".
+  // Both queries below translate the domain's rule tables into a `where`; they
+  // narrow what is fetched, they never decide. Anything they over-return is
+  // filtered out by the use-case predicate, which is the statement of the rule.
   private openOrderConditions(): Prisma.OrderWhereInput[] {
-    return [
-      { type: 'Local', status: 'Open' },
-      {
-        type: 'Delivery',
-        status: { in: ['Open', 'Preparing', 'Out for delivery'] },
-      },
-    ];
+    return Object.values(EOrderType).map((type) => ({
+      type,
+      status: { in: [...IN_PROGRESS_STATUSES_BY_TYPE[type]] },
+    }));
   }
 
   private completedWhere(start: Date, end: Date): Prisma.OrderWhereInput {
+    const range = { gte: start, lt: end };
     return {
-      OR: [
-        { status: 'Closed', closedAt: { gte: start, lt: end } },
-        { status: 'Delivered', deliveredAt: { gte: start, lt: end } },
-      ],
+      OR: Object.values(EOrderType).map((type) => ({
+        type,
+        status: { in: [...SALES_STATUSES_BY_TYPE[type]] },
+        [SALES_INSTANT_FIELD_BY_TYPE[type]]: range,
+      })),
     };
   }
 

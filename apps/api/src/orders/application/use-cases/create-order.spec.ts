@@ -8,11 +8,15 @@ const USER_ID = 1;
 const TABLE_ID = '5';
 const CREATED_AT = new Date('2026-09-07T12:00:00Z');
 
-function makeFakeRepository(openTableOrder: Order | null = null) {
+function makeFakeRepository(
+  openTableOrder: Order | null = null,
+  tableExists = true,
+) {
   return {
     findById: vi.fn(async () => null),
     findAllOpen: vi.fn(async () => []),
     findOpenByTableId: vi.fn(async () => openTableOrder),
+    existsTable: vi.fn(async () => tableExists),
     save: vi.fn(async () => undefined),
   } as unknown as IOrdersRepository;
 }
@@ -58,6 +62,20 @@ describe('CreateOrderUseCase', () => {
         tableId: TABLE_ID,
       }),
     ).rejects.toThrow('Table already has an open order');
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it('should refuse a local order for an unregistered table', async () => {
+    const repository = makeFakeRepository(null, false);
+    const useCase = new CreateOrderUseCase(repository);
+
+    await expect(
+      useCase.execute({
+        userId: USER_ID,
+        type: EOrderType.LOCAL,
+        tableId: TABLE_ID,
+      }),
+    ).rejects.toThrow('Table not found');
     expect(repository.save).not.toHaveBeenCalled();
   });
 

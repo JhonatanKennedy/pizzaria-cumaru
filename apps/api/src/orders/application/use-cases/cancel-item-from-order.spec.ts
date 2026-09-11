@@ -8,6 +8,7 @@ import { EPaymentType } from '../../domain/enums/payment-type.js';
 const ORDER_ID = 'order-1';
 const ITEM_ID = 'item-1';
 const CREATED_AT = new Date('2026-09-07T12:00:00Z');
+const CLOSED_AT = new Date('2026-09-07T12:30:00Z');
 
 function makeOrderWithItem(): Order {
   const order = Order.create({
@@ -69,7 +70,7 @@ describe('CancelItemFromOrderUseCase', () => {
 
   it('should refuse cancelling an item of a closed order', async () => {
     const order = makeOrderWithItem();
-    order.close();
+    order.close(EPaymentType.CASH, CLOSED_AT);
     const repository = makeFakeRepository(order);
     const useCase = new CancelItemFromOrderUseCase(repository);
 

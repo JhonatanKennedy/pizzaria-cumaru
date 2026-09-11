@@ -17,7 +17,8 @@ export interface ITableListingEntry {
 
 // List every registered table with its open local order summary — the
 // waiter's floor view: free tables carry no open order, occupied tables
-// carry the order id and running total.
+// carry the order id and running total, and the floor reads in table-number
+// order.
 // Features: 03_table_order.feature, 10_table_management.feature.
 @Injectable()
 export class ListTablesUseCase {
@@ -43,10 +44,12 @@ export class ListTablesUseCase {
       }
     }
 
-    return tables.map((table) => ({
-      id: table.getId(),
-      number: table.getNumber(),
-      openOrder: openOrderByTableId.get(table.getId()) ?? null,
-    }));
+    return tables
+      .map((table) => ({
+        id: table.getId(),
+        number: table.getNumber(),
+        openOrder: openOrderByTableId.get(table.getId()) ?? null,
+      }))
+      .sort((a, b) => a.number - b.number);
   }
 }

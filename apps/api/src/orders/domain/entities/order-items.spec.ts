@@ -1,4 +1,5 @@
-import { OrderItems } from './order-items.js';
+import { OrderItems, isFlavorPart } from './order-items.js';
+import type { CreateOrderItemParams, TFlavorPart } from './order-items.js';
 import { EOrderItemStatus } from '../enums/order-item-status.js';
 
 const UNIT_PRICE = 45;
@@ -6,6 +7,21 @@ const ITEM_ID = 'item-1';
 const ORDER_ID = 'order-1';
 const CATALOG_ITEM_ID = 'catalog-item-1';
 const CREATED_AT = new Date('2026-09-07T12:00:00Z');
+
+function makeCreateParams(
+  overrides: Partial<CreateOrderItemParams> = {},
+): CreateOrderItemParams {
+  return {
+    id: ITEM_ID,
+    orderId: ORDER_ID,
+    itemId: CATALOG_ITEM_ID,
+    unitPrice: UNIT_PRICE,
+    quantity: 1,
+    requiresPreparation: true,
+    createdAt: CREATED_AT,
+    ...overrides,
+  };
+}
 
 function makePreparedItem(): OrderItems {
   return OrderItems.create({
@@ -162,6 +178,27 @@ describe('OrderItems', () => {
     expect(item.getCreatedAt()).toBe(CREATED_AT);
   });
 
+  it.each([0, -1])(
+    'should refuse creating an item with a quantity of %i',
+    (quantity) => {
+      expect(() => OrderItems.create(makeCreateParams({ quantity }))).toThrow(
+        'Quantity must be greater than zero',
+      );
+    },
+  );
+
+  it('should refuse creating an item with a negative unit price', () => {
+    expect(() =>
+      OrderItems.create(makeCreateParams({ unitPrice: -1 })),
+    ).toThrow('Unit price cannot be negative');
+  });
+
+  it('should accept an item that costs nothing', () => {
+    const item = OrderItems.create(makeCreateParams({ unitPrice: 0 }));
+
+    expect(item.getUnitPrice()).toBe(0);
+  });
+
   it('should increase the quantity of a Pending item', () => {
     const item = makePreparedItem();
 
@@ -217,6 +254,34 @@ describe('OrderItems', () => {
     expect(item.getQuantity()).toBe(1);
   });
 
+  it.each([0, -1])('should refuse increasing by %i', (quantity) => {
+    const item = makePreparedItem();
+
+    expect(() => item.increaseQuantity(quantity)).toThrow(
+      'Quantity must be greater than zero',
+    );
+    expect(item.getQuantity()).toBe(1);
+  });
+
+  it.each([0, -1])('should refuse decreasing by %i', (quantity) => {
+    const item = makePreparedItem();
+
+    expect(() => item.decreaseQuantity(quantity)).toThrow(
+      'Quantity must be greater than zero',
+    );
+    expect(item.getQuantity()).toBe(1);
+  });
+
+  it('should refuse decreasing all the way to nothing', () => {
+    const item = makePreparedItem();
+    item.increaseQuantity(1);
+
+    expect(() => item.decreaseQuantity(2)).toThrow(
+      'Quantity cannot be less than one',
+    );
+    expect(item.getQuantity()).toBe(2);
+  });
+
   it('should default to no parts and record a whole-canvas or composed pizza when given', () => {
     const plain = makePreparedItem();
     const whole = OrderItems.create({
@@ -266,7 +331,10 @@ describe('OrderItems', () => {
       ],
     });
 
-    const parts = split.getParts();
+    // The readonly type is the first line of defence and the compiler proves
+    // it; the cast is deliberate, to show the copy underneath holds even for
+    // a caller who goes around the type.
+    const parts = split.getParts() as TFlavorPart[];
     parts[0] = { name: 'Tampered', pieces: 0 };
     (parts[1] as { pieces: number }).pieces = 0;
 
@@ -290,5 +358,43 @@ describe('OrderItems', () => {
 
     expect(item.getNotes()).toBe('no onions, stuffed crust');
     expect(makePreparedItem().getNotes()).toBe('');
+  });
+});
+
+// The predicate backs the guard on the `flavors` JSON column, so it meets
+// values no type system has seen: each rejection below is a row that would
+// otherwise reach the aggregate as a composition.
+describe('isFlavorPart', () => {
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['a string', 'Mussarela G'],
+    ['a number', 8],
+    ['an array', [{ name: 'Mussarela G', pieces: 8 }]],
+  ])('should refuse %s', (_label, value) => {
+    expect(isFlavorPart(value)).toBe(false);
+  });
+
+  it.each([
+    ['no name', { pieces: 8 }],
+    ['a name that is not a string', { name: 8, pieces: 8 }],
+    ['a null name', { name: null, pieces: 8 }],
+    ['no pieces', { name: 'Mussarela G' }],
+    ['pieces that are not a number', { name: 'Mussarela G', pieces: '8' }],
+    ['fractional pieces', { name: 'Mussarela G', pieces: 1.5 }],
+    ['no fatias', { name: 'Mussarela G', pieces: 0 }],
+    ['negative fatias', { name: 'Mussarela G', pieces: -1 }],
+  ])('should refuse a part with %s', (_label, value) => {
+    expect(isFlavorPart(value)).toBe(false);
+  });
+
+  it('should accept a flavor and the fatias it occupies', () => {
+    expect(isFlavorPart({ name: 'Mussarela G', pieces: 6 })).toBe(true);
+  });
+
+  it('should ignore anything beyond the flavor and its fatias', () => {
+    const part: TFlavorPart = { name: 'Mussarela G', pieces: 6 };
+
+    expect(isFlavorPart({ ...part, price: 45 })).toBe(true);
   });
 });

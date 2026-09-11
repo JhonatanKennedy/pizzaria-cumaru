@@ -9,6 +9,23 @@ export type TFlavorPart = {
   pieces: number;
 };
 
+// What counts as a flavor part is a rule about the pizza, not about how one
+// is stored, so it lives here and not in the mapper. It is also the only
+// guard on the `flavors` JSON column: a read arrives as `unknown`, and this
+// decides whether the row was a composition at all.
+export function isFlavorPart(value: unknown): value is TFlavorPart {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.name === 'string' &&
+    typeof candidate.pieces === 'number' &&
+    Number.isInteger(candidate.pieces) &&
+    candidate.pieces > 0
+  );
+}
+
 export interface CreateOrderItemParams {
   id: string;
   orderId: string;
@@ -142,10 +159,6 @@ export class OrderItems {
 
   getId(): string {
     return this.id;
-  }
-
-  getOrderId(): string {
-    return this.orderId;
   }
 
   getItemId(): string {

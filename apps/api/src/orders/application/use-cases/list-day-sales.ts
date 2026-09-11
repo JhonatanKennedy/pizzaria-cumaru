@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ORDERS_REPOSITORY } from '../../domain/repositories/orders-repository.js';
 import type { IOrdersRepository } from '../../domain/repositories/orders-repository.js';
+import { dayWindow } from '../../domain/day-window.js';
+import { isSaleOn } from '../../domain/order-sales.js';
 
 export interface IDaySaleItem {
   id: string;
@@ -35,24 +37,27 @@ export class ListDaySalesUseCase {
   ) {}
 
   async execute(day: Date): Promise<IDaySaleOrder[]> {
+    const window = dayWindow(day);
     const entries = await this.ordersRepository.findDaySales(day);
-    return entries.map(({ order, waiterName }) => ({
-      id: order.getId(),
-      waiterName,
-      type: order.getType(),
-      status: order.getStatus(),
-      paymentType: order.getPaymentType() ?? null,
-      tableId: order.getTableId(),
-      createdAt: order.getCreatedAt(),
-      closedAt: order.getClosedAt() ?? null,
-      deliveredAt: order.getDeliveredAt() ?? null,
-      totalPrice: order.totalPrice,
-      items: order.getItems().map((item) => ({
-        id: item.getId(),
-        itemId: item.getItemId(),
-        quantity: item.getQuantity(),
-        status: item.getStatus() ?? null,
-      })),
-    }));
+    return entries
+      .filter(({ order }) => isSaleOn(order, window))
+      .map(({ order, waiterName }) => ({
+        id: order.getId(),
+        waiterName,
+        type: order.getType(),
+        status: order.getStatus(),
+        paymentType: order.getPaymentType() ?? null,
+        tableId: order.getTableId(),
+        createdAt: order.getCreatedAt(),
+        closedAt: order.getClosedAt() ?? null,
+        deliveredAt: order.getDeliveredAt() ?? null,
+        totalPrice: order.totalPrice,
+        items: order.getItems().map((item) => ({
+          id: item.getId(),
+          itemId: item.getItemId(),
+          quantity: item.getQuantity(),
+          status: item.getStatus() ?? null,
+        })),
+      }));
   }
 }

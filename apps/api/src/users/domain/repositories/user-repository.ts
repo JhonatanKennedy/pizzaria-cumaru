@@ -1,7 +1,6 @@
 import type { User } from '../entities/user.js';
 
 export interface IUserRepository {
-  findById(id: number): Promise<User | null>;
   findByLogin(login: string): Promise<User | null>;
   save(user: User): Promise<void>;
   denyToken(jti: string, expiresAt: Date): Promise<void>;

@@ -4,13 +4,14 @@ Tests follow the **test pyramid** and the **F.I.R.S. principles** (Timely delibe
 
 ## The test pyramid
 
-More unit tests than integration tests, more integration tests than e2e tests. Target split:
+Two layers, and everything below `test/` is in the first one:
 
-| Layer                                             | Where it lives        | Run with           | Share of test code |
-| ------------------------------------------------- | --------------------- | ------------------ | ------------------ |
-| Unit — domain entities, use-cases                 | colocated `*.spec.ts` | `npm test`         | ~70%               |
-| Integration — repositories, Prisma, module wiring | colocated `*.spec.ts` | `npm test`         | ~20%               |
-| E2E — full HTTP flows                             | `test/*.e2e-spec.ts`  | `npm run test:e2e` | ~10%               |
+| Layer                          | Where it lives        | Run with           | Share of test code |
+| ------------------------------ | --------------------- | ------------------ | ------------------ |
+| Unit — entities, use-cases, adapters | colocated `*.spec.ts` | `npm test`     | ~90%               |
+| E2E — full HTTP flows          | `test/*.e2e-spec.ts`  | `npm run test:e2e` | ~10%               |
+
+`npm test` opens no connection — not to Postgres, not to anything. It needs no Docker, no `.env.local` and no `DATABASE_URL`, and a spec that breaks that is a bug in the spec. The adapter specs are unit tests by that measure even though they sit in `infrastructure/`: they build their repository over a hand-rolled `PrismaService` double and assert what it maps and what it asks for, which is what makes a repository's translation testable at all. What no unit test can prove is that Postgres honours the `where` a repository builds — that is e2e's job, and the reason `test/` still exists.
 
 Rule of thumb: **every business rule gets a unit test; e2e covers only complete user journeys**, not edge cases. A closed-order rejection is a unit test on `Order` — not a 400-assertion over HTTP.
 
@@ -60,45 +61,62 @@ it('should start OPEN with a total of zero', () => {
 });
 ```
 
-Real persistence belongs in integration tests, against a dedicated test database.
+Real persistence belongs in `test/`, against the dedicated test database `vitest.config.e2e.ts` wires up. When a repository needs a Prisma call in a unit spec, double `PrismaService` — `new PrismaOrdersRepository(double as unknown as PrismaService)`, where the double is a `vi.fn()` per method typed by the generated `Prisma.*Args` — and assert both the aggregate the adapter built and the `where` it asked for.
 
 ### Independent
 
-Each test builds its own fixtures and shares nothing. Tests must pass in any order, in any subset, alone (`it.only`).
+A test's result depends on the code under test and on nothing else — not on another test, not on the order the suite runs in, not on what happened to run before it in the same file. Every test passes **alone, in any subset, in any order**. This is the one of the five that a green suite hides completely: a coupled suite is green in the order it was written, and red the moment someone reaches for `it.only`, a shuffle, or a narrower subset.
+
+**"Shares nothing" covers infrastructure, not only fixtures.** An in-process `makeOrder()` is the easy half. The half that gets forgotten is external state — one database a previous spec truncated, one server a previous spec booted, a file, the system clock. If two tests can reach the same row, port or file, they are coupled however clean their fixtures look.
 
 ```ts
-// ❌ module-level state mutated across tests — order-dependent
+// ❌ — green, and only in this order
 let sharedOrder: Order;
 
-describe('Order', () => {
-  it('adds the first item', () => {
-    sharedOrder = makeOrder();
-    sharedOrder.addItem(makeItem(PIZZA_PRICE));
-    expect(sharedOrder.totalPrice).toBe(PIZZA_PRICE);
-  });
-
-  it('adds a second item', () => {
-    sharedOrder.addItem(makeItem(WATER_PRICE)); // fails if run alone
-    expect(sharedOrder.totalPrice).toBe(PIZZA_PRICE + WATER_PRICE);
-  });
+it('adds the first item', () => {
+  sharedOrder = makeOrder();
+  sharedOrder.addItem(makeItem(PIZZA_PRICE));
+  expect(sharedOrder.totalPrice).toBe(PIZZA_PRICE);
 });
 
-// ✅ a fresh order per test (factory helper called in each it)
-describe('Order', () => {
-  it('adds the first item', () => {
-    const order = makeOrder();
-    order.addItem(makeItem(PIZZA_PRICE));
-    expect(order.totalPrice).toBe(PIZZA_PRICE);
-  });
+it('adds a second item', () => {
+  sharedOrder.addItem(makeItem(WATER_PRICE)); // fails if run alone
+  expect(sharedOrder.totalPrice).toBe(PIZZA_PRICE + WATER_PRICE);
+});
 
-  it('adds a second item', () => {
-    const order = makeOrder();
-    order.addItem(makeItem(PIZZA_PRICE));
-    order.addItem(makeItem(WATER_PRICE));
-    expect(order.totalPrice).toBe(PIZZA_PRICE + WATER_PRICE);
-  });
+// ✅ — a fresh order per test, from a factory called inside each it
+it('adds a second item', () => {
+  const order = makeOrder();
+  order.addItem(makeItem(PIZZA_PRICE));
+  order.addItem(makeItem(WATER_PRICE));
+  expect(order.totalPrice).toBe(PIZZA_PRICE + WATER_PRICE);
 });
 ```
+
+The external-state half looks like this — and note it is the same bug, one level down:
+
+```ts
+// ❌ — the second test only passes because the first one ran
+let token = '';
+
+it('logs the manager in', async () => {
+  token = await loginAs('ana.gerente');
+});
+
+it('closes the order', async () => {
+  await closeOrder(token);
+});
+
+// ✅ — each test earns what it needs
+it('closes the order', async () => {
+  const token = await loginAs('ana.gerente');
+  await closeOrder(token);
+});
+```
+
+**The loudest smell is runner configuration.** `fileParallelism: false`, a `--sequence` flag, or a comment naming the spec that has to run first are all the same finding: the tests are coupled and the runner has been asked to hide it. Fix the tests.
+
+**No exceptions.** A spec that shares a database, a server or a file with another spec is not independent, however carefully it truncates between tests. There is no carve-out for the e2e layer — sharing infrastructure *is* the violation, not a permitted cost of it. The api's `test/` specs break this rule today; that is recorded as open debt in [08-conventions.md](08-conventions.md#7-known-debt--open-questions), not as an exemption here.
 
 ### Repeatable
 
@@ -150,7 +168,7 @@ The "T" is dropped from our F.I.R.S. on purpose: writing the test first (TDD) is
 
 ## Layout & tooling
 
-- Unit/integration tests: colocated `*.spec.ts` next to the code under test. E2E: `test/*.e2e-spec.ts` (7 today — `auth`, `catalog-management`, `delivery-order-status`, `order-creation`, `orders-checkout`, `order-status`, `tables`).
+- Unit tests: colocated `*.spec.ts` next to the code under test. E2E: `test/*.e2e-spec.ts` (8 today — `auth`, `catalog-management`, `cors`, `delivery-order-status`, `order-creation`, `orders-checkout`, `order-status`, `tables`).
 - Vitest `globals: true` — never import `describe`, `it`, `expect`.
 - E2E specs map to feature files: `test/auth.e2e-spec.ts` implements scenarios from the repo-root `features/01_authentication.feature`, `test/order-creation.e2e-spec.ts` and `test/orders-checkout.e2e-spec.ts` cover the repo-root `features/03_table_order.feature` / `09_cancellation_and_payment.feature`. If you can't name the scenario it covers, the test doesn't belong in e2e.
 

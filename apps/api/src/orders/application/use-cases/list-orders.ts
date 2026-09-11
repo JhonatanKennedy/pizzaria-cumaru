@@ -2,6 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ORDERS_REPOSITORY } from '../../domain/repositories/orders-repository.js';
 import type { IOrdersRepository } from '../../domain/repositories/orders-repository.js';
 import type { TFlavorPart } from '../../domain/entities/order-items.js';
+import type { Order } from '../../domain/entities/orders.js';
+import { dayWindow, isInWindow } from '../../domain/day-window.js';
+import type { IDayWindow } from '../../domain/day-window.js';
+import { isInProgress } from '../../domain/order-progress.js';
 
 export interface IOrderListingItem {
   id: string;
@@ -42,27 +46,36 @@ export class ListOrdersUseCase {
   ) {}
 
   async execute(day: Date): Promise<IOrderListingOrder[]> {
+    const window = dayWindow(day);
     const entries = await this.ordersRepository.findAllForListing(day);
-    return entries.map(({ order, waiterName }) => ({
-      id: order.getId(),
-      waiterName,
-      type: order.getType(),
-      status: order.getStatus(),
-      tableId: order.getTableId(),
-      customerName: order.getCustomerName(),
-      phone: order.getPhone(),
-      address: order.getAddress(),
-      deliveredAt: order.getDeliveredAt(),
-      createdAt: order.getCreatedAt(),
-      totalPrice: order.totalPrice,
-      items: order.getItems().map((item) => ({
-        id: item.getId(),
-        itemId: item.getItemId(),
-        quantity: item.getQuantity(),
-        unitPrice: item.getUnitPrice(),
-        status: item.getStatus() ?? null,
-        parts: [...item.getParts()],
-      })),
-    }));
+    return entries
+      .filter(({ order }) => this.isListedOn(order, window))
+      .map(({ order, waiterName }) => ({
+        id: order.getId(),
+        waiterName,
+        type: order.getType(),
+        status: order.getStatus(),
+        tableId: order.getTableId(),
+        customerName: order.getCustomerName(),
+        phone: order.getPhone(),
+        address: order.getAddress(),
+        deliveredAt: order.getDeliveredAt(),
+        createdAt: order.getCreatedAt(),
+        totalPrice: order.totalPrice,
+        items: order.getItems().map((item) => ({
+          id: item.getId(),
+          itemId: item.getItemId(),
+          quantity: item.getQuantity(),
+          unitPrice: item.getUnitPrice(),
+          status: item.getStatus() ?? null,
+          parts: [...item.getParts()],
+        })),
+      }));
+  }
+
+  // The day's own orders — whatever their status — plus anything still in
+  // progress, so an order left open overnight keeps its table reachable.
+  private isListedOn(order: Order, window: IDayWindow): boolean {
+    return isInWindow(order.getCreatedAt(), window) || isInProgress(order);
   }
 }

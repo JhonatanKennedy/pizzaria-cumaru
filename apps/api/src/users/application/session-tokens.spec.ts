@@ -93,12 +93,32 @@ describe('SessionTokens', () => {
     expect(ACCESS_TOKEN_TTL_SECONDS).toBeLessThan(REFRESH_TOKEN_TTL_SECONDS);
   });
 
+  // Refused by the signature, not by the `typ` claim: an access token is
+  // signed with the access secret, so verification fails before the claim is
+  // ever read. The next test is what reaches the claim.
   it('should refuse an access token offered to the refresh operation', async () => {
     const { tokens } = makeSessionTokens();
 
     const accessToken = await tokens.issueAccessToken(SUBJECT);
 
     await expect(tokens.verifyRefreshToken(accessToken)).rejects.toThrow();
+  });
+
+  it('should refuse a refresh-signed token that is stamped as an access token', async () => {
+    const { tokens } = makeSessionTokens();
+    // Signed with the secret this instance trusts, so the signature verifies
+    // and the `typ` claim is the only thing left to refuse it — the app never
+    // mints this, which is exactly why the check has to be there.
+    const mislabelled = await new JwtService({
+      secret: REFRESH_SECRET,
+    }).signAsync(
+      { ...SUBJECT, typ: ETokenKind.ACCESS },
+      { jwtid: 'mislabelled' },
+    );
+
+    await expect(tokens.verifyRefreshToken(mislabelled)).rejects.toThrow(
+      'Not a refresh token',
+    );
   });
 
   it('should refuse a token signed with neither secret', async () => {

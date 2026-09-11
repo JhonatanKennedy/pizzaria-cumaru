@@ -5,8 +5,11 @@ import { OrderItems } from '../../domain/entities/order-items.js';
 import { EOrderStatus } from '../../domain/enums/order-status.js';
 import { EOrderType } from '../../domain/enums/order-type.js';
 
-const CREATED_AT = new Date('2026-09-07T10:00:00Z');
-const DAY = new Date('2026-09-07T09:00:00Z');
+// Local-time constructors throughout: the listing keys on a local calendar
+// day, and these specs must pass in any timezone.
+const DAY = new Date(2026, 8, 7, 9);
+const TODAY = new Date(2026, 8, 7, 10);
+const YESTERDAY = new Date(2026, 8, 6, 10);
 
 function makeFakeRepository(
   entries: Array<{ order: Order; waiterName: string | null }>,
@@ -16,12 +19,40 @@ function makeFakeRepository(
   } as unknown as IOrdersRepository;
 }
 
+function makeLocal(status: EOrderStatus, createdAt: Date): Order {
+  return Order.restore({
+    id: `order-local-${status}`,
+    userId: 1,
+    type: EOrderType.LOCAL,
+    status,
+    createdAt,
+    tableId: '5',
+    items: [],
+    cancellationHistory: [],
+  });
+}
+
+function makeDelivery(status: EOrderStatus, createdAt: Date): Order {
+  return Order.restore({
+    id: `order-delivery-${status}`,
+    userId: 1,
+    type: EOrderType.DELIVERY,
+    status,
+    createdAt,
+    customerName: 'Maria Souza',
+    phone: '(81) 99999-0000',
+    address: 'Rua A',
+    items: [],
+    cancellationHistory: [],
+  });
+}
+
 function makeOrderWithItems(): Order {
   const order = Order.create({
     id: 'order-parts',
     userId: 1,
     type: EOrderType.LOCAL,
-    createdAt: CREATED_AT,
+    createdAt: TODAY,
     tableId: '5',
   });
   order.addItem(
@@ -32,7 +63,7 @@ function makeOrderWithItems(): Order {
       unitPrice: 46,
       quantity: 1,
       requiresPreparation: true,
-      createdAt: CREATED_AT,
+      createdAt: TODAY,
       parts: [
         { name: 'Calabresa G', pieces: 4 },
         { name: 'Portuguesa G', pieces: 4 },
@@ -47,45 +78,20 @@ function makeOrderWithItems(): Order {
       unitPrice: 8,
       quantity: 2,
       requiresPreparation: false,
-      createdAt: CREATED_AT,
+      createdAt: TODAY,
     }),
   );
   return order;
 }
 
-function makeLocalOrder(): Order {
-  return Order.restore({
-    id: 'order-local',
-    userId: 1,
-    type: EOrderType.LOCAL,
-    status: EOrderStatus.OPEN,
-    createdAt: CREATED_AT,
-    tableId: '5',
-    items: [],
-    cancellationHistory: [],
-  });
-}
-
-function makeOpenDelivery(): Order {
-  return Order.restore({
-    id: 'order-delivery',
-    userId: 1,
-    type: EOrderType.DELIVERY,
-    status: EOrderStatus.OPEN,
-    createdAt: CREATED_AT,
-    customerName: 'Maria Souza',
-    phone: '(81) 99999-0000',
-    address: 'Rua A',
-    items: [],
-    cancellationHistory: [],
-  });
-}
-
 describe('ListOrdersUseCase', () => {
   it('should list the day orders with the waiter name', async () => {
     const repository = makeFakeRepository([
-      { order: makeLocalOrder(), waiterName: 'João Garçom' },
-      { order: makeOpenDelivery(), waiterName: 'Ana Gerente' },
+      { order: makeLocal(EOrderStatus.OPEN, TODAY), waiterName: 'João Garçom' },
+      {
+        order: makeDelivery(EOrderStatus.OPEN, TODAY),
+        waiterName: 'Ana Gerente',
+      },
     ]);
     const useCase = new ListOrdersUseCase(repository);
 
@@ -95,7 +101,7 @@ describe('ListOrdersUseCase', () => {
     expect(orders).toHaveLength(2);
 
     const [local, delivery] = orders;
-    expect(local.id).toBe('order-local');
+    expect(local.id).toBe('order-local-Open');
     expect(local.waiterName).toBe('João Garçom');
     expect(local.type).toBe('Local');
     expect(local.tableId).toBe('5');
@@ -104,7 +110,7 @@ describe('ListOrdersUseCase', () => {
     expect(local.address).toBeUndefined();
     expect(local.deliveredAt).toBeUndefined();
 
-    expect(delivery.id).toBe('order-delivery');
+    expect(delivery.id).toBe('order-delivery-Open');
     expect(delivery.waiterName).toBe('Ana Gerente');
     expect(delivery.type).toBe('Delivery');
     expect(delivery.customerName).toBe('Maria Souza');
@@ -119,7 +125,7 @@ describe('ListOrdersUseCase', () => {
       userId: 1,
       type: EOrderType.DELIVERY,
       status: EOrderStatus.DELIVERED,
-      createdAt: CREATED_AT,
+      createdAt: TODAY,
       deliveredAt: new Date('2026-09-07T19:00:00Z'),
       customerName: 'Maria Souza',
       address: 'Rua A',
@@ -161,5 +167,67 @@ describe('ListOrdersUseCase', () => {
     const orders = await useCase.execute(DAY);
 
     expect(orders).toEqual([]);
+  });
+});
+
+describe('ListOrdersUseCase listing scope', () => {
+  it('should keep a local order left open overnight', async () => {
+    const repository = makeFakeRepository([
+      { order: makeLocal(EOrderStatus.OPEN, YESTERDAY), waiterName: null },
+    ]);
+    const useCase = new ListOrdersUseCase(repository);
+
+    const orders = await useCase.execute(DAY);
+
+    expect(orders.map((order) => order.id)).toEqual(['order-local-Open']);
+  });
+
+  it('should keep a delivery still in its cycle from an earlier day', async () => {
+    const statuses = [EOrderStatus.PREPARING, EOrderStatus.OUT_FOR_DELIVERY];
+
+    for (const status of statuses) {
+      const repository = makeFakeRepository([
+        { order: makeDelivery(status, YESTERDAY), waiterName: null },
+      ]);
+      const useCase = new ListOrdersUseCase(repository);
+
+      const orders = await useCase.execute(DAY);
+
+      expect(orders.map((order) => order.id)).toEqual([
+        `order-delivery-${status}`,
+      ]);
+    }
+  });
+
+  it("should leave an earlier day's completed orders out", async () => {
+    const repository = makeFakeRepository([
+      { order: makeLocal(EOrderStatus.CLOSED, YESTERDAY), waiterName: null },
+      {
+        order: makeDelivery(EOrderStatus.DELIVERED, YESTERDAY),
+        waiterName: null,
+      },
+    ]);
+    const useCase = new ListOrdersUseCase(repository);
+
+    const orders = await useCase.execute(DAY);
+
+    expect(orders).toEqual([]);
+  });
+
+  it("should list the day's own orders whatever their status", async () => {
+    const repository = makeFakeRepository([
+      { order: makeLocal(EOrderStatus.OPEN, TODAY), waiterName: null },
+      { order: makeLocal(EOrderStatus.CLOSED, TODAY), waiterName: null },
+      { order: makeLocal(EOrderStatus.CANCELLED, TODAY), waiterName: null },
+      {
+        order: makeDelivery(EOrderStatus.DELIVERED, TODAY),
+        waiterName: null,
+      },
+    ]);
+    const useCase = new ListOrdersUseCase(repository);
+
+    const orders = await useCase.execute(DAY);
+
+    expect(orders).toHaveLength(4);
   });
 });

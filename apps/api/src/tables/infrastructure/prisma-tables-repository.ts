@@ -18,9 +18,7 @@ export class PrismaTablesRepository implements ITablesRepository {
   }
 
   async findAll(): Promise<Table[]> {
-    const rows = await this.prisma.table.findMany({
-      orderBy: { number: 'asc' },
-    });
+    const rows = await this.prisma.table.findMany();
     return rows.map((row) => Table.create({ id: row.id, number: row.number }));
   }
 

@@ -312,6 +312,97 @@ describe('AddItemToOrderUseCase', () => {
     expect(ordersRepository.save).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['zero fatias', 0],
+    ['negative fatias', -1],
+    ['fractional fatias', 1.5],
+  ])('should refuse a flavor given %s', async (_label, pieces) => {
+    const order = makeOpenOrder();
+    const { ordersRepository, catalogRepository } = makeFakes(
+      order,
+      makePizza(),
+      [
+        Ingredient.create({
+          id: INGREDIENT_ID,
+          name: 'Mussarela',
+          inStock: true,
+        }),
+      ],
+      [makeFlavor('Portuguesa G', 46)],
+    );
+    const useCase = new AddItemToOrderUseCase(
+      ordersRepository,
+      catalogRepository,
+    );
+
+    await expect(
+      useCase.execute({
+        orderId: ORDER_ID,
+        itemId: PIZZA_ID,
+        parts: [
+          { name: 'Calabresa G', pieces: 4 },
+          { name: 'Portuguesa G', pieces },
+        ],
+      }),
+    ).rejects.toThrow('Flavor pieces must sum to the pizza size');
+    expect(order.getItems()).toHaveLength(0);
+    expect(ordersRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('should refuse a composition on an item that is not a pizza', async () => {
+    const order = makeOpenOrder();
+    const { ordersRepository, catalogRepository } = makeFakes(
+      order,
+      makeDrink('Coca-Cola 2L', 10),
+      [],
+    );
+    const useCase = new AddItemToOrderUseCase(
+      ordersRepository,
+      catalogRepository,
+    );
+
+    await expect(
+      useCase.execute({
+        orderId: ORDER_ID,
+        itemId: 'catalog-Coca-Cola 2L',
+        parts: [{ name: 'Calabresa G', pieces: 8 }],
+      }),
+    ).rejects.toThrow('Flavor must match the pizza size');
+    expect(order.getItems()).toHaveLength(0);
+    expect(ordersRepository.save).not.toHaveBeenCalled();
+  });
+
+  // A token-less name is a legacy catalog entry with no fatia canvas to cover,
+  // so there is nothing for a composition to add up to.
+  it('should refuse a composition on a pizza whose name carries no size', async () => {
+    const order = makeOpenOrder();
+    const { ordersRepository, catalogRepository } = makeFakes(
+      order,
+      makePizza('Calabresa'),
+      [
+        Ingredient.create({
+          id: INGREDIENT_ID,
+          name: 'Mussarela',
+          inStock: true,
+        }),
+      ],
+    );
+    const useCase = new AddItemToOrderUseCase(
+      ordersRepository,
+      catalogRepository,
+    );
+
+    await expect(
+      useCase.execute({
+        orderId: ORDER_ID,
+        itemId: PIZZA_ID,
+        parts: [{ name: 'Calabresa', pieces: 8 }],
+      }),
+    ).rejects.toThrow('Flavor must match the pizza size');
+    expect(order.getItems()).toHaveLength(0);
+    expect(ordersRepository.save).not.toHaveBeenCalled();
+  });
+
   it('should refuse an item whose ingredient is unavailable', async () => {
     const order = makeOpenOrder();
     const { ordersRepository, catalogRepository } = makeFakes(

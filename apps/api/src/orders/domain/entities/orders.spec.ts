@@ -361,9 +361,6 @@ describe('Order cancellation', () => {
     expect(() => order.addItem(makeItem(WATER_PRICE))).toThrow(
       'Cannot change a cancelled order',
     );
-    expect(() => order.removeItem(pizza.getId())).toThrow(
-      'Cannot change a cancelled order',
-    );
     expect(() => order.cancelItem(pizza.getId(), CANCELLED_AT)).toThrow(
       'Cannot change a cancelled order',
     );

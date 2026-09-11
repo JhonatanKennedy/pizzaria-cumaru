@@ -81,6 +81,22 @@ describe('ListTablesUseCase', () => {
     ]);
   });
 
+  it('should list the floor in table-number order', async () => {
+    const tablesRepository = makeTablesRepository(null, null, [
+      Table.create({ id: 'table-9', number: 9 }),
+      Table.create({ id: 'table-2', number: 2 }),
+      Table.create({ id: 'table-5', number: 5 }),
+    ]);
+    const useCase = new ListTablesUseCase(
+      tablesRepository,
+      makeOrdersRepository(),
+    );
+
+    const listing = await useCase.execute();
+
+    expect(listing.map((table) => table.number)).toEqual([2, 5, 9]);
+  });
+
   it('should carry the open order summary for occupied tables', async () => {
     const tablesRepository = makeTablesRepository();
     const ordersRepository = makeOrdersRepository([

@@ -24,7 +24,7 @@ function makeGuard(
   } = {},
 ) {
   const reflector = {
-    getAllAndOverride: vi.fn((key: symbol) => {
+    getAllAndOverride: vi.fn((key: string) => {
       if (key === PUBLIC_KEY) return overrides.public ?? false;
       if (key === ROLES_KEY) return overrides.requirement;
       return undefined;
@@ -48,7 +48,6 @@ function makeGuard(
     }),
   } as unknown as JwtService;
   const userRepository = {
-    findById: vi.fn(async () => null),
     findByLogin: vi.fn(async () => null),
     save: vi.fn(async () => undefined),
     denyToken: vi.fn(async () => undefined),

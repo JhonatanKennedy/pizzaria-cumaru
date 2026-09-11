@@ -27,7 +27,7 @@
 | `npm run start` / `start:dev` | Run in development (`NODE_ENV=development`, reads `.env.local`); dev is watch mode                                          |
 | `npm run start:prod`          | Run the built app in production (`NODE_ENV=production`, real env vars only)                                                 |
 | `npm run build`               | Nest build to `dist/`                                                                                                       |
-| `npm test`                    | Unit + integration tests (Vitest, picks up `**/*.spec.ts`)                                                                  |
+| `npm test`                    | Unit tests (Vitest, picks up `**/*.spec.ts`) — no database, no Docker, no `.env.local`                                       |
 | `npm run test:e2e`            | E2e tests (`**/*.e2e-spec.ts`, `vitest.config.e2e.ts` points `DATABASE_URL` at `TEST_DATABASE_URL`)                         |
 | `npm run test:cov`            | Coverage                                                                                                                    |
 | `npm run lint`                | oxlint over `src/ test/`                                                                                                    |

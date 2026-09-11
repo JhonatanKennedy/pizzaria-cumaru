@@ -17,11 +17,6 @@ function parseRole(value: string): EUserRole {
 export class PrismaUserRepository implements IUserRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findById(id: number): Promise<User | null> {
-    const row = await this.prisma.user.findUnique({ where: { id } });
-    return row ? this.toDomain(row) : null;
-  }
-
   async findByLogin(login: string): Promise<User | null> {
     const row = await this.prisma.user.findUnique({ where: { email: login } });
     return row ? this.toDomain(row) : null;
