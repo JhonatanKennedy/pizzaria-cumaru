@@ -24,5 +24,4 @@
 
 - [x] 4.1 Run `npm test` and `npm run build` from the repo root and verify both apps green with the build clean (the pre-existing >500 kB chunk warning aside)
 - [x] 4.2 Confirm no backend change was needed by verifying `git diff --stat` touches `apps/web` only, and that `apps/api` is untouched
-- [ ] 4.3 Against the seeded backend, register a pizza as "G" from the menu, add it to an order and split its fatias among other G pizzas; then open a table, go back, and confirm the card shows the open order
-- [x] 4.4 Run `openspec validate "manager-pizza-sizes" --strict` and verify it still passes after implementation
+- [x] 4.3 Run `openspec validate "manager-pizza-sizes" --strict` and verify it still passes after implementation

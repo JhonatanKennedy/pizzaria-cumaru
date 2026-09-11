@@ -8,7 +8,7 @@ The manager's menu and stock management: keep the menu items and the ingredient 
 
 ### Requirement: Manage the menu
 
-The manager MUST see the menu and keep it up to date from a single screen. The items tab MUST be browsable by category, and every item edit MUST go through one form like the one used to create the item.
+The manager MUST see the menu and keep it up to date from a single screen. The items tab MUST be browsable by category, and every item edit MUST go through one form like the one used to create the item. A pizza MUST be registered one catalog entry per size, following the flat-name convention the order contract relies on ("Mussarela G" / "Mussarela M"), so that the size is what makes it composable into flavors.
 
 #### Scenario: Listing the menu
 - **WHEN** a Manager opens the Menu and stock screen
@@ -17,6 +17,22 @@ The manager MUST see the menu and keep it up to date from a single screen. The i
 #### Scenario: Registering a new item
 - **WHEN** the manager registers an item with name, description, price, category and preparation flag
 - **THEN** the item appears in the menu with the informed price
+
+#### Scenario: Registering a sized pizza
+- **WHEN** the manager registers a pizza of category "Pizzas" with the size "G"
+- **THEN** the item is registered as a G pizza and appears in the menu, and the waiter can split its 8 fatias among other available G pizzas
+
+#### Scenario: The size selector concerns pizzas only
+- **WHEN** the manager picks a category other than "Pizzas" in the item form
+- **THEN** the form offers no size selection
+
+#### Scenario: Editing a pizza shows the size it was registered with
+- **WHEN** the manager opens the edit dialog of a pizza registered with a size
+- **THEN** the size selector shows that size, and saving without touching it leaves the pizza's size unchanged
+
+#### Scenario: A pizza with no size is orderable but not composable
+- **WHEN** the manager saves a pizza leaving the size unset
+- **THEN** the item is registered and appears in the menu, it can be added to an order whole, and it offers no flavor split — the form shows a notice saying so rather than refusing the save
 
 #### Scenario: Refusing a repeated item name
 - **WHEN** the manager registers an item whose name is already in use
