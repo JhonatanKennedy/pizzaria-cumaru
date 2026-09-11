@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
+import { LoadingRegion } from '@components/LoadingRegion';
+import { Skeleton } from '@components/Skeleton';
 import { formatBRL } from '@lib/format';
 import { toErrorMessage } from '@lib/errors';
 import type { TPaymentType } from '@lib/payment-labels';
@@ -27,6 +29,8 @@ import { hasItemsInPreparation } from '../business/has-items-in-preparation';
 
 const OPEN_STATUS = 'Open';
 const CANCELLED_STATUS = 'Cancelled';
+
+const ITEM_PLACEHOLDERS = [1, 2, 3] as const;
 
 interface OrderDetailPageProps {
   // The order detail is shared by waiters and managers; closing a table
@@ -57,7 +61,34 @@ export function OrderDetailPage({
   const [actionError, setActionError] = useState<string | null>(null);
 
   if (ordersQuery.isPending || menuQuery.isPending || tablesQuery.isPending) {
-    return <p className="text-stone-600">Carregando…</p>;
+    // The way back and the shape of the page hold their place while the order
+    // loads — the screen used to blank entirely and come back as a different
+    // layout.
+    return (
+      <div className="space-y-4">
+        <BackLink to="/waiter/tables" label="Pedidos de mesa" />
+        <LoadingRegion className="space-y-4">
+          <div className="card p-4 md:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Skeleton className="h-8 w-40" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </div>
+            <Skeleton className="mt-2 h-4 w-32" />
+            <Skeleton className="mt-2 h-5 w-28" />
+          </div>
+          <div className="card p-4 md:p-6">
+            <Skeleton className="h-5 w-36" />
+            <ul className="mt-3 space-y-3 md:space-y-2">
+              {ITEM_PLACEHOLDERS.map((placeholder) => (
+                <li key={placeholder}>
+                  <Skeleton className="h-16 rounded-lg md:h-12" />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </LoadingRegion>
+      </div>
+    );
   }
   if (!ordersQuery.data || !menuQuery.data || !tablesQuery.data) {
     return (

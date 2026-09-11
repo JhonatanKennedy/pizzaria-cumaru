@@ -20,6 +20,11 @@ function renderDialog(): ReturnType<typeof userEvent.setup> {
 }
 
 describe('ConfirmDialog', () => {
+  beforeEach(() => {
+    onConfirmMock.mockReset();
+    onCloseMock.mockReset();
+  });
+
   it('should confirm and close on success', async () => {
     onConfirmMock.mockResolvedValue(undefined);
     const user = renderDialog();
@@ -38,5 +43,21 @@ describe('ConfirmDialog', () => {
 
     expect(await screen.findByText('Cannot delete')).toBeInTheDocument();
     expect(onCloseMock).not.toHaveBeenCalled();
+  });
+
+  it('should hold the dialog while the confirmation is in flight', async () => {
+    // A promise that never settles: the assertion is about the window between
+    // the tap and the answer, which is exactly when a second tap would land.
+    onConfirmMock.mockReturnValue(new Promise<void>(() => {}));
+    const user = renderDialog();
+
+    await user.click(screen.getByRole('button', { name: 'Excluir' }));
+
+    expect(screen.getByRole('button', { name: 'Confirmando…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Confirmando…' }));
+
+    expect(onConfirmMock).toHaveBeenCalledTimes(1);
   });
 });

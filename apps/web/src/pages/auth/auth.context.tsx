@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { LoadingRegion } from '@components/LoadingRegion';
+import { Skeleton } from '@components/Skeleton';
 import {
   clearSession,
   isDevSession,
@@ -88,7 +90,21 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
   }, []);
 
   if (status === 'pending') {
-    return <p className="p-6 text-stone-600">Carregando…</p>;
+    // The shell's own frame, so the app does not flash blank and then jump
+    // into place once the refresh answers. It mirrors AppLayout's markup.
+    return (
+      <LoadingRegion className="min-h-screen bg-stone-100">
+        <div className="border-b border-stone-200 bg-white">
+          <div className="mx-auto flex max-w-6xl items-center px-4 py-2.5 md:py-3">
+            <Skeleton className="h-8 w-24 md:h-9" />
+          </div>
+        </div>
+        <div className="mx-auto max-w-6xl space-y-4 px-4 py-5 md:py-8">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-32 rounded-lg" />
+        </div>
+      </LoadingRegion>
+    );
   }
 
   return (

@@ -18,14 +18,22 @@ export function ConfirmDialog({
   onConfirm,
   onClose,
 }: ConfirmDialogProps): React.ReactNode {
+  const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleConfirm = async (): Promise<void> => {
+    if (busy) {
+      return;
+    }
+    setBusy(true);
+    setErrorMessage(null);
     try {
       await onConfirm();
       onClose();
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -44,11 +52,16 @@ export function ConfirmDialog({
             </p>
           )}
           <div className="mt-4 flex justify-end gap-3">
-            <Button type="button" onClick={onClose} variant="secondary">
+            <Button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              variant="secondary"
+            >
               Cancelar
             </Button>
-            <Button type="button" onClick={handleConfirm}>
-              {confirmLabel}
+            <Button type="button" onClick={handleConfirm} disabled={busy}>
+              {busy ? 'Confirmando…' : confirmLabel}
             </Button>
           </div>
         </div>

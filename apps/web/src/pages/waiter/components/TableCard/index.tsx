@@ -6,11 +6,13 @@ import { Card } from '@components/Card';
 
 interface TableCardProps {
   table: TTableListingEntry;
+  busy?: boolean;
   onOpenTable: (table: TTableListingEntry) => void;
 }
 
 export function TableCard({
   table,
+  busy = false,
   onOpenTable,
 }: TableCardProps): React.ReactNode {
   if (table.openOrder) {
@@ -42,10 +44,11 @@ export function TableCard({
       </div>
       <Button
         variant="outline"
+        disabled={busy}
         onClick={() => onOpenTable(table)}
         className="mt-3 w-full py-3"
       >
-        Abrir mesa
+        {busy ? 'Abrindo…' : 'Abrir mesa'}
       </Button>
     </Card>
   );

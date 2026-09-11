@@ -1,12 +1,25 @@
+import { useState } from 'react';
 import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
+import { LoadingRegion } from '@components/LoadingRegion';
+import { Skeleton } from '@components/Skeleton';
 import { toErrorMessage } from '@lib/errors';
 import { useAuth } from '@pages/auth/use-auth';
 import { QueueColumn } from '../components/QueueColumn';
+import type { TPreparationAction } from '../components/ItemTile';
 import { useCancelItemPreparation } from '../hooks/use-cancel-item-preparation';
 import { useFinishPreparation } from '../hooks/use-finish-preparation';
 import { useKitchenQueue } from '../hooks/use-kitchen-queue';
 import { useStartPreparation } from '../hooks/use-start-preparation';
+
+// The two queues the server splits the payload into, in the order the cook
+// reads them. Literals, not payload — so the loading state shows the real
+// headings and fakes only the tiles.
+const DELIVERY_QUEUE_TITLE = 'Entrega';
+const LOCAL_QUEUE_TITLE = 'Local';
+const QUEUE_TITLES = [DELIVERY_QUEUE_TITLE, LOCAL_QUEUE_TITLE] as const;
+
+const TILE_PLACEHOLDERS = [1, 2, 3] as const;
 
 export function KitchenPage(): React.ReactNode {
   const { user } = useAuth();
@@ -14,18 +27,44 @@ export function KitchenPage(): React.ReactNode {
   const startPreparation = useStartPreparation();
   const finishPreparation = useFinishPreparation();
   const cancelPreparation = useCancelItemPreparation();
+  const [refreshing, setRefreshing] = useState(false);
 
   // One instance of each mutation feeds both columns; a tile is busy only
   // while its own orderItemId is pending, keeping tiles independent.
-  const isTileBusy = (orderItemId: string): boolean => {
-    return (
-      (startPreparation.isPending &&
-        startPreparation.variables?.orderItemId === orderItemId) ||
-      (finishPreparation.isPending &&
-        finishPreparation.variables?.orderItemId === orderItemId) ||
-      (cancelPreparation.isPending &&
-        cancelPreparation.variables?.orderItemId === orderItemId)
-    );
+  const tilePendingAction = (
+    orderItemId: string,
+  ): TPreparationAction | null => {
+    if (
+      startPreparation.isPending &&
+      startPreparation.variables?.orderItemId === orderItemId
+    ) {
+      return 'start';
+    }
+    if (
+      finishPreparation.isPending &&
+      finishPreparation.variables?.orderItemId === orderItemId
+    ) {
+      return 'finish';
+    }
+    if (
+      cancelPreparation.isPending &&
+      cancelPreparation.variables?.orderItemId === orderItemId
+    ) {
+      return 'cancel';
+    }
+    return null;
+  };
+
+  // The button reports the tap the cook just made, not the ambient state: the
+  // board refetches itself every 15s, and a label that swapped on every poll
+  // would flash all shift long.
+  const handleRefresh = async (): Promise<void> => {
+    setRefreshing(true);
+    try {
+      await queueQuery.refetch();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Cancel errors surface inside the dialog (setError('root')); start and
@@ -57,10 +96,10 @@ export function KitchenPage(): React.ReactNode {
           className="px-4 py-2.5 text-sm"
           disabled={queueQuery.isFetching}
           onClick={() => {
-            void queueQuery.refetch();
+            void handleRefresh();
           }}
         >
-          Atualizar
+          {refreshing ? 'Atualizando…' : 'Atualizar'}
         </Button>
       </div>
 
@@ -73,7 +112,22 @@ export function KitchenPage(): React.ReactNode {
         </p>
       )}
 
-      {queueQuery.isPending && <p className="text-stone-600">Carregando…</p>}
+      {queueQuery.isPending && (
+        <LoadingRegion className="grid gap-6 md:grid-cols-2">
+          {QUEUE_TITLES.map((title) => (
+            <div key={title} className="flex flex-col gap-3">
+              <h2 className="text-lg font-bold text-stone-900">{title}</h2>
+              <div className="rounded-xl bg-white p-4 shadow-sm">
+                <div className="space-y-3">
+                  {TILE_PLACEHOLDERS.map((placeholder) => (
+                    <Skeleton key={placeholder} className="h-24 rounded-lg" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </LoadingRegion>
+      )}
 
       {queueQuery.error && (
         <p
@@ -87,17 +141,17 @@ export function KitchenPage(): React.ReactNode {
       {queueQuery.data && (
         <div className="grid gap-6 md:grid-cols-2">
           <QueueColumn
-            title="Entrega"
+            title={DELIVERY_QUEUE_TITLE}
             orders={queueQuery.data.delivery}
-            isBusy={isTileBusy}
+            pendingAction={tilePendingAction}
             onStart={handleStart}
             onFinish={handleFinish}
             onCancel={handleCancel}
           />
           <QueueColumn
-            title="Local"
+            title={LOCAL_QUEUE_TITLE}
             orders={queueQuery.data.local}
-            isBusy={isTileBusy}
+            pendingAction={tilePendingAction}
             onStart={handleStart}
             onFinish={handleFinish}
             onCancel={handleCancel}

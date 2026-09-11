@@ -3,11 +3,15 @@ import { Link, useNavigate } from 'react-router';
 import type { TOrderListing } from '@api/orders.api';
 import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
+import { LoadingRegion } from '@components/LoadingRegion';
+import { Skeleton } from '@components/Skeleton';
 import { toErrorMessage } from '@lib/errors';
 import { useAuth } from '@pages/auth/use-auth';
 import { useOrders } from '../../hooks/use-orders';
 import { CreateDeliveryOrderDialog } from './parts/CreateDeliveryOrderDialog';
 import { DeliveryOrderCard } from './parts/DeliveryOrderCard';
+
+const ORDER_PLACEHOLDERS = [1, 2, 3, 4] as const;
 
 export function DeliveryPage(): React.ReactNode {
   const { user } = useAuth();
@@ -17,7 +21,13 @@ export function DeliveryPage(): React.ReactNode {
 
   const renderBody = (): React.ReactNode => {
     if (ordersQuery.isPending) {
-      return <p className="text-stone-600">Carregando…</p>;
+      return (
+        <LoadingRegion className="space-y-3">
+          {ORDER_PLACEHOLDERS.map((placeholder) => (
+            <Skeleton key={placeholder} className="h-32 rounded-lg" />
+          ))}
+        </LoadingRegion>
+      );
     }
     if (!ordersQuery.data) {
       return (

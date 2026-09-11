@@ -2,23 +2,32 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { TTableListingEntry } from '@api/tables.api';
 import { BackLink } from '@components/BackLink';
+import { LoadingRegion } from '@components/LoadingRegion';
+import { Skeleton } from '@components/Skeleton';
 import { toErrorMessage } from '@lib/errors';
 import { useAuth } from '@pages/auth/use-auth';
 import { TableCard } from '../components/TableCard';
 import { useCreateTableOrder } from '../hooks/use-create-table-order';
 import { useTables } from '../hooks/use-tables';
 
+// Two full rows on the widest grid — enough to fill the fold without the
+// placeholder grid itself needing a scrollbar.
+const TABLE_PLACEHOLDERS = [1, 2, 3, 4, 5, 6] as const;
+
 export function TablesPage(): React.ReactNode {
   const { user } = useAuth();
   const navigate = useNavigate();
   const tablesQuery = useTables();
   const createOrder = useCreateTableOrder();
+  const [busyTableId, setBusyTableId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const handleOpenTable = async (table: TTableListingEntry): Promise<void> => {
     if (!user) {
       return;
     }
+    setActionError(null);
+    setBusyTableId(table.id);
     try {
       const created = await createOrder.mutateAsync({
         userId: user.id,
@@ -27,12 +36,20 @@ export function TablesPage(): React.ReactNode {
       navigate(`/waiter/orders/${created.id}`);
     } catch (error) {
       setActionError(toErrorMessage(error));
+    } finally {
+      setBusyTableId(null);
     }
   };
 
   const renderBody = (): React.ReactNode => {
     if (tablesQuery.isPending) {
-      return <p className="mt-4 text-stone-600">Carregando…</p>;
+      return (
+        <LoadingRegion className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {TABLE_PLACEHOLDERS.map((placeholder) => (
+            <Skeleton key={placeholder} className="h-32 rounded-lg" />
+          ))}
+        </LoadingRegion>
+      );
     }
     if (!tablesQuery.data) {
       return (
@@ -50,6 +67,7 @@ export function TablesPage(): React.ReactNode {
           <TableCard
             key={table.id}
             table={table}
+            busy={busyTableId === table.id}
             onOpenTable={handleOpenTable}
           />
         ))}

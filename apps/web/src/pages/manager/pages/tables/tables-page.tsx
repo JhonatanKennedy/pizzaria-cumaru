@@ -3,6 +3,8 @@ import type { TTableListingEntry } from '@api/tables.api';
 import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
+import { LoadingRegion } from '@components/LoadingRegion';
+import { Skeleton } from '@components/Skeleton';
 import { toErrorMessage } from '@lib/errors';
 import { formatBRL } from '@lib/format';
 import { useTables } from '../../hooks/use-tables';
@@ -16,6 +18,8 @@ type TOpenDialog =
   | { kind: 'rename'; table: TTableListingEntry }
   | { kind: 'remove'; table: TTableListingEntry };
 
+const ROW_PLACEHOLDERS = [1, 2, 3, 4, 5] as const;
+
 function sortByNumber(
   tables: readonly TTableListingEntry[],
 ): TTableListingEntry[] {
@@ -28,7 +32,19 @@ export function TablesPage(): React.ReactNode {
 
   const renderBody = (): React.ReactNode => {
     if (tablesQuery.isPending) {
-      return <p className="text-stone-600">Carregando…</p>;
+      return (
+        <LoadingRegion>
+          <Card>
+            <div className="divide-y divide-stone-100">
+              {ROW_PLACEHOLDERS.map((placeholder) => (
+                <div key={placeholder} className="py-3">
+                  <Skeleton className="h-5 w-24" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        </LoadingRegion>
+      );
     }
     if (!tablesQuery.data) {
       return (

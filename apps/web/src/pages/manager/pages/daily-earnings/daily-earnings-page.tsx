@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
+import { LoadingRegion } from '@components/LoadingRegion';
+import { Skeleton } from '@components/Skeleton';
 import { toErrorMessage } from '@lib/errors';
 import { formatBRL } from '@lib/format';
 import type { TDailyEarningsReport, TReportType } from '../../api/reports.api';
@@ -19,6 +21,9 @@ import { useDaySales } from '../../hooks/use-day-sales';
 import { CategoryStrip } from './parts/CategoryStrip';
 import { SaleCard } from './parts/SaleCard';
 import { SalesFilters } from './parts/SalesFilters';
+
+const TOTAL_PLACEHOLDERS = [1, 2, 3] as const;
+const SALE_PLACEHOLDERS = [1, 2, 3, 4] as const;
 
 interface TotalsEntry {
   label: string;
@@ -64,7 +69,19 @@ export function DailyEarningsPage(): React.ReactNode {
       salesQuery.isPending ||
       menuQuery.isPending
     ) {
-      return <p className="text-stone-600">Carregando…</p>;
+      // The day's totals and its sales list, in the shape the filters open on.
+      return (
+        <LoadingRegion className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {TOTAL_PLACEHOLDERS.map((placeholder) => (
+              <Skeleton key={placeholder} className="h-28 rounded-lg" />
+            ))}
+          </div>
+          {SALE_PLACEHOLDERS.map((placeholder) => (
+            <Skeleton key={placeholder} className="h-40 rounded-lg" />
+          ))}
+        </LoadingRegion>
+      );
     }
     if (!earningsQuery.data || !salesQuery.data || !menuQuery.data) {
       return (

@@ -1,10 +1,10 @@
 import type { TKitchenQueueOrder } from '../../api/kitchen.api';
-import { ItemTile } from '../ItemTile';
+import { ItemTile, type TPreparationAction } from '../ItemTile';
 
 interface QueueColumnProps {
   title: string;
   orders: TKitchenQueueOrder[];
-  isBusy: (orderItemId: string) => boolean;
+  pendingAction: (orderItemId: string) => TPreparationAction | null;
   onStart: (orderId: string, orderItemId: string) => void;
   onFinish: (orderId: string, orderItemId: string) => void;
   onCancel: (orderId: string, orderItemId: string) => Promise<void>;
@@ -13,7 +13,7 @@ interface QueueColumnProps {
 export function QueueColumn({
   title,
   orders,
-  isBusy,
+  pendingAction,
   onStart,
   onFinish,
   onCancel,
@@ -38,7 +38,7 @@ export function QueueColumn({
                 key={item.orderItemId}
                 orderId={orderId}
                 item={item}
-                isBusy={isBusy(item.orderItemId)}
+                pendingAction={pendingAction(item.orderItemId)}
                 onStart={onStart}
                 onFinish={onFinish}
                 onCancel={onCancel}

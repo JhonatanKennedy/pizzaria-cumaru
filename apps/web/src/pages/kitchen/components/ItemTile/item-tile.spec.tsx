@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { TKitchenQueueItem } from '../../api/kitchen.api';
-import { ItemTile } from './index';
+import { ItemTile, type TPreparationAction } from './index';
 
 const PENDING_ITEM: TKitchenQueueItem = {
   orderItemId: 'order-item-1',
@@ -26,12 +26,15 @@ const onStartMock = vi.fn();
 const onFinishMock = vi.fn();
 const onCancelMock = vi.fn();
 
-function renderTile(item: TKitchenQueueItem, isBusy = false): void {
+function renderTile(
+  item: TKitchenQueueItem,
+  pendingAction: TPreparationAction | null = null,
+): void {
   render(
     <ItemTile
       orderId="order-1"
       item={item}
-      isBusy={isBusy}
+      pendingAction={pendingAction}
       onStart={onStartMock}
       onFinish={onFinishMock}
       onCancel={onCancelMock}
@@ -148,12 +151,20 @@ describe('ItemTile', () => {
   });
 
   it('should disable the actions while the tile is busy', () => {
-    renderTile(PREPARING_ITEM, true);
+    renderTile(PREPARING_ITEM, 'finish');
 
-    expect(screen.getByRole('button', { name: 'Finalizar' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Finalizando…' })).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Cancelar preparo' }),
     ).toBeDisabled();
+  });
+
+  it('should name the preparation it is waiting on', () => {
+    renderTile(PENDING_ITEM, 'start');
+
+    expect(
+      screen.getByRole('button', { name: 'Iniciando…' }),
+    ).toBeInTheDocument();
   });
 
   it('should keep the tile anonymous — no order identifiers or table text', () => {

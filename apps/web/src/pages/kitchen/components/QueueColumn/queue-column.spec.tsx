@@ -56,7 +56,7 @@ function renderColumn(orders: TKitchenQueueOrder[]): void {
     <QueueColumn
       title="Local"
       orders={orders}
-      isBusy={() => false}
+      pendingAction={() => null}
       onStart={onStartMock}
       onFinish={onFinishMock}
       onCancel={onCancelMock}

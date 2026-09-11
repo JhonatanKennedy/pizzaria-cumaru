@@ -17,8 +17,12 @@ export function QuantityStepper({
 }: QuantityStepperProps): React.ReactNode {
   const atMinimum = quantity <= 1;
 
+  // The buttons are glyphs, so there is no label to swap the way every other
+  // action in the app does. The count carries the pending state instead: it
+  // greys out while the new quantity is in flight, which is also the value
+  // that is about to change.
   return (
-    <div className="flex shrink-0 items-center gap-1">
+    <div aria-busy={busy} className="flex shrink-0 items-center gap-1">
       <Button
         aria-label="Diminuir quantidade"
         disabled={busy || atMinimum}
@@ -27,7 +31,9 @@ export function QuantityStepper({
       >
         −
       </Button>
-      <span className="min-w-6 text-center text-sm font-semibold text-stone-900">
+      <span
+        className={`min-w-6 text-center text-sm font-semibold ${busy ? 'text-stone-400' : 'text-stone-900'}`}
+      >
         {quantity}
       </span>
       <Button

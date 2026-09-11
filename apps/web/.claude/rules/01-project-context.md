@@ -62,7 +62,7 @@ src/
     layout/AppLayout/index.tsx  # the app shell (nav by role, user chip, logout)
     home-redirect.tsx, not-found-page.tsx, query-client.ts
   components/         # shared UI kit only: Button/, Card/, TextField/, FeaturePlaceholder/,
-                      # FlavorComposer/ (each with index.tsx)
+                      # FlavorComposer/, Skeleton/, LoadingRegion/ (each with index.tsx)
   api/http-client.ts  # the HTTP seam: fetch wrapper, ApiError, configureApiClient
                       # api/catalog.api.ts — shared catalog contract (schemas, endpoints,
                       # query keys) consumed by the waiter and manager contexts
@@ -85,6 +85,17 @@ src/
 - **Errors** — the backend's `DomainErrorFilter` returns `{ statusCode, message }` with a non-2xx status. `apiRequest` throws `ApiError(statusCode, message)`; display `message` to the user as-is (no localization — the specs assert these exact strings, e.g. `"Invalid username or password"`, `"Account locked. Try again in 15 minutes"`).
 - **Responses are validated before use** — `apiRequest` returns `unknown`; every `*.api.ts` parses with a zod schema (`loginResponseSchema.parse(data)`). A backend shape change becomes a loud error at the point of use, not a silent bug deep in a component.
 - **401 handling** — the client knows nothing about auth. `routes/app.tsx` wires `configureApiClient({ getToken: readToken, onUnauthorized: handleUnauthorized })` once; on 401 the client calls `onUnauthorized`, which clears storage and resets the `AuthProvider` user (via the expiry handler the provider registers), and `RequireRole` redirects to `/login`.
+
+### Loading and failure states
+
+A screen waiting on a read shows a **skeleton of the shape it is about to become**, never a bare line of text. `Skeleton` draws one decorative block, sized by the caller's `className`; `LoadingRegion` wraps a set of them and carries the single `Carregando…` a screen reader needs — the blocks themselves are `aria-hidden`, so the region is the only thing announced, once per screen.
+
+Compose the silhouette **inline in the screen's loading branch, next to the real markup** — that is what keeps the two in sync. There is deliberately no generic `<ListSkeleton rows={n}>`: a generic shape matches no screen exactly.
+
+- **The frame renders; only the content region skeletons.** A back link, a screen title, the kitchen's "Entrega"/"Local" headings and the menu's tab pills are literals or local state, not payload — they are drawn while the data loads, so the page never blanks and nothing jumps when it arrives.
+- **Key the skeleton off `isPending`, never `isFetching`.** `useKitchenQueue` and the manager `useOrders` poll every 15s; a background refetch must not blank or flicker the screen. The same split applies to a manual action: `Atualizar` on the kitchen panel swaps its label for the tap the cook made, not for the poll.
+- **Mutations keep the label-swap convention** (`'Salvando…'`, `'Abrindo…'`, `'Confirmando…'`) and disable their control while the request is in flight, so a second tap cannot fire a second request. `ConfirmDialog` does that once for every destructive action in the manager context; where a label is impossible (the icon-only `QuantityStepper`) the count carries the pending state instead.
+- **Retry is not universal.** Only `kitchen-panel`, `daily-earnings-report` and `daily-sales` require a retry path and all three have one; the other screens recover on window focus.
 
 ### Auth
 

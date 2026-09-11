@@ -10,10 +10,14 @@ const STATUS_BG: Record<TKitchenQueueItem['status'], string> = {
   Preparing: 'bg-item-preparing',
 };
 
+const PREPARATION_ACTIONS = ['start', 'finish', 'cancel'] as const;
+
+export type TPreparationAction = (typeof PREPARATION_ACTIONS)[number];
+
 interface ItemTileProps {
   orderId: string;
   item: TKitchenQueueItem;
-  isBusy: boolean;
+  pendingAction?: TPreparationAction | null;
   onStart: (orderId: string, orderItemId: string) => void;
   onFinish: (orderId: string, orderItemId: string) => void;
   onCancel: (orderId: string, orderItemId: string) => Promise<void>;
@@ -22,12 +26,13 @@ interface ItemTileProps {
 export function ItemTile({
   orderId,
   item,
-  isBusy,
+  pendingAction = null,
   onStart,
   onFinish,
   onCancel,
 }: ItemTileProps): React.ReactNode {
   const [cancelOpen, setCancelOpen] = useState(false);
+  const isBusy = pendingAction !== null;
 
   const handleCancelConfirm = async (): Promise<void> => {
     await onCancel(orderId, item.orderItemId);
@@ -62,7 +67,7 @@ export function ItemTile({
             disabled={isBusy}
             onClick={() => onStart(orderId, item.orderItemId)}
           >
-            Iniciar preparo
+            {pendingAction === 'start' ? 'Iniciando…' : 'Iniciar preparo'}
           </Button>
         )}
         {item.status === 'Preparing' && (
@@ -72,7 +77,7 @@ export function ItemTile({
               disabled={isBusy}
               onClick={() => onFinish(orderId, item.orderItemId)}
             >
-              Finalizar
+              {pendingAction === 'finish' ? 'Finalizando…' : 'Finalizar'}
             </Button>
             <Button
               variant="secondary"

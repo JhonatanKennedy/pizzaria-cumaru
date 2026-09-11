@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useParams } from 'react-router';
 import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
+import { LoadingRegion } from '@components/LoadingRegion';
+import { Skeleton } from '@components/Skeleton';
 import { toErrorMessage } from '@lib/errors';
 import { formatBRL, formatTime } from '@lib/format';
 import { itemStatusLabel } from '@lib/item-labels';
@@ -19,6 +21,8 @@ import { AddItemsPanel } from './parts/AddItemsPanel';
 
 const OPEN_STATUS = 'Open';
 
+const ITEM_PLACEHOLDERS = [1, 2, 3] as const;
+
 export function DeliveryDetailPage(): React.ReactNode {
   const { orderId } = useParams();
   const ordersQuery = useOrders();
@@ -28,7 +32,32 @@ export function DeliveryDetailPage(): React.ReactNode {
   const [actionError, setActionError] = useState<string | null>(null);
 
   if (ordersQuery.isPending || menuQuery.isPending) {
-    return <p className="text-stone-600">Carregando…</p>;
+    return (
+      <div className="space-y-4">
+        <BackLink to="/manager/delivery" label="Pedidos de entrega" />
+        <LoadingRegion className="space-y-4">
+          <div className="card">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-5 w-24 rounded-full" />
+            </div>
+            <Skeleton className="mt-2 h-4 w-32" />
+            <Skeleton className="mt-2 h-4 w-56" />
+            <Skeleton className="mt-4 h-6 w-36" />
+          </div>
+          <div className="card">
+            <Skeleton className="h-5 w-36" />
+            <div className="mt-3 divide-y divide-stone-100">
+              {ITEM_PLACEHOLDERS.map((placeholder) => (
+                <div key={placeholder} className="py-2">
+                  <Skeleton className="h-5 w-44" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </LoadingRegion>
+      </div>
+    );
   }
   if (!ordersQuery.data || !menuQuery.data) {
     return (

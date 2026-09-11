@@ -23,10 +23,13 @@ export function IngredientsTab({
 }: IngredientsTabProps): React.ReactNode {
   const [openDialog, setOpenDialog] = useState<TOpenDialog>({ kind: 'none' });
   const [actionError, setActionError] = useState<string | null>(null);
+  const [busyIngredientId, setBusyIngredientId] = useState<string | null>(null);
   const toggleStockMutation = useToggleIngredientStock();
   const deleteIngredientMutation = useDeleteIngredient();
 
   const handleToggleStock = async (ingredient: TIngredient): Promise<void> => {
+    setActionError(null);
+    setBusyIngredientId(ingredient.id);
     try {
       await toggleStockMutation.mutateAsync({
         ingredientId: ingredient.id,
@@ -34,6 +37,8 @@ export function IngredientsTab({
       });
     } catch (error) {
       setActionError(toErrorMessage(error));
+    } finally {
+      setBusyIngredientId(null);
     }
   };
 
@@ -54,44 +59,54 @@ export function IngredientsTab({
       )}
       <Card className="mt-4">
         <ul className="divide-y divide-stone-100">
-          {ingredients.map((ingredient) => (
-            <li
-              key={ingredient.id}
-              className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
-            >
-              <span className="font-medium text-stone-900">
-                {ingredient.name}
-              </span>
-              {!ingredient.available && (
-                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
-                  Indisponível
+          {ingredients.map((ingredient) => {
+            const busy = busyIngredientId === ingredient.id;
+            const stockLabel = ingredient.available
+              ? 'Marcar indisponível'
+              : 'Marcar disponível';
+
+            return (
+              <li
+                key={ingredient.id}
+                className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+              >
+                <span className="font-medium text-stone-900">
+                  {ingredient.name}
                 </span>
-              )}
-              <div className="ml-auto flex gap-2">
-                <Button
-                  onClick={() => handleToggleStock(ingredient)}
-                  className="px-3 py-1 text-sm"
-                >
-                  {ingredient.available
-                    ? 'Marcar indisponível'
-                    : 'Marcar disponível'}
-                </Button>
-                <Button
-                  onClick={() => setOpenDialog({ kind: 'rename', ingredient })}
-                  className="px-3 py-1 text-sm"
-                >
-                  Renomear
-                </Button>
-                <Button
-                  onClick={() => setOpenDialog({ kind: 'delete', ingredient })}
-                  variant="secondary"
-                  className="px-3 py-1 text-sm"
-                >
-                  Excluir
-                </Button>
-              </div>
-            </li>
-          ))}
+                {!ingredient.available && (
+                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+                    Indisponível
+                  </span>
+                )}
+                <div className="ml-auto flex gap-2">
+                  <Button
+                    disabled={busy}
+                    onClick={() => handleToggleStock(ingredient)}
+                    className="px-3 py-1 text-sm"
+                  >
+                    {busy ? 'Atualizando…' : stockLabel}
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      setOpenDialog({ kind: 'rename', ingredient })
+                    }
+                    className="px-3 py-1 text-sm"
+                  >
+                    Renomear
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      setOpenDialog({ kind: 'delete', ingredient })
+                    }
+                    variant="secondary"
+                    className="px-3 py-1 text-sm"
+                  >
+                    Excluir
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </Card>
       {openDialog.kind === 'create' && (
