@@ -5,9 +5,7 @@ import { AuthProvider } from './auth.context';
 import { RequireRole } from './require-role';
 import { useAuth } from './use-auth';
 import {
-  isDevSession,
   readStoredUser,
-  writeDevSession,
   writeStoredUser,
   type StoredUser,
 } from './business/auth-storage';
@@ -131,20 +129,6 @@ describe('AuthProvider boot', () => {
     // the cookie about — and the login screen is the right first render.
     expect(await screen.findByText(LOGIN_SCREEN)).toBeInTheDocument();
     expect(refreshAccessTokenMock).not.toHaveBeenCalled();
-  });
-});
-
-describe('AuthProvider with a dev session', () => {
-  it('should keep the dev user across a reload without refreshing', async () => {
-    writeDevSession({ id: 0, login: 'dev', role: 'Waiter' });
-
-    renderApp();
-
-    // A dev session has no cookie behind it, so a boot refresh would fail and
-    // sign the dev user straight back out.
-    expect(await screen.findByText(WAITER_PANEL)).toBeInTheDocument();
-    expect(refreshAccessTokenMock).not.toHaveBeenCalled();
-    expect(isDevSession()).toBe(true);
   });
 });
 

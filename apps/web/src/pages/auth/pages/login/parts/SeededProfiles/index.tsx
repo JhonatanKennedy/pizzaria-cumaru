@@ -7,7 +7,14 @@ const SEEDED_PROFILES = [
   { login: 'carlos.cozinha', role: 'Cook' },
 ] as const;
 
-export function SeededProfiles(): React.ReactNode {
+export function SeededProfiles(): React.ReactNode | null {
+  // The seed is a development fixture: these logins exist in a local database
+  // and nowhere else, so a production build must not name accounts its
+  // deployment does not have.
+  if (!import.meta.env.DEV) {
+    return null;
+  }
+
   return (
     <Card className="mt-4 text-sm text-stone-600">
       <h2 className="font-semibold text-stone-800">Perfis de teste</h2>

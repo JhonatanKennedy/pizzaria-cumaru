@@ -3,9 +3,7 @@ import { LoadingRegion } from '@components/LoadingRegion';
 import { Skeleton } from '@components/Skeleton';
 import {
   clearSession,
-  isDevSession,
   readStoredUser,
-  writeDevSession,
   writeStoredUser,
 } from './business/auth-storage';
 import {
@@ -14,7 +12,6 @@ import {
   writeAccessToken,
 } from './business/session';
 import { registerSessionExpiryHandler } from './business/handle-unauthorized';
-import type { UserRole } from './business/role';
 import { authenticate, revokeToken } from './api/auth.api';
 import { AuthContext, type AuthUser } from './auth-context';
 
@@ -38,11 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
 
     const restore = async (): Promise<void> => {
       const stored = readStoredUser();
-      if (!stored || isDevSession()) {
-        // A dev session has no cookie behind it, so refreshing would fail and
-        // sign the dev user out on every reload. Its blob is the session.
+      if (!stored) {
+        // No blob, no session: the cookie cannot vouch for a user nobody
+        // claimed, so there is nothing to ask it about.
         if (active) {
-          setUser(stored);
           setStatus('ready');
         }
         return;
@@ -74,12 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
     return result.user;
   }, []);
 
-  const loginAsDev = useCallback((role: UserRole) => {
-    const devUser: AuthUser = { id: 0, login: 'dev', role };
-    writeDevSession(devUser);
-    setUser(devUser);
-  }, []);
-
   const logout = useCallback(async () => {
     // Ending the local session cannot depend on the call succeeding: the cookie
     // may already be gone, and the user asked to be signed out.
@@ -108,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, loginAsDev, logout }}>
+    <AuthContext.Provider value={{ user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

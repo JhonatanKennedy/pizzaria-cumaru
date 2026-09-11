@@ -1,8 +1,6 @@
 import {
   clearSession,
-  isDevSession,
   readStoredUser,
-  writeDevSession,
   writeStoredUser,
   type StoredUser,
 } from '../auth-storage';
@@ -72,37 +70,12 @@ describe('the stored session', () => {
   });
 });
 
-describe('dev sessions', () => {
-  it('should mark a dev session', () => {
-    writeDevSession({ id: 0, login: 'dev', role: 'Cook' });
-
-    expect(isDevSession()).toBe(true);
-    expect(readStoredUser()).toEqual({
-      id: 0,
-      login: 'dev',
-      role: 'Cook',
-    });
-  });
-
-  it('should not be a dev session by default', () => {
-    expect(isDevSession()).toBe(false);
-  });
-
-  it('should stop being a dev session after a real login', () => {
-    writeDevSession(VALID_USER);
-    writeStoredUser({ id: 2, login: 'ana.gerente', role: 'Manager' });
-
-    // Otherwise a later reload would skip the refresh the real session now
-    // depends on, and the dev marker would outlive the login that replaced it.
-    expect(isDevSession()).toBe(false);
-  });
-
-  it('should drop the marker on clearSession', () => {
-    writeDevSession(VALID_USER);
+describe('clearSession', () => {
+  it('should leave nothing stored', () => {
+    writeStoredUser(VALID_USER);
 
     clearSession();
 
-    expect(isDevSession()).toBe(false);
     expect(readStoredUser()).toBeNull();
     expect(storedKeys()).toEqual([]);
   });
