@@ -31,7 +31,7 @@
 ## 5. Credentialed CORS
 
 - [x] 5.1 Set `credentials: true` in `buildCorsOptions` — the flip `restrict-cors-origins` recorded as belonging to this change; verify `cors.spec.ts` asserts `credentials` is true and that the origin callback still refuses an off-list origin by not reflecting it, and that the app still boots with a valid `CORS_ORIGINS`
-- [ ] 5.2 Confirm the API and SPA remain same-site in development (`localhost:5173` → `localhost:3000`), which is what `SameSite=Lax` depends on; verify a real browser login from the dev server stores the cookie and that it is attached to the `/auth/refresh` request
+- [x] 5.2 Confirm the API and SPA remain same-site in development (`localhost:5173` → `localhost:3000`), which is what `SameSite=Lax` depends on; verify a real browser login from the dev server stores the cookie and that it is attached to the `/auth/refresh` request — **verified in the browser on 2026-09-10**: `refresh_token` present with `HttpOnly` + `Path=/auth`, and the login was followed by a rotation, which only happens when the cookie reaches the API
 
 ## 6. Web client
 
