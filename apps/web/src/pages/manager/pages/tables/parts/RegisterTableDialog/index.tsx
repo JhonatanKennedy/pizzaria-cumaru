@@ -37,8 +37,8 @@ export function RegisterTableDialog({
   });
 
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-4">
-      <Card className="w-full max-w-sm">
+    <div className="fixed inset-0 z-10 flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-4">
+      <Card className="my-auto w-full max-w-sm">
         <div role="dialog" aria-modal="true" aria-label="Adicionar mesa">
           <h2 className="text-lg font-bold text-stone-900">Adicionar mesa</h2>
           <p className="mt-1 text-sm text-stone-600">

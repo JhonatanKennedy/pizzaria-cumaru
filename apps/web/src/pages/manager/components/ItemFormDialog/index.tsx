@@ -118,8 +118,8 @@ export function ItemFormDialog({
   });
 
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-4">
-      <Card className="w-full max-w-md">
+    <div className="fixed inset-0 z-10 flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-4">
+      <Card className="my-auto w-full max-w-md">
         <div
           role="dialog"
           aria-modal="true"
