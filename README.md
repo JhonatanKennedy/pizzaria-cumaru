@@ -1,5 +1,7 @@
 # Pizzaria Cumaru
 
+[![CI](https://github.com/JhonatanKennedy/pizzaria-cumaru/actions/workflows/ci.yml/badge.svg)](https://github.com/JhonatanKennedy/pizzaria-cumaru/actions/workflows/ci.yml)
+
 Management system for a pizzeria: table and delivery orders, a kitchen panel, menu
 and stock management, checkout, and daily reports — with role-based access for
 waiters, cooks and managers.
@@ -17,6 +19,7 @@ preserved here.
 | `features/` | the product specs (Gherkin, English), one file per flow, shared by both apps |
 | `openspec/` | the change store — active changes, the 22 capability specs, the archive |
 | `scripts/` | `run-e2e.mjs` and the lock it takes; the browser suite's lifecycle |
+| `.github/workflows/` | CI — lint, typecheck, unit, and both e2e suites |
 | `packages/` | reserved for shared code — **does not exist yet**; the root `package.json` already globs `packages/*` |
 | `docs/` | the monorepo migration runbook |
 
@@ -171,6 +174,63 @@ npm run test:e2e -- --spec cypress/e2e/auth.cy.ts
 > interface — on a public IP that is the seeded logins in this repo, served under
 > `NODE_ENV=development`. It belongs on an ephemeral machine with its own Postgres.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and on every push to
+`master` (and on `workflow_dispatch`). Four jobs, with the two expensive ones
+gated on the cheap one so a lint error does not pay for a browser suite:
+
+| Job | Needs | Runs |
+| --- | --- | --- |
+| `static` | — | `npm run lint`, then both typechecks — `apps/web`'s Cypress specs and `apps/api`'s `test/` |
+| `unit` | — | `npm test`, no database |
+| `api-e2e` | `static` | `prisma migrate deploy`, then `npm run test:e2e -w apps/api` |
+| `browser-e2e` | `static` | `npm run test:e2e` |
+
+There is **no deploy job** — the repo has no deployment artifact to deploy.
+
+Both e2e jobs get a `postgres:16` service container, and each writes its own
+`apps/api/.env.local`, which no clone has. Four things about that are worth knowing
+before editing it:
+
+- **The container publishes 5433, not 5432.** ubuntu-24.04 happens to leave 5432
+  free, but on a runner where PostgreSQL is already running, publishing 5432 fails
+  as a docker error rather than a test error. Nothing hardcodes the port — it comes
+  from the URL in `.env.local`.
+- **Both `DATABASE_URL` and `TEST_DATABASE_URL` point at the test database, and that
+  is not a copy-paste slip.** `apps/api/prisma.config.ts` resolves the Prisma CLI's
+  connection through `DATABASE_URL` — a different key from the one the app and the
+  browser runner read. Writing the conventional `.env.example` pair here would make
+  `migrate deploy` migrate a *different database*, report success, and leave
+  `pizzaria_cumaru_test` empty; the failure would surface later as "table does not
+  exist", naming the wrong thing.
+- **`api-e2e` migrates and `browser-e2e` does not.** The api suite migrates nothing
+  itself — `vitest.config.e2e.ts` declares no `globalSetup`, and each spec only
+  truncates and rebuilds its own fixtures, which works locally only because the
+  browser suite's `migrate reset` migrated the database at some point. The browser
+  job needs no equivalent: `scripts/run-e2e.mjs` does its own `migrate reset
+  --force`. A side effect worth having: CI is the only place that proves the squashed
+  baseline still applies cleanly to a virgin database.
+- **No secrets are needed anywhere.** `run-e2e.mjs` sets `NODE_ENV=development` on
+  the API it boots, and `validateEnv` demands `DATABASE_URL` / `JWT_SECRET` /
+  `JWT_REFRESH_SECRET` only under `NODE_ENV=production`. `CORS_ORIGINS` is required
+  in every mode, which is why it is in the file — and the api-e2e job needs it too,
+  because those specs compile the real `AppModule` and so run the real `validateEnv`.
+  The two JWT values only have to differ from each other. Nothing in the pipeline
+  protects anything: the database is thrown away with the runner.
+
+Cypress records no video (it is off in `cypress.config.ts`); on a failed
+`browser-e2e` the screenshots are uploaded as an artifact instead. The Cypress
+binary is cached on the lockfile hash, restored **before** `npm ci`, because it
+downloads into `~/.cache/Cypress` rather than `node_modules`.
+
+> **`paths-ignore` and required checks interact, and the failure is silent.** A
+> pull request touching only `**.md`, `docs/`, `openspec/`, `features/` or
+> `.claude/` skips the workflow entirely, so *no* check reports. If these job names
+> are ever made **required** in branch protection, such a pull request can never go
+> green and cannot be merged. Either leave the checks optional, or drop the
+> `paths-ignore` blocks.
+
 ## Where the product is described
 
 The product is described at two altitudes, and both are normative for their level:
@@ -194,9 +254,11 @@ the root `.claude/`.
   in production, and the API exposes only `POST /auth/login`, `/auth/refresh` and
   `/auth/logout` — no user-creation route and no bootstrap script. A fresh
   production database cannot be logged into.
-- There is **no deployment artifact**: no Dockerfile, no CI workflow, no reverse
-  proxy config. The only compose file is a dev Postgres. `apps/api`'s `"deploy":
-  "nest deploy"` is a scaffold leftover targeting a hosted cloud service.
+- There is **no deployment artifact**: no Dockerfile, no reverse proxy config. The
+  only compose file is a dev Postgres, and the CI workflow in
+  [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs tests only — there is
+  no job that builds or ships anything. `apps/api`'s `"deploy": "nest deploy"` is a
+  scaffold leftover targeting a hosted cloud service.
 - Nothing serves the SPA's build output, and `VITE_API_URL` is baked in at build
   time, so a production image must be built with the real API URL already set.
 

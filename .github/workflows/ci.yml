@@ -1,0 +1,234 @@
+# Continuous integration: lint, typecheck, unit tests, and both e2e suites.
+#
+# There is deliberately no deploy job. The repo has no deployment artifact yet
+# (no Dockerfile, no reverse proxy, and the seed refuses under NODE_ENV=production
+# with nothing to create the first user), so there is no target to deploy to.
+#
+# Job names are load-bearing: branch protection matches required status checks by
+# name, so renaming a job silently un-requires it.
+name: CI
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'openspec/**'
+      - 'features/**'
+      - '.claude/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'openspec/**'
+      - 'features/**'
+      - '.claude/**'
+  workflow_dispatch:
+
+# Nothing here writes to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      # This job never launches Cypress, and the TypeScript types the check below
+      # needs ship in the npm package — only the ~100 MB Electron runner is
+      # downloaded by cypress's own postinstall, which is what this skips.
+      CYPRESS_INSTALL_BINARY: 0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck:e2e -w apps/web
+
+      # `nest build` compiles through tsconfig.build.json, which excludes test/,
+      # and vitest transpiles without checking — so this is the only thing that
+      # looks at the api's specs at all.
+      - run: npm run typecheck -w apps/api
+
+  unit:
+    name: unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CYPRESS_INSTALL_BINARY: 0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # No database: the api's unit suite opens no connection by design.
+      - run: npm test
+
+  api-e2e:
+    name: api-e2e
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CYPRESS_INSTALL_BINARY: 0
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: prisma
+          POSTGRES_PASSWORD: prisma
+          POSTGRES_DB: pizzaria_cumaru_test
+        # 5433, not 5432. ubuntu-24.04 ships PostgreSQL with its service
+        # disabled, so 5432 happens to be free — but on a runner where it is
+        # running, publishing 5432 fails with a docker-level error instead of a
+        # test error. Nothing in the repo hardcodes the port: it is derived from
+        # the URL in apps/api/.env.local, written below.
+        #
+        # The mapping only matters because these jobs run on the runner host. A
+        # job-level `container:` would make `localhost` the job container and
+        # ignore the mapping entirely.
+        ports:
+          - '5433:5432'
+        options: >-
+          --health-cmd "pg_isready -U prisma -d pizzaria_cumaru_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Write apps/api/.env.local
+        run: |
+          cat > apps/api/.env.local <<'EOF'
+          DATABASE_URL=postgresql://prisma:prisma@127.0.0.1:5433/pizzaria_cumaru_test?schema=public
+          TEST_DATABASE_URL=postgresql://prisma:prisma@127.0.0.1:5433/pizzaria_cumaru_test?schema=public
+          CORS_ORIGINS=http://localhost:5174
+          JWT_SECRET=ci-access-secret
+          JWT_REFRESH_SECRET=ci-refresh-secret
+          EOF
+
+      - name: Check Postgres answers
+        run: |
+          if ! timeout 10 bash -c 'exec 3<>/dev/tcp/127.0.0.1/5433'; then
+            echo "::error::Nothing accepted a connection on 127.0.0.1:5433 — the postgres service container is not up."
+            exit 1
+          fi
+          echo 'Postgres answered on 127.0.0.1:5433.'
+
+      # The suite migrates nothing: vitest.config.e2e.ts declares no globalSetup,
+      # and each spec only truncates and rebuilds its own fixtures. On a
+      # developer's machine this is invisible because the browser suite's
+      # `migrate reset` migrated the database at some point; on a fresh container
+      # every spec would die on its first deleteMany.
+      #
+      # `deploy`, not `reset`: the container is already empty, so there is nothing
+      # to drop, and deploy is the non-destructive command.
+      - name: Apply the migrations
+        run: npm exec -w apps/api -- prisma migrate deploy
+
+      - name: API e2e
+        run: npm run test:e2e -w apps/api
+
+  browser-e2e:
+    name: browser-e2e
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # cypress.config.ts pins 10s for a warm laptop. A cold runner is slower, and
+      # scripts/run-e2e.mjs's readiness probe only proves /src/main.tsx transforms
+      # — it does not pre-bundle React, which is what the first spec waits on.
+      CYPRESS_defaultCommandTimeout: 15000
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: prisma
+          POSTGRES_PASSWORD: prisma
+          POSTGRES_DB: pizzaria_cumaru_test
+        ports:
+          - '5433:5432'
+        options: >-
+          --health-cmd "pg_isready -U prisma -d pizzaria_cumaru_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Before `npm ci`, deliberately: cypress downloads its runner in its own
+      # postinstall into ~/.cache/Cypress, not node_modules, so the npm cache
+      # does not cover it. Restored after `npm ci` this would save nothing.
+      - name: Restore the Cypress binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            cypress-${{ runner.os }}-
+
+      - run: npm ci
+
+      - name: Write apps/api/.env.local
+        run: |
+          cat > apps/api/.env.local <<'EOF'
+          DATABASE_URL=postgresql://prisma:prisma@127.0.0.1:5433/pizzaria_cumaru_test?schema=public
+          TEST_DATABASE_URL=postgresql://prisma:prisma@127.0.0.1:5433/pizzaria_cumaru_test?schema=public
+          CORS_ORIGINS=http://localhost:5174
+          JWT_SECRET=ci-access-secret
+          JWT_REFRESH_SECRET=ci-refresh-secret
+          EOF
+
+      - name: Check Postgres answers
+        run: |
+          if ! timeout 10 bash -c 'exec 3<>/dev/tcp/127.0.0.1/5433'; then
+            echo "::error::Nothing accepted a connection on 127.0.0.1:5433 — the postgres service container is not up."
+            exit 1
+          fi
+          echo 'Postgres answered on 127.0.0.1:5433.'
+
+      # The command is the whole stack: scripts/run-e2e.mjs reuses the Postgres
+      # above (it only falls back to `docker compose up` when nothing answers),
+      # resets and seeds the test database, builds and boots the API on 3100,
+      # boots Vite on 5174, and tears down what it started.
+      - name: Browser e2e
+        run: npm run test:e2e
+
+      - name: Upload Cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: apps/web/cypress/screenshots
+          if-no-files-found: ignore
+          retention-days: 7

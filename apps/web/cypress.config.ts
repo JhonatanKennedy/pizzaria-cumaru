@@ -20,5 +20,8 @@ export default defineConfig({
     // The suite drives a real stack over a real network; a genuinely flaky spec
     // is a bug to fix, not to retry away.
     retries: 0,
+    // Cypress records video by default in run mode. Nobody watches it — the
+    // failure artifact worth collecting is the screenshot, which CI uploads.
+    video: false,
   },
 });
