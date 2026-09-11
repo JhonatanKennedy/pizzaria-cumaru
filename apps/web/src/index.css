@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
-/* Brand — sampled from public/logo.jpeg (see PRODUCT.md). The red ramp below is
-   derived from the wordmark's own hue (4°) so the `red-*` utilities the app
+/* Brand — sampled from assets-src/logo.jpeg (see PRODUCT.md). The red ramp below
+   is derived from the wordmark's own hue (4°) so the `red-*` utilities the app
    already uses land on the brand colour: Tailwind's stock red is a saturated
    crimson (hue 358°) that reads as a second, slightly-wrong red next to the
    logo's vermilion. */

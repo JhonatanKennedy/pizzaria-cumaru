@@ -53,7 +53,7 @@ An internal tool shaped by one restaurant's actual service ritual rather than a 
 
 ## Brand Commitments
 
-The name **Pizzaria Cumaru** is fixed. A real logo exists at `apps/web/public/logo.jpeg`: the wordmark **CUMORU** in red with a gold pizzaiolo figure standing in for the second M, **PIZZARIA** beneath it in navy, on an off-white ground. It is the only brand asset on hand and it is authoritative.
+The name **Pizzaria Cumaru** is fixed. A real logo exists at `apps/web/assets-src/logo.jpeg`: the wordmark **CUMORU** in red with a gold pizzaiolo figure standing in for the second M, **PIZZARIA** beneath it in navy, on an off-white ground. It is the only brand asset on hand and it is authoritative.
 
 The palette it establishes:
 
@@ -71,7 +71,7 @@ The app currently approximates this with generic Tailwind `red-700`/`stone-*` ut
 - `features/*.feature` — the product specs as Gherkin, one file per flow (`01_authentication` … `10_table_management`, no `08`). The authority on behavior and on the exact error strings the UI must surface.
 - `openspec/specs/` — 22 capability specs (8 UI-level, 14 domain-level); `openspec/changes/archive/` holds 33 archived changes.
 - `apps/api/src/prisma/seed.ts` — the seeded reality: three staff accounts, 12 ingredients, 20 items (pizzas expanded into G/M variants), 10 tables. This is the data any screenshot or demo will show.
-- `apps/web/public/logo.jpeg` — the brand asset described above.
+- `apps/web/assets-src/logo.jpeg` — the brand asset described above.
 
 **Absences future work must not fill in:** there are no customers, testimonials, press, photography, or usage metrics. This is internal software for one restaurant; inventing social proof, a customer count, or a benchmark would be fabrication.
 
