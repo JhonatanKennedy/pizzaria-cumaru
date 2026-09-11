@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { ApiError } from '@api/http-client';
 import type { TDaySale } from '../../api/daily-sales.api';
 import type { TDailyEarningsReport, TReportType } from '../../api/reports.api';
@@ -161,7 +162,11 @@ function renderPage(
     refetch: menuRefetchMock,
     ...(overrides.menu ?? {}),
   }));
-  render(<DailyEarningsPage />);
+  render(
+    <MemoryRouter>
+      <DailyEarningsPage />
+    </MemoryRouter>,
+  );
 }
 
 describe('DailyEarningsPage', () => {

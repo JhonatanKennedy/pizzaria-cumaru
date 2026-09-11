@@ -113,7 +113,7 @@ export function AddItemsPanel({
               {formatBRL(item.price)}
             </span>
             {!item.available && (
-              <span className="mt-1 block text-xs font-medium text-stone-500">
+              <span className="mt-1 block text-xs font-medium text-stone-600">
                 Indisponível
               </span>
             )}

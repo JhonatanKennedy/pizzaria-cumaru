@@ -131,7 +131,7 @@ export function FlavorComposer({
                   type="button"
                   aria-label={`Diminuir ${allocation.item.name}`}
                   onClick={() => decreaseFlavor(allocation.item)}
-                  className="rounded-md bg-stone-200 px-2 py-0.5 text-sm font-semibold text-stone-800 hover:bg-stone-300"
+                  className="size-9 rounded-md bg-stone-200 text-base font-semibold text-stone-800 hover:bg-stone-300 md:size-7 md:text-sm"
                 >
                   −
                 </button>
@@ -139,7 +139,7 @@ export function FlavorComposer({
                   type="button"
                   aria-label={`Aumentar ${allocation.item.name}`}
                   onClick={() => increaseFlavor(allocation.item)}
-                  className="rounded-md bg-stone-200 px-2 py-0.5 text-sm font-semibold text-stone-800 hover:bg-stone-300"
+                  className="size-9 rounded-md bg-stone-200 text-base font-semibold text-stone-800 hover:bg-stone-300 md:size-7 md:text-sm"
                 >
                   +
                 </button>
@@ -157,7 +157,7 @@ export function FlavorComposer({
               key={item.id}
               disabled={remaining === 0}
               onClick={() => addFlavor(item)}
-              className="rounded-full border border-stone-300 bg-white px-3 py-1 text-sm font-medium text-stone-700 hover:border-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-full border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:border-red-300 disabled:cursor-not-allowed disabled:opacity-40 md:py-1"
             >
               {pizzaBaseName(item.name)}
             </button>

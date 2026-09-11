@@ -186,7 +186,7 @@ export function ItemFormDialog({
                   />
                   {ingredient.name}
                   {!ingredient.available && (
-                    <span className="text-xs font-medium text-stone-500">
+                    <span className="text-xs font-medium text-stone-600">
                       Indisponível
                     </span>
                   )}
@@ -194,11 +194,7 @@ export function ItemFormDialog({
               ))}
             </fieldset>
             <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                onClick={onClose}
-                className="bg-stone-200 text-stone-800 hover:bg-stone-300"
-              >
+              <Button type="button" onClick={onClose} variant="secondary">
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>

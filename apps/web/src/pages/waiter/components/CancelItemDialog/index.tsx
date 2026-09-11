@@ -58,7 +58,7 @@ export function CancelItemDialog({
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="bg-stone-200 text-stone-800 hover:bg-stone-300"
+              variant="secondary"
             >
               Voltar
             </Button>

@@ -1,5 +1,7 @@
+import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
 import { toErrorMessage } from '@lib/errors';
+import { useAuth } from '@pages/auth/use-auth';
 import { QueueColumn } from '../components/QueueColumn';
 import { useCancelItemPreparation } from '../hooks/use-cancel-item-preparation';
 import { useFinishPreparation } from '../hooks/use-finish-preparation';
@@ -7,6 +9,7 @@ import { useKitchenQueue } from '../hooks/use-kitchen-queue';
 import { useStartPreparation } from '../hooks/use-start-preparation';
 
 export function KitchenPage(): React.ReactNode {
+  const { user } = useAuth();
   const queueQuery = useKitchenQueue();
   const startPreparation = useStartPreparation();
   const finishPreparation = useFinishPreparation();
@@ -41,11 +44,17 @@ export function KitchenPage(): React.ReactNode {
     cancelPreparation.mutateAsync({ orderId, orderItemId });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5">
+      {/* The cook lives on this screen, so for them there is nothing behind it —
+          but the manager arrives here from the hub and needs the way back. */}
+      {user?.role === 'Manager' && (
+        <BackLink to="/manager" label="Painel do gerente" />
+      )}
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-stone-900">Painel da Cozinha</h1>
         <Button
-          className="px-3 py-1.5 text-sm"
+          variant="secondary"
+          className="px-4 py-2.5 text-sm"
           disabled={queueQuery.isFetching}
           onClick={() => {
             void queueQuery.refetch();

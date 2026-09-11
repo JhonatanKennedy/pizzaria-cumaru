@@ -89,11 +89,7 @@ export function CreateDeliveryOrderDialog({
               {...register('address')}
             />
             <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                onClick={onClose}
-                className="bg-stone-200 text-stone-800 hover:bg-stone-300"
-              >
+              <Button type="button" onClick={onClose} variant="secondary">
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>

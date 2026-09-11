@@ -1,15 +1,54 @@
 @import 'tailwindcss';
 
-/* Item-status tile fills — the single repaint point for the kitchen
-   panel states (06_cook_profile.feature): retint a state here. */
+/* Brand — sampled from public/logo.jpeg (see PRODUCT.md). The red ramp below is
+   derived from the wordmark's own hue (4°) so the `red-*` utilities the app
+   already uses land on the brand colour: Tailwind's stock red is a saturated
+   crimson (hue 358°) that reads as a second, slightly-wrong red next to the
+   logo's vermilion. */
 @theme {
-  --color-item-pending: #e7e5e4;
-  --color-item-preparing: #fecaca;
+  --color-brand-red: #d43a2e;
+  --color-brand-gold: #f1bc0d;
+  --color-brand-navy: #1c3243;
+
+  /* Neutrals warmed a few degrees toward that same red, so the accent sits on
+     the page as family rather than as a foreign object on a cool gray. 100 is
+     the app ground, 200 the hairline, 300 the soft outline, and 400 the legible
+     one — the only step dark enough (>=3:1) to carry a form control's edge. */
+  --color-stone-50: #fdfbf9;
+  --color-stone-100: #f8f5f1;
+  --color-stone-200: #ebe6df;
+  --color-stone-300: #d9d2c9;
+  --color-stone-400: #948e88;
+
+  /* Deeper and less chromatic than Tailwind's red across the band that fills
+     things. Buttons and error boxes cover area, and a large saturated fill is
+     what glares on a phone in a dim dining room; 700 still carries text and
+     white-on-fill at 7.0:1, and 600 is the focus ring. */
+  --color-red-50: #fcf4f4;
+  --color-red-100: #f7e7e6;
+  --color-red-200: #edcecc;
+  --color-red-300: #dfb0ac;
+  --color-red-400: #cf8681;
+  --color-red-500: #c7574f;
+  --color-red-600: #ba382e;
+  --color-red-700: #a42e25;
+  --color-red-800: #8a251e;
+  --color-red-900: #6d1f1a;
+  --color-red-950: #471613;
+
+  /* Item-status tile fills — the single repaint point for the kitchen panel
+     states (06_cook_profile.feature): retint a state here. Pending is a warm
+     neutral, because nothing is happening yet; preparing is a soft wheat rather
+     than the brand gold at full chroma, because the tile covers a third of a
+     tablet that is lit all shift and the red action button has to read on top
+     of it. */
+  --color-item-pending: #eae8e4;
+  --color-item-preparing: #f0dca4;
 }
 
 @layer components {
   .field-input {
-    @apply w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-stone-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20;
+    @apply w-full rounded-md border border-stone-400 bg-white px-3 py-2 text-stone-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20;
   }
 
   .field-label {
@@ -18,6 +57,21 @@
 
   .btn-primary {
     @apply rounded-md bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* The neutral action — "Cancelar", "Remover", "Voltar". Call sites used to
+     hand-roll this fill in three slightly different recipes. */
+  .btn-secondary {
+    @apply rounded-md bg-stone-200 px-4 py-2 font-semibold text-stone-800 hover:bg-stone-300 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* The repeated row action — "Editar", "Renumerar", "Abrir mesa". A list can hold
+     twenty of these, and twenty solid brand fills is a wall of red that drowns the
+     data they sit beside. The brand colour moves to the edge and the label instead
+     of the whole surface; text and border both clear 7:1, and the solid fill is
+     left to mean "the one action this screen exists for". */
+  .btn-outline {
+    @apply rounded-md border border-red-700 bg-white px-4 py-2 font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .card {

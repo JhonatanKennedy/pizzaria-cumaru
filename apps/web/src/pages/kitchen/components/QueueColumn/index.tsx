@@ -28,7 +28,7 @@ export function QueueColumn({
       <h2 className="text-lg font-bold text-stone-900">{title}</h2>
       <div className="rounded-xl bg-white p-4 shadow-sm">
         {tiles.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-stone-500">
+          <p className="rounded-lg border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-stone-600">
             Nenhum item na fila
           </p>
         ) : (

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
+import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
 import { toErrorMessage } from '@lib/errors';
 import { formatBRL, formatTime } from '@lib/format';
@@ -65,14 +66,9 @@ export function DeliveryDetailPage(): React.ReactNode {
   };
 
   return (
-    <div>
-      <Link
-        to="/manager/delivery"
-        className="text-sm text-stone-600 hover:text-stone-900"
-      >
-        ← Pedidos de entrega
-      </Link>
-      <div className="card mt-4">
+    <div className="space-y-4">
+      <BackLink to="/manager/delivery" label="Pedidos de entrega" />
+      <div className="card">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-bold text-stone-900">
             {enriched.customerName ?? 'Pedido de entrega'}
@@ -115,7 +111,7 @@ export function DeliveryDetailPage(): React.ReactNode {
           </p>
         )}
       </div>
-      <div className="card mt-4">
+      <div className="card">
         <h2 className="font-semibold text-stone-900">Itens do pedido</h2>
         {enriched.items.length === 0 && (
           <p className="mt-3 text-sm text-stone-600">
@@ -137,7 +133,7 @@ export function DeliveryDetailPage(): React.ReactNode {
                   )}
                 </span>
                 {item.parts.length > 1 && (
-                  <span className="text-stone-500">
+                  <span className="text-stone-600">
                     {formatComposition(item.parts)}
                   </span>
                 )}
@@ -149,11 +145,7 @@ export function DeliveryDetailPage(): React.ReactNode {
           ))}
         </ul>
       </div>
-      {isOpen && (
-        <div className="mt-4">
-          <AddItemsPanel orderId={enriched.id} items={menuQuery.data} />
-        </div>
-      )}
+      {isOpen && <AddItemsPanel orderId={enriched.id} items={menuQuery.data} />}
     </div>
   );
 }

@@ -74,12 +74,13 @@ export function MenuTab({ items, ingredients }: MenuTabProps): React.ReactNode {
                 {formatBRL(item.price)}
               </span>
               {!item.available && (
-                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-500">
+                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
                   Indisponível
                 </span>
               )}
               <div className="ml-auto flex gap-2">
                 <Button
+                  variant="outline"
                   onClick={() => setOpenDialog({ kind: 'edit', item })}
                   className="px-3 py-1 text-sm"
                 >
@@ -87,7 +88,8 @@ export function MenuTab({ items, ingredients }: MenuTabProps): React.ReactNode {
                 </Button>
                 <Button
                   onClick={() => setOpenDialog({ kind: 'delete', item })}
-                  className="bg-stone-200 px-3 py-1 text-sm text-stone-800 hover:bg-stone-300"
+                  variant="secondary"
+                  className="px-3 py-1 text-sm"
                 >
                   Excluir
                 </Button>

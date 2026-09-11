@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
 import { toErrorMessage } from '@lib/errors';
 import { formatBRL } from '@lib/format';
@@ -129,6 +130,7 @@ export function DailyEarningsPage(): React.ReactNode {
 
   return (
     <div className="space-y-4">
+      <BackLink to="/manager" label="Painel do gerente" />
       <h1 className="text-2xl font-bold text-stone-900">
         Relatório de Ganhos Diários
       </h1>

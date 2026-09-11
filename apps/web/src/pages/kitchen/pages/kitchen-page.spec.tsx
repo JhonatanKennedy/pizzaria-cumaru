@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { ApiError } from '@api/http-client';
 import type { TKitchenQueue } from '../api/kitchen.api';
 import { KitchenPage } from './kitchen-page';
@@ -11,6 +12,7 @@ const {
   startMutateMock,
   finishMutateMock,
   cancelMutateAsyncMock,
+  roleHolder,
 } = vi.hoisted(() => ({
   queueQueryMock: vi.fn(),
   refetchMock: vi.fn(),
@@ -18,10 +20,19 @@ const {
   startMutateMock: vi.fn(),
   finishMutateMock: vi.fn(),
   cancelMutateAsyncMock: vi.fn(),
+  roleHolder: { value: 'Cook' },
 }));
 
 vi.mock('../hooks/use-kitchen-queue', () => ({
   useKitchenQueue: () => queueQueryMock(),
+}));
+
+// The cook owns this screen; the back link only appears to a manager who
+// reached it from the hub.
+vi.mock('@pages/auth/use-auth', () => ({
+  useAuth: () => ({
+    user: { id: 3, login: 'carlos.cozinha', role: roleHolder.value },
+  }),
 }));
 
 vi.mock('../hooks/use-start-preparation', () => ({
@@ -100,8 +111,10 @@ interface QueueQueryOverrides {
 function renderPage(
   overrides: QueueQueryOverrides = {},
   startError: Error | null = null,
+  role = 'Cook',
 ): void {
   startMutationErrorHolder.value = startError;
+  roleHolder.value = role;
   refetchMock.mockReset();
   queueQueryMock.mockReset();
   queueQueryMock.mockReturnValue({
@@ -112,7 +125,11 @@ function renderPage(
     refetch: refetchMock,
     ...overrides,
   });
-  render(<KitchenPage />);
+  render(
+    <MemoryRouter>
+      <KitchenPage />
+    </MemoryRouter>,
+  );
 }
 
 describe('KitchenPage', () => {
@@ -128,6 +145,20 @@ describe('KitchenPage', () => {
     expect(screen.getByRole('heading', { name: 'Local' })).toBeInTheDocument();
     expect(screen.getByText('Calabresa')).toBeInTheDocument();
     expect(screen.getByText('Portuguesa')).toBeInTheDocument();
+  });
+
+  it('should offer the manager a way back to the hub', () => {
+    renderPage({}, null, 'Manager');
+
+    expect(
+      screen.getByRole('link', { name: 'Voltar para Painel do gerente' }),
+    ).toHaveAttribute('href', '/manager');
+  });
+
+  it('should not offer the cook a way back, since this is their only screen', () => {
+    renderPage();
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('should show the loading state on the initial fetch only', () => {

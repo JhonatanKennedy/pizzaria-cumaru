@@ -123,7 +123,7 @@ describe('DeliveryDetailPage', () => {
     expect(screen.getByText('1× Calabresa')).toBeInTheDocument();
     expect(screen.getByText('Pendente')).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: '← Pedidos de entrega' }),
+      screen.getByRole('link', { name: 'Voltar para Pedidos de entrega' }),
     ).toHaveAttribute('href', '/manager/delivery');
   });
 

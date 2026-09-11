@@ -18,12 +18,12 @@ export function QuantityStepper({
   const atMinimum = quantity <= 1;
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex shrink-0 items-center gap-1">
       <Button
         aria-label="Diminuir quantidade"
         disabled={busy || atMinimum}
         onClick={onDecrease}
-        className="px-2 py-0.5 text-sm"
+        className="size-11 p-0 text-lg md:size-7 md:text-sm"
       >
         −
       </Button>
@@ -34,7 +34,7 @@ export function QuantityStepper({
         aria-label="Aumentar quantidade"
         disabled={busy || !canIncrease}
         onClick={onIncrease}
-        className="px-2 py-0.5 text-sm"
+        className="size-11 p-0 text-lg md:size-7 md:text-sm"
       >
         +
       </Button>

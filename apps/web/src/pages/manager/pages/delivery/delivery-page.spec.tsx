@@ -130,7 +130,12 @@ describe('DeliveryPage', () => {
       'href',
       '/manager/delivery/order-delivery-2',
     );
-    expect(screen.getAllByRole('link')).toHaveLength(2);
+    const orderLinks = screen
+      .getAllByRole('link')
+      .filter((link) =>
+        link.getAttribute('href')?.startsWith('/manager/delivery/'),
+      );
+    expect(orderLinks).toHaveLength(2);
     expect(screen.queryByText('João Garçom')).not.toBeInTheDocument();
   });
 

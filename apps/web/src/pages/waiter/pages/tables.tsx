@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { TTableListingEntry } from '@api/tables.api';
+import { BackLink } from '@components/BackLink';
 import { toErrorMessage } from '@lib/errors';
 import { useAuth } from '@pages/auth/use-auth';
 import { TableCard } from '../components/TableCard';
@@ -13,17 +14,6 @@ export function TablesPage(): React.ReactNode {
   const tablesQuery = useTables();
   const createOrder = useCreateTableOrder();
   const [actionError, setActionError] = useState<string | null>(null);
-
-  if (tablesQuery.isPending) {
-    return <p className="text-stone-600">Carregando…</p>;
-  }
-  if (!tablesQuery.data) {
-    return (
-      <p role="alert" className="text-red-700">
-        {toErrorMessage(tablesQuery.error)}
-      </p>
-    );
-  }
 
   const handleOpenTable = async (table: TTableListingEntry): Promise<void> => {
     if (!user) {
@@ -40,8 +30,40 @@ export function TablesPage(): React.ReactNode {
     }
   };
 
+  const renderBody = (): React.ReactNode => {
+    if (tablesQuery.isPending) {
+      return <p className="mt-4 text-stone-600">Carregando…</p>;
+    }
+    if (!tablesQuery.data) {
+      return (
+        <p role="alert" className="mt-4 text-red-700">
+          {toErrorMessage(tablesQuery.error)}
+        </p>
+      );
+    }
+    if (tablesQuery.data.length === 0) {
+      return <p className="mt-4 text-stone-600">Nenhuma mesa cadastrada.</p>;
+    }
+    return (
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {tablesQuery.data.map((table) => (
+          <TableCard
+            key={table.id}
+            table={table}
+            onOpenTable={handleOpenTable}
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div>
+      {/* A waiter lives on this screen, so for them there is nothing behind it —
+          but the manager arrives here from the hub and needs the way back. */}
+      {user?.role === 'Manager' && (
+        <BackLink to="/manager" label="Painel do gerente" />
+      )}
       <h1 className="text-2xl font-bold text-stone-900">Pedidos de mesa</h1>
       {actionError && (
         <p
@@ -51,19 +73,7 @@ export function TablesPage(): React.ReactNode {
           {actionError}
         </p>
       )}
-      {tablesQuery.data.length === 0 ? (
-        <p className="mt-6 text-stone-600">Nenhuma mesa cadastrada.</p>
-      ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tablesQuery.data.map((table) => (
-            <TableCard
-              key={table.id}
-              table={table}
-              onOpenTable={handleOpenTable}
-            />
-          ))}
-        </div>
-      )}
+      {renderBody()}
     </div>
   );
 }

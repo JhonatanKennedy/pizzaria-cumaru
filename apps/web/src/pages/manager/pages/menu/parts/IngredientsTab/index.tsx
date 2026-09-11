@@ -63,7 +63,7 @@ export function IngredientsTab({
                 {ingredient.name}
               </span>
               {!ingredient.available && (
-                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-500">
+                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
                   Indisponível
                 </span>
               )}
@@ -84,7 +84,8 @@ export function IngredientsTab({
                 </Button>
                 <Button
                   onClick={() => setOpenDialog({ kind: 'delete', ingredient })}
-                  className="bg-stone-200 px-3 py-1 text-sm text-stone-800 hover:bg-stone-300"
+                  variant="secondary"
+                  className="px-3 py-1 text-sm"
                 >
                   Excluir
                 </Button>

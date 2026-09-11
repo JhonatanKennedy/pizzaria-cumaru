@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
+import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
 import { formatBRL } from '@lib/format';
 import { toErrorMessage } from '@lib/errors';
@@ -130,47 +131,16 @@ export function OrderDetailPage({
   };
 
   return (
-    <div>
-      <Link
-        to="/waiter/tables"
-        className="text-sm text-stone-600 hover:text-stone-900"
-      >
-        ← Pedidos de mesa
-      </Link>
-      <div className="card mt-4">
-        <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <BackLink to="/waiter/tables" label="Pedidos de mesa" />
+      <div className="card p-4 md:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-bold text-stone-900">
             Mesa {tableNumber}
           </h1>
-          <div className="flex items-center gap-3">
-            <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
-              {orderStatusLabel(enriched.status)}
-            </span>
-            {isOpen && canCloseOrder && (
-              <>
-                <Button
-                  onClick={() => setCloseRequested(true)}
-                  disabled={blockedByKitchen}
-                  className="px-3 py-1 text-sm"
-                >
-                  Fechar conta
-                </Button>
-                {blockedByKitchen && (
-                  <span className="text-sm text-stone-600">
-                    Ainda há itens em preparação
-                  </span>
-                )}
-              </>
-            )}
-            {isOpen && (
-              <Button
-                onClick={() => setCancelRequested(true)}
-                className="bg-stone-200 px-3 py-1 text-sm text-stone-800 hover:bg-stone-300"
-              >
-                Cancelar pedido
-              </Button>
-            )}
-          </div>
+          <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
+            {orderStatusLabel(enriched.status)}
+          </span>
         </div>
         <p className="mt-1 text-sm text-stone-600">
           {enriched.waiterName ?? '—'}
@@ -178,76 +148,104 @@ export function OrderDetailPage({
         <p className="mt-2 font-semibold text-stone-900">
           Total: {formatBRL(enriched.totalPrice)}
         </p>
+        {isOpen && (
+          <div className="mt-4 space-y-2">
+            {blockedByKitchen && (
+              <p className="text-sm text-stone-600">
+                Ainda há itens em preparação
+              </p>
+            )}
+            <div className="flex flex-col gap-2 md:flex-row md:justify-end md:gap-3">
+              {canCloseOrder && (
+                <Button
+                  onClick={() => setCloseRequested(true)}
+                  disabled={blockedByKitchen}
+                  className="w-full py-3 md:w-auto md:py-2"
+                >
+                  Fechar conta
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                onClick={() => setCancelRequested(true)}
+                className="w-full py-3 md:w-auto md:py-2"
+              >
+                Cancelar pedido
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
       {actionError && (
         <p
           role="alert"
-          className="mt-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
+          className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
         >
           {actionError}
         </p>
       )}
-      <div className="card mt-4">
+      <div className="card p-4 md:p-6">
         <h2 className="font-semibold text-stone-900">Itens do pedido</h2>
         {isCancelled && enriched.items.length === 0 && (
           <p className="mt-3 text-stone-600">Este pedido foi cancelado.</p>
         )}
-        <ul className="mt-3 space-y-2">
+        <ul className="mt-3 space-y-3 md:space-y-2">
           {enriched.items.map((item) => (
             <li
               key={item.id}
-              className="flex items-center gap-3 rounded-md border border-stone-100 px-3 py-2"
+              className="flex flex-col gap-3 rounded-lg border border-stone-200 px-3 py-3 md:flex-row md:items-center md:gap-3 md:py-2"
             >
-              {isOpen ? (
-                <QuantityStepper
-                  quantity={item.quantity}
-                  busy={busyQuantityItemId === item.id}
-                  canIncrease={canIncreaseItemQuantity(item.status)}
-                  onDecrease={() =>
-                    handleQuantityChange(item.id, item.quantity - 1)
-                  }
-                  onIncrease={() =>
-                    handleQuantityChange(item.id, item.quantity + 1)
-                  }
-                />
-              ) : (
-                <span className="text-stone-800">{item.quantity}×</span>
-              )}
-              <div className="flex flex-col">
-                <span className="flex items-center gap-2">
-                  <span className="text-stone-800">{item.name}</span>
-                  {itemStatusLabel(item.status) && (
-                    <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
-                      {itemStatusLabel(item.status)}
+              <div className="flex min-w-0 flex-1 items-start gap-3 md:items-center">
+                {isOpen ? (
+                  <QuantityStepper
+                    quantity={item.quantity}
+                    busy={busyQuantityItemId === item.id}
+                    canIncrease={canIncreaseItemQuantity(item.status)}
+                    onDecrease={() =>
+                      handleQuantityChange(item.id, item.quantity - 1)
+                    }
+                    onIncrease={() =>
+                      handleQuantityChange(item.id, item.quantity + 1)
+                    }
+                  />
+                ) : (
+                  <span className="text-stone-800">{item.quantity}×</span>
+                )}
+                <div className="flex min-w-0 flex-col">
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-stone-800">{item.name}</span>
+                    {itemStatusLabel(item.status) && (
+                      <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
+                        {itemStatusLabel(item.status)}
+                      </span>
+                    )}
+                  </span>
+                  {item.parts.length > 1 && (
+                    <span className="text-sm text-stone-600">
+                      {formatComposition(item.parts)}
                     </span>
                   )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 md:justify-end">
+                <span className="text-sm text-stone-600">
+                  {formatBRL(item.unitPrice * item.quantity)}
                 </span>
-                {item.parts.length > 1 && (
-                  <span className="text-sm text-stone-500">
-                    {formatComposition(item.parts)}
-                  </span>
+                {isOpen && canCancelOrderItem(item.status) && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setItemToCancel(item)}
+                    className="px-3 py-1.5 text-sm"
+                  >
+                    Cancelar
+                  </Button>
                 )}
               </div>
-              <span className="ml-auto text-sm text-stone-600">
-                {formatBRL(item.unitPrice * item.quantity)}
-              </span>
-              {isOpen && canCancelOrderItem(item.status) && (
-                <Button
-                  onClick={() => setItemToCancel(item)}
-                  className="px-3 py-1 text-sm"
-                >
-                  Cancelar
-                </Button>
-              )}
             </li>
           ))}
         </ul>
       </div>
-      {isOpen && (
-        <div className="mt-4">
-          <AddItemPanel orderId={enriched.id} items={menuQuery.data} />
-        </div>
-      )}
+      {isOpen && <AddItemPanel orderId={enriched.id} items={menuQuery.data} />}
       {itemToCancel && (
         <CancelItemDialog
           itemName={itemToCancel.name}

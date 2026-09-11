@@ -34,13 +34,15 @@ export function ItemTile({
     setCancelOpen(false);
   };
 
+  // Sizes here are for a tablet propped at arm's length in a lit kitchen, not
+  // for a desk: the tile reads at a glance and every control clears 44px.
   return (
     <li
-      className={`flex flex-col gap-2 rounded-lg border border-stone-200 px-4 py-3 ${STATUS_BG[item.status]}`}
+      className={`flex flex-col gap-2 rounded-lg border border-stone-200 px-4 py-3.5 ${STATUS_BG[item.status]}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="font-semibold text-stone-900">{item.name}</p>
-        <span className="shrink-0 text-sm font-medium text-stone-700">
+        <p className="text-lg font-semibold text-stone-900">{item.name}</p>
+        <span className="shrink-0 text-base font-semibold text-stone-700">
           {item.quantity}×
         </span>
       </div>
@@ -50,13 +52,13 @@ export function ItemTile({
         </p>
       )}
       {item.notes && <p className="text-sm text-stone-600">{item.notes}</p>}
-      <div className="flex items-center justify-between gap-2">
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm text-stone-600">
           {itemStatusLabel(item.status)}
         </span>
         {item.status === 'Pending' && (
           <Button
-            className="px-3 py-1.5 text-sm"
+            className="flex-1 py-3 text-base md:flex-none md:py-2.5 md:text-sm"
             disabled={isBusy}
             onClick={() => onStart(orderId, item.orderItemId)}
           >
@@ -64,16 +66,17 @@ export function ItemTile({
           </Button>
         )}
         {item.status === 'Preparing' && (
-          <div className="flex gap-2">
+          <div className="flex flex-1 gap-2 md:flex-none">
             <Button
-              className="px-3 py-1.5 text-sm"
+              className="flex-1 py-3 text-base md:flex-none md:py-2.5 md:text-sm"
               disabled={isBusy}
               onClick={() => onFinish(orderId, item.orderItemId)}
             >
               Finalizar
             </Button>
             <Button
-              className="border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 hover:bg-stone-100"
+              variant="secondary"
+              className="flex-1 py-3 text-base md:flex-none md:py-2.5 md:text-sm"
               disabled={isBusy}
               onClick={() => setCancelOpen(true)}
             >
