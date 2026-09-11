@@ -14,3 +14,11 @@ coverage/
 # Logs
 *.log
 npm-debug.log*
+
+# The e2e suites' PID lockfile — see apps/api/.claude/rules/02-testing.md
+.e2e.lock
+
+# Cypress writes these on every failing run; they are evidence, not source
+apps/web/cypress/screenshots/
+apps/web/cypress/videos/
+apps/web/cypress/downloads/

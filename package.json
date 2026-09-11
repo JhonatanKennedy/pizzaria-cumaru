@@ -10,6 +10,8 @@
     "dev:web": "npm run dev -w apps/web",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:e2e": "node scripts/run-e2e.mjs",
+    "test:e2e:open": "node scripts/run-e2e.mjs --open",
     "lint": "npm run lint --workspaces --if-present",
     "format": "npm run format --workspaces --if-present"
   }

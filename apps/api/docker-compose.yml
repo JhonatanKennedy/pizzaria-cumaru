@@ -10,6 +10,14 @@ services:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Without this, `docker compose up --wait` returns as soon as the
+      # container is running, which is not the same as accepting connections.
+      test: ['CMD-SHELL', 'pg_isready -U prisma -d pizzaria_cumaru']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
 
 volumes:
   pgdata:

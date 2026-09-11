@@ -169,6 +169,7 @@ The "T" is dropped from our F.I.R.S. on purpose: writing the test first (TDD) is
 ## Layout & tooling
 
 - Unit tests: colocated `*.spec.ts` next to the code under test. E2E: `test/*.e2e-spec.ts` (8 today — `auth`, `catalog-management`, `cors`, `delivery-order-status`, `order-creation`, `orders-checkout`, `order-status`, `tables`).
+- **The two e2e suites coexist but must never overlap.** This one resets `TEST_DATABASE_URL`; the SPA's browser suite (`apps/web/cypress/e2e/`, run by `npm run test:e2e` at the repo root) resets the *same* database. `npm run test:e2e -w apps/api` goes through `scripts/e2e-lock.mjs`, which takes a PID lockfile (`apps/api/.e2e.lock`, stale-PID aware) and refuses to start with a clear message while the other run holds it. Don't remove the lock to make a run start — wait, or stop the other one.
 - Vitest `globals: true` — never import `describe`, `it`, `expect`.
 - E2E specs map to feature files: `test/auth.e2e-spec.ts` implements scenarios from the repo-root `features/01_authentication.feature`, `test/order-creation.e2e-spec.ts` and `test/orders-checkout.e2e-spec.ts` cover the repo-root `features/03_table_order.feature` / `09_cancellation_and_payment.feature`. If you can't name the scenario it covers, the test doesn't belong in e2e.
 

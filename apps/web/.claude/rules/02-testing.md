@@ -10,15 +10,15 @@ More unit tests than integration tests, more integration tests than e2e tests. T
 | -------------------------------------------------- | ------------------- | ---------- | ------------------ |
 | Unit — pure functions, zod schemas, role mapping   | colocated `*.spec.ts` | `npm test` | ~70%              |
 | Integration — components with Testing Library      | colocated `*.spec.tsx` | `npm test` | ~20%             |
-| E2E — full user journeys through the SPA           | *(not set up yet)*  | —          | ~10%               |
+| E2E — full user journeys through the SPA           | `cypress/e2e/*.cy.ts` | `npm run test:e2e` (repo root) | ~10% |
 
 Rule of thumb: **every business rule gets a unit test; e2e covers only complete user journeys**, not edge cases. A role guard rejecting a cook from `/reports/daily-earnings` is a unit test on `roleHomePath`/`isUserRole` and a component test on the guard — not a full-browser assertion.
 
 ```ts
 // ❌ business rule tested through the whole stack: slow, needs the backend
-it('should not show the report to a cook', async () => {
-  await page.goto('/reports/daily-earnings'); // Playwright against a running app
-  expect(await page.textContent('body')).toContain('Access not authorized');
+it('should not show the report to a cook', () => {
+  cy.visit('/reports/daily-earnings'); // Cypress against the whole stack
+  cy.contains('Access not authorized').should('be.visible');
 });
 
 // ✅ the same rule as a unit test on the pure mapping — milliseconds, no I/O
@@ -124,10 +124,32 @@ The "T" is dropped from our F.I.R.S. on purpose: writing the test first (TDD) is
 
 ## Layout & tooling
 
-- Unit and component tests: colocated `*.spec.ts` / `*.spec.tsx` next to the code under test. E2E: `test/*.e2e-spec.ts` when it exists (Playwright — to be set up, see [08-conventions.md](08-conventions.md)).
+- Unit and component tests: colocated `*.spec.ts` / `*.spec.tsx` next to the code under test. E2E: `cypress/e2e/*.cy.ts`, run with `npm run test:e2e` **from the repo root**.
 - Vitest `globals: true` — never import `describe`, `it`, `expect`, `vi`.
 - Mock at module boundaries with `vi.mock` + `vi.hoisted` for the mocked function (see the LoginForm spec below); component tests render with `MemoryRouter` and Testing Library queries (`getByRole`, `getByLabelText`, `findByText`).
-- E2E specs map to feature files, as in the backend. If you can't name the scenario it covers, the test doesn't belong in e2e.
+- E2E specs map to feature files, as in the backend. If you can't name the scenario it covers, the test doesn't belong in e2e. The current map:
+
+| Spec                      | Feature files                                            |
+| ------------------------- | -------------------------------------------------------- |
+| `auth.cy.ts`              | `01_authentication`                                      |
+| `waiter-table-order.cy.ts`| `03_table_order`, `05_waiter_profile`, `09_cancellation_and_payment` |
+| `kitchen-panel.cy.ts`     | `06_cook_profile`                                        |
+| `manager-close-order.cy.ts` | `07_manager_profile`, `09_cancellation_and_payment`    |
+| `manager-menu-stock.cy.ts`| `02_menu_and_stock`                                      |
+| `manager-tables.cy.ts`    | `10_table_management`                                    |
+| `manager-delivery.cy.ts`  | `04_delivery_order`                                      |
+| `manager-reports.cy.ts`   | `07_manager_profile`                                     |
+
+### E2E: the stack is part of the command
+
+`npm run test:e2e` (root) runs `scripts/run-e2e.mjs`, which is the **whole story** — Cypress has no `webServer` equivalent, so the script starts what the suite needs and tears down only what it started (Postgres is left up). It reuses an already-running Postgres on the port `TEST_DATABASE_URL` names, starts one only if nothing answers, then resets and seeds the **test** database, serves the API and the SPA on a private `3100`/`5174` pair, and finally runs Cypress. Consequence: **the suite works whether or not `npm run dev:api` / `npm run dev:web` are up, and it never touches the developer's database.** It fail-closes if `TEST_DATABASE_URL` does not name a `_test` database, because the reset step is destructive. Any further argument reaches Cypress untouched, so `npm run test:e2e -- --spec cypress/e2e/auth.cy.ts` runs one spec while still bringing the stack up the same way.
+
+**Never run this on the production host.** The `_test` check is the only thing standing between `prisma migrate reset` and whatever database `TEST_DATABASE_URL` names, and it is a *name* check — a production database called `something_test` would pass it. Two further reasons, independent of that check: the runner's fallback when nothing answers on the Postgres port is `docker compose up -d --wait` in `apps/api`, whose compose file hardcodes `POSTGRES_DB: pizzaria_cumaru` and the `pgdata` volume, so it can start the production container; and the API it boots calls `app.listen(port)` with no host, so it binds every interface — on a public IP that is the seeded logins in this repo, served under `NODE_ENV=development`, reachable from outside. It belongs on an ephemeral machine with its own Postgres, which is what CI gives it.
+
+Two things that bite when writing specs:
+
+- **Never fake a session by writing `localStorage`.** Only the user blob is stored; a boot with no refresh cookie is not a session, and the app will correctly throw it away. `cy.loginAs(login)` drives the real form and is the only way in.
+- **`cy.session()` is not usable here, and will look like it works.** It snapshots cookies once and replays them, but the refresh token is rotated single-use, so the first restore succeeds and every later one replays a spent token — a 401 that logs the test straight back out. `loginAs` deliberately does a fresh form login per test instead; that is also what keeps the tests independent.
 
 ## Naming
 

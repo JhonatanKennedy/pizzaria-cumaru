@@ -38,6 +38,7 @@ Run from the root — npm workspaces hoists both apps' dependencies there, and t
 | `npm run dev:api` | NestJS in watch mode — needs Postgres: `docker compose up -d` in `apps/api` |
 | `npm run dev:web` | Vite dev server (port 5173) |
 | `npm test` | vitest for both apps (`-w apps/web` / `-w apps/api` to scope) |
+| `npm run test:e2e` | browser e2e (Cypress) — `scripts/run-e2e.mjs` starts Postgres, the API and the SPA itself, against the **test** database. Root-only: `npm run test:e2e:open` opens the runner instead |
 | `npm run build` | build both apps |
 | `npm run lint` / `npm run format` | oxlint / prettier across both |
 
