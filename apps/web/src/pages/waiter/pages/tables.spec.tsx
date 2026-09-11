@@ -5,10 +5,9 @@ import { MemoryRouter } from 'react-router';
 import type { TTableListingEntry } from '@api/tables.api';
 import { TablesPage } from './tables';
 
-const { listTablesMock, createOrderMock, roleHolder } = vi.hoisted(() => ({
+const { listTablesMock, createOrderMock } = vi.hoisted(() => ({
   listTablesMock: vi.fn(),
   createOrderMock: vi.fn(),
-  roleHolder: { value: 'Waiter' },
 }));
 
 // The API modules are the mock seam: the real hooks and QueryClient run over
@@ -24,9 +23,7 @@ vi.mock('../api/orders.api', async (importOriginal) => {
 });
 
 vi.mock('@pages/auth/use-auth', () => ({
-  useAuth: () => ({
-    user: { id: 2, login: 'joao.garcom', role: roleHolder.value },
-  }),
+  useAuth: () => ({ user: { id: 2, login: 'joao.garcom', role: 'Waiter' } }),
 }));
 
 const FREE_TABLE: TTableListingEntry = {
@@ -44,9 +41,7 @@ const OPEN_TABLE: TTableListingEntry = {
 function renderPage(
   firstListing: TTableListingEntry[],
   nextListing?: TTableListingEntry[],
-  role = 'Waiter',
 ): ReturnType<typeof userEvent.setup> {
-  roleHolder.value = role;
   listTablesMock
     .mockReset()
     .mockResolvedValueOnce(firstListing)
@@ -76,39 +71,6 @@ describe('TablesPage', () => {
       await screen.findByRole('heading', { name: 'Pedidos de mesa' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  });
-
-  it('should offer the manager a way back to the hub', async () => {
-    renderPage([FREE_TABLE], undefined, 'Manager');
-
-    expect(
-      await screen.findByRole('link', {
-        name: 'Voltar para Painel do gerente',
-      }),
-    ).toHaveAttribute('href', '/manager');
-  });
-
-  it('should keep the way back while the floor is still loading', () => {
-    // A promise that never settles holds the query pending, which is the only
-    // way into the loading branch now that the real hook runs.
-    listTablesMock.mockReset().mockReturnValue(new Promise(() => {}));
-    roleHolder.value = 'Manager';
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <TablesPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    expect(
-      screen.getByRole('link', { name: 'Voltar para Painel do gerente' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Carregando…')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Carregando…');
   });
 
   it('should show the table as open once it has been opened, not free again', async () => {

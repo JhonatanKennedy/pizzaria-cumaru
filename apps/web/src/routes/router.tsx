@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router';
 import {
   KITCHEN_PANEL_ROLES,
   MANAGER_ROLES,
@@ -49,53 +49,27 @@ export const router = createBrowserRouter([
           </RequireRole>
         ),
       },
+      // One guard for the whole manager area, and no chrome of its own: the
+      // rail lives in AppLayout, where it follows a manager onto the waiter's
+      // and the cook's screens too. A guard still wants to be a route rather
+      // than six copies of itself, and Outlet is all it has to render.
       {
-        path: '/manager',
         element: (
           <RequireRole roles={MANAGER_ROLES}>
-            <ManagerPage />
+            <Outlet />
           </RequireRole>
         ),
-      },
-      {
-        path: '/manager/menu',
-        element: (
-          <RequireRole roles={MANAGER_ROLES}>
-            <MenuPage />
-          </RequireRole>
-        ),
-      },
-      {
-        path: '/manager/delivery',
-        element: (
-          <RequireRole roles={MANAGER_ROLES}>
-            <DeliveryPage />
-          </RequireRole>
-        ),
-      },
-      {
-        path: '/manager/delivery/:orderId',
-        element: (
-          <RequireRole roles={MANAGER_ROLES}>
-            <DeliveryDetailPage />
-          </RequireRole>
-        ),
-      },
-      {
-        path: '/manager/tables',
-        element: (
-          <RequireRole roles={MANAGER_ROLES}>
-            <ManagerTablesPage />
-          </RequireRole>
-        ),
-      },
-      {
-        path: '/reports/daily-earnings',
-        element: (
-          <RequireRole roles={MANAGER_ROLES}>
-            <DailyEarningsPage />
-          </RequireRole>
-        ),
+        children: [
+          { path: '/manager', element: <ManagerPage /> },
+          { path: '/manager/menu', element: <MenuPage /> },
+          { path: '/manager/delivery', element: <DeliveryPage /> },
+          {
+            path: '/manager/delivery/:orderId',
+            element: <DeliveryDetailPage />,
+          },
+          { path: '/manager/tables', element: <ManagerTablesPage /> },
+          { path: '/reports/daily-earnings', element: <DailyEarningsPage /> },
+        ],
       },
       { path: '*', element: <NotFoundPage /> },
     ],

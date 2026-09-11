@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { TTableListingEntry } from '@api/tables.api';
-import { BackLink } from '@components/BackLink';
 import { LoadingRegion } from '@components/LoadingRegion';
 import { Skeleton } from '@components/Skeleton';
 import { toErrorMessage } from '@lib/errors';
@@ -77,11 +76,6 @@ export function TablesPage(): React.ReactNode {
 
   return (
     <div>
-      {/* A waiter lives on this screen, so for them there is nothing behind it —
-          but the manager arrives here from the hub and needs the way back. */}
-      {user?.role === 'Manager' && (
-        <BackLink to="/manager" label="Painel do gerente" />
-      )}
       <h1 className="text-2xl font-bold text-stone-900">Pedidos de mesa</h1>
       {actionError && (
         <p

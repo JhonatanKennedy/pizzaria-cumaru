@@ -1,6 +1,7 @@
 import { Link, Outlet, useNavigate } from 'react-router';
 import { getRoleLabel, roleHomePath } from '@pages/auth/business/role';
 import { Button } from '@components/Button';
+import { ManagerNav } from '@pages/manager/components/ManagerNav';
 import { useAuth } from '@pages/auth/use-auth';
 
 export function AppLayout(): React.ReactNode {
@@ -12,10 +13,14 @@ export function AppLayout(): React.ReactNode {
     navigate('/login', { replace: true });
   };
 
-  // There is no nav menu: the waiter and the cook each have a single screen,
-  // and the manager's wayfinding lives on the hub (07_manager_profile.feature).
-  // The brand mark is the way home from anywhere else — not a menu, the
-  // ordinary web convention for "this app's front door".
+  // The rail is the manager's, and it belongs to the shell rather than to the
+  // manager area: two of its destinations are the waiter's and the cook's
+  // screens, so a rail scoped to /manager would vanish on the way to half the
+  // places it offers. The waiter and the cook each have a single screen and
+  // nowhere to go, so neither gets one — and the brand mark is the way home for
+  // anyone, not a menu, the ordinary web convention for "this app's front door".
+  const hasRail = user?.role === 'Manager';
+
   return (
     <div className="min-h-screen bg-stone-100">
       <header className="border-b border-stone-200 bg-white">
@@ -55,7 +60,14 @@ export function AppLayout(): React.ReactNode {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-5 md:py-8">
-        <Outlet />
+        {hasRail ? (
+          <div className="grid gap-6 lg:grid-cols-[13rem_1fr]">
+            <ManagerNav className="lg:sticky lg:top-5 lg:self-start" />
+            <Outlet />
+          </div>
+        ) : (
+          <Outlet />
+        )}
       </main>
     </div>
   );

@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
 import { LoadingRegion } from '@components/LoadingRegion';
 import { Skeleton } from '@components/Skeleton';
 import { toErrorMessage } from '@lib/errors';
-import { useAuth } from '@pages/auth/use-auth';
 import { QueueColumn } from '../components/QueueColumn';
 import type { TPreparationAction } from '../components/ItemTile';
 import { useCancelItemPreparation } from '../hooks/use-cancel-item-preparation';
@@ -22,7 +20,6 @@ const QUEUE_TITLES = [DELIVERY_QUEUE_TITLE, LOCAL_QUEUE_TITLE] as const;
 const TILE_PLACEHOLDERS = [1, 2, 3] as const;
 
 export function KitchenPage(): React.ReactNode {
-  const { user } = useAuth();
   const queueQuery = useKitchenQueue();
   const startPreparation = useStartPreparation();
   const finishPreparation = useFinishPreparation();
@@ -84,11 +81,6 @@ export function KitchenPage(): React.ReactNode {
 
   return (
     <div className="space-y-5">
-      {/* The cook lives on this screen, so for them there is nothing behind it —
-          but the manager arrives here from the hub and needs the way back. */}
-      {user?.role === 'Manager' && (
-        <BackLink to="/manager" label="Painel do gerente" />
-      )}
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-stone-900">Painel da Cozinha</h1>
         <Button

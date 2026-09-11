@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import type { TOrderListing } from '@api/orders.api';
-import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
 import { LoadingRegion } from '@components/LoadingRegion';
 import { Skeleton } from '@components/Skeleton';
@@ -65,7 +64,6 @@ export function DeliveryPage(): React.ReactNode {
 
   return (
     <div className="space-y-4">
-      <BackLink to="/manager" label="Painel do gerente" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-stone-900">
           Pedidos de entrega
