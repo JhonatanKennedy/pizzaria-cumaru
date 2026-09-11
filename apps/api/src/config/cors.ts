@@ -4,8 +4,11 @@ const SEPARATOR = ',';
 const WILDCARD = '*';
 
 // The allowlist is the only thing between this API and any web page that cares
-// to drive it, so a wildcard entry is refused rather than honoured: reflecting
-// every origin is precisely the hole the allowlist exists to close.
+// to drive it, so a wildcard is refused rather than honoured: reflecting every
+// origin is precisely the hole the allowlist exists to close. The check is on
+// the whole entry, not on an entry equal to `*`, because matching is an exact
+// string compare — an accepted `https://*.example.com` would answer no origin
+// and leave the operator with a start-up that silently blocks every request.
 export function parseCorsOrigins(value: unknown): string[] {
   if (typeof value !== 'string') {
     throw new Error('CORS_ORIGINS must be a comma-separated list of origins');
@@ -16,9 +19,10 @@ export function parseCorsOrigins(value: unknown): string[] {
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
 
-  if (origins.includes(WILDCARD)) {
+  const wildcard = origins.find((origin) => origin.includes(WILDCARD));
+  if (wildcard !== undefined) {
     throw new Error(
-      "CORS_ORIGINS must name the origins allowed to call the API; a '*' entry is not accepted",
+      `CORS_ORIGINS must name the origins allowed to call the API; the entry '${wildcard}' contains a '*' and is not accepted`,
     );
   }
 

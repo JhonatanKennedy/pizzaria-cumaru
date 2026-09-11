@@ -55,6 +55,22 @@ describe('parseCorsOrigins', () => {
     expect(() => parseCorsOrigins(`${ALLOWED},*`)).toThrow("'*'");
   });
 
+  it('should refuse a wildcard inside an entry', () => {
+    expect(() => parseCorsOrigins('https://*.example.com')).toThrow("'*'");
+  });
+
+  it('should refuse a wildcard inside an entry among other origins', () => {
+    expect(() =>
+      parseCorsOrigins(`${ALLOWED},https://*.evil.example.com`),
+    ).toThrow("'*'");
+  });
+
+  it('should name the entry the wildcard was found in', () => {
+    expect(() =>
+      parseCorsOrigins(`${ALLOWED},https://*.evil.example.com`),
+    ).toThrow('https://*.evil.example.com');
+  });
+
   it('should refuse a value that is not a string', () => {
     expect(() => parseCorsOrigins(undefined)).toThrow('CORS_ORIGINS');
   });
