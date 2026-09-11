@@ -42,6 +42,16 @@ export function pizzaBaseName(name: string): string {
   return size === null ? name : name.slice(0, -(size.length + 1));
 }
 
+// The writing half of the size convention: the manager's item form holds the
+// base name and the size apart, and this is what turns them back into the
+// single token-bearing name the catalog and the order contract expect.
+export function itemNameWithSize(
+  baseName: string,
+  size: TPizzaSize | null,
+): string {
+  return size === null ? baseName : `${baseName} ${size}`;
+}
+
 function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
 }

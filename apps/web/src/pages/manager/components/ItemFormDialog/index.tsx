@@ -1,14 +1,25 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import type { TIngredientListing, TMenuItem } from '@api/catalog.api';
 import { CATEGORY_ORDER, categoryLabel } from '@lib/catalog';
+import {
+  PIZZA_SIZE_CANVAS,
+  PIZZA_SIZES,
+  itemNameWithSize,
+  pizzaBaseName,
+  pizzaSizeOf,
+} from '@lib/flavor-composition';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
 import { TextField } from '@components/TextField';
 import { toErrorMessage } from '@lib/errors';
 import {
+  NO_SIZE,
   isKitchenCategory,
+  isPizzaCategory,
   itemFormSchema,
+  selectedPizzaSize,
+  type TItemFormInput,
   type TItemFormValues,
 } from '../../business/schemas';
 import { useCreateItem } from '../../hooks/use-create-item';
@@ -29,7 +40,10 @@ const CREATE_DEFAULTS: TItemFormValues = {
   category: 'PIZZA',
   requiresPreparation: false,
   ingredientIds: [],
+  size: NO_SIZE,
 };
+
+const SIZE_HINT_ID = 'item-size-hint';
 
 export function ItemFormDialog({
   ingredients,
@@ -45,38 +59,57 @@ export function ItemFormDialog({
     handleSubmit,
     setValue,
     setError,
+    control,
     formState: { errors, isSubmitting },
-  } = useForm<TItemFormValues>({
+  } = useForm<TItemFormInput, unknown, TItemFormValues>({
     resolver: zodResolver(itemFormSchema),
     defaultValues: isEditing
       ? {
-          name: item.name,
+          // The name field holds the base without its size token: the selector
+          // owns the size, and the two are put back together on save.
+          name: pizzaBaseName(item.name),
           description: item.description,
           price: item.price,
           category: item.category,
           requiresPreparation: item.requiresPreparation,
           ingredientIds: item.ingredientIds,
+          size: pizzaSizeOf(item.name) ?? NO_SIZE,
         }
       : CREATE_DEFAULTS,
   });
 
+  const category = useWatch({ control, name: 'category' });
+  const size = selectedPizzaSize(category, useWatch({ control, name: 'size' }));
+  // Only a pizza takes a size, so the selector exists for that category and
+  // no other. Bound to the selection, the hint clears the moment a size is
+  // picked rather than nagging on every pizza edit.
+  const showSize = isPizzaCategory(category);
+  const showSizeHint = showSize && size === null;
+
   const onSubmit = handleSubmit(async (values) => {
+    // The catalog takes one flat entry per size, with the size spelled inside
+    // the name — so the form's two fields become one on the way out.
+    const name = itemNameWithSize(
+      values.name,
+      selectedPizzaSize(values.category, values.size),
+    );
+    const payload = {
+      name,
+      description: values.description,
+      price: values.price,
+      requiresPreparation: values.requiresPreparation,
+      ingredientIds: values.ingredientIds,
+    };
     try {
       if (isEditing) {
-        await updateItemMutation.mutateAsync({
-          itemId: item.id,
-          // The category is fixed by the item being edited — the update
-          // carries the editable fields only.
-          payload: {
-            name: values.name,
-            description: values.description,
-            price: values.price,
-            requiresPreparation: values.requiresPreparation,
-            ingredientIds: values.ingredientIds,
-          },
-        });
+        // The category is fixed by the item being edited — the update carries
+        // the editable fields only.
+        await updateItemMutation.mutateAsync({ itemId: item.id, payload });
       } else {
-        await createItemMutation.mutateAsync(values);
+        await createItemMutation.mutateAsync({
+          ...payload,
+          category: values.category,
+        });
       }
       onClose();
     } catch (error) {
@@ -156,6 +189,32 @@ export function ItemFormDialog({
                 </p>
               )}
             </div>
+            {showSize && (
+              <div>
+                <label htmlFor="item-size" className="field-label">
+                  Tamanho
+                </label>
+                <select
+                  id="item-size"
+                  className="field-input"
+                  aria-describedby={showSizeHint ? SIZE_HINT_ID : undefined}
+                  {...register('size')}
+                >
+                  <option value={NO_SIZE}>Sem tamanho</option>
+                  {PIZZA_SIZES.map((pizzaSize) => (
+                    <option key={pizzaSize} value={pizzaSize}>
+                      {pizzaSize} — {PIZZA_SIZE_CANVAS[pizzaSize]} fatias
+                    </option>
+                  ))}
+                </select>
+                {showSizeHint && (
+                  <p id={SIZE_HINT_ID} className="mt-1 text-sm text-stone-600">
+                    Sem tamanho a pizza pode ser pedida inteira, mas não pode
+                    ser dividida em sabores.
+                  </p>
+                )}
+              </div>
+            )}
             <div>
               <label className="flex items-center gap-2 text-sm text-stone-700">
                 <input type="checkbox" {...register('requiresPreparation')} />

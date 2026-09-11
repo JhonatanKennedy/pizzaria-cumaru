@@ -1,7 +1,10 @@
 import {
+  PIZZA_SIZES,
   canvasFor,
   canvasRemainder,
   formatComposition,
+  itemNameWithSize,
+  pizzaBaseName,
   pizzaSizeOf,
   sumParts,
 } from './flavor-composition';
@@ -26,6 +29,24 @@ describe('canvasFor', () => {
 
   it('should return null when the name carries no size token', () => {
     expect(canvasFor('Mussarela')).toBeNull();
+  });
+});
+
+describe('itemNameWithSize', () => {
+  // The manager's item form is the first writer of what pizzaSizeOf reads, so
+  // the two must round-trip for every size the registry knows.
+  it('should round-trip every registered size through the parser', () => {
+    for (const size of PIZZA_SIZES) {
+      const name = itemNameWithSize('Calabresa', size);
+      expect(name).toBe(`Calabresa ${size}`);
+      expect(pizzaSizeOf(name)).toBe(size);
+      expect(pizzaBaseName(name)).toBe('Calabresa');
+    }
+  });
+
+  it('should leave the base name alone when no size is chosen', () => {
+    expect(itemNameWithSize('Calabresa', null)).toBe('Calabresa');
+    expect(pizzaSizeOf(itemNameWithSize('Calabresa', null))).toBeNull();
   });
 });
 

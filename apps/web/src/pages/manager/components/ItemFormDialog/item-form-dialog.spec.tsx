@@ -34,6 +34,12 @@ const ITEM: TMenuItem = {
   ingredientIds: ['ingredient-1'],
 };
 
+const SIZED_ITEM: TMenuItem = {
+  ...ITEM,
+  id: 'item-calabresa-g',
+  name: 'Calabresa G',
+};
+
 function renderCreateDialog(): ReturnType<typeof userEvent.setup> {
   render(<ItemFormDialog ingredients={INGREDIENTS} onClose={onCloseMock} />);
   return userEvent.setup();
@@ -45,6 +51,17 @@ function renderEditDialog(): ReturnType<typeof userEvent.setup> {
       ingredients={INGREDIENTS}
       onClose={onCloseMock}
       item={ITEM}
+    />,
+  );
+  return userEvent.setup();
+}
+
+function renderSizedEditDialog(): ReturnType<typeof userEvent.setup> {
+  render(
+    <ItemFormDialog
+      ingredients={INGREDIENTS}
+      onClose={onCloseMock}
+      item={SIZED_ITEM}
     />,
   );
   return userEvent.setup();
@@ -137,6 +154,85 @@ describe('ItemFormDialog', () => {
       await screen.findByText('Pizzas e pratos exigem "Exige preparo"'),
     ).toBeInTheDocument();
     expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it('should register the pizza under its sized name', async () => {
+    createMock.mockResolvedValue(undefined);
+    const user = renderCreateDialog();
+
+    await user.type(screen.getByLabelText('Nome'), 'Calabresa Especial');
+    await user.type(
+      screen.getByLabelText('Descrição'),
+      'Mussarela e calabresa',
+    );
+    await user.type(screen.getByLabelText('Preço'), '55');
+    await user.selectOptions(screen.getByLabelText('Tamanho'), 'G');
+    await user.click(screen.getByLabelText('Exige preparo'));
+    await user.click(screen.getByRole('button', { name: 'Salvar item' }));
+
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Calabresa Especial G' }),
+    );
+    expect(onCloseMock).toHaveBeenCalled();
+  });
+
+  it('should offer the size only for pizzas', async () => {
+    const user = renderCreateDialog();
+
+    expect(screen.getByLabelText('Tamanho')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Categoria'), 'DRINK');
+    expect(screen.queryByLabelText('Tamanho')).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Categoria'), 'PIZZA');
+    expect(screen.getByLabelText('Tamanho')).toBeInTheDocument();
+  });
+
+  it('should drop the size once the category is no longer a pizza', async () => {
+    createMock.mockResolvedValue(undefined);
+    const user = renderCreateDialog();
+
+    await user.type(screen.getByLabelText('Nome'), 'Suco Natural');
+    await user.type(screen.getByLabelText('Descrição'), 'Laranja');
+    await user.type(screen.getByLabelText('Preço'), '8');
+    await user.selectOptions(screen.getByLabelText('Tamanho'), 'G');
+    // The select unmounts here, but the value it held stays in the form — so
+    // the payload is what proves the token never reached a drink's name.
+    await user.selectOptions(screen.getByLabelText('Categoria'), 'DRINK');
+    await user.click(screen.getByRole('button', { name: 'Salvar item' }));
+
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Suco Natural' }),
+    );
+  });
+
+  it('should warn that an unsized pizza cannot be split', async () => {
+    const user = renderCreateDialog();
+
+    expect(
+      screen.getByText(/Sem tamanho a pizza pode ser pedida inteira/),
+    ).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Tamanho'), 'M');
+    expect(
+      screen.queryByText(/Sem tamanho a pizza pode ser pedida inteira/),
+    ).not.toBeInTheDocument();
+  });
+
+  it('should pre-select the size of the pizza being edited', async () => {
+    updateMock.mockResolvedValue(undefined);
+    const user = renderSizedEditDialog();
+
+    // The name field carries the base, the selector carries the size.
+    expect(screen.getByLabelText('Nome')).toHaveValue('Calabresa');
+    expect(screen.getByLabelText('Tamanho')).toHaveValue('G');
+
+    await user.click(screen.getByRole('button', { name: 'Salvar item' }));
+
+    expect(updateMock).toHaveBeenCalledWith({
+      itemId: 'item-calabresa-g',
+      payload: expect.objectContaining({ name: 'Calabresa G' }),
+    });
   });
 
   it('should pre-fill the item fields when editing', () => {
