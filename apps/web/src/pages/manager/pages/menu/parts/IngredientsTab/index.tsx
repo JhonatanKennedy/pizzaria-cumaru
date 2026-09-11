@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import type { TIngredientListing, TIngredient } from '@api/catalog.api';
+import type { TIngredient, TIngredientListing } from '@api/catalog.api';
+import { toErrorMessage } from '@lib/errors';
+import { formatCount } from '@lib/format';
+import { matchesSearch } from '@lib/search';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
-import { toErrorMessage } from '@lib/errors';
+import { SearchField } from '@components/SearchField';
 import { ConfirmDialog } from '../../../../components/ConfirmDialog';
 import { IngredientFormDialog } from '../../../../components/IngredientFormDialog';
 import { useDeleteIngredient } from '../../../../hooks/use-delete-ingredient';
@@ -14,9 +17,11 @@ interface IngredientsTabProps {
 
 type TOpenDialog =
   | { kind: 'none' }
-  | { kind: 'create' }
   | { kind: 'rename'; ingredient: TIngredient }
   | { kind: 'delete'; ingredient: TIngredient };
+
+const SEARCH_ID = 'menu-ingredient-search';
+const COLUMN_COUNT = 3;
 
 export function IngredientsTab({
   ingredients,
@@ -24,8 +29,18 @@ export function IngredientsTab({
   const [openDialog, setOpenDialog] = useState<TOpenDialog>({ kind: 'none' });
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyIngredientId, setBusyIngredientId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
   const toggleStockMutation = useToggleIngredientStock();
   const deleteIngredientMutation = useDeleteIngredient();
+
+  const visibleIngredients = ingredients.filter((ingredient) =>
+    matchesSearch(ingredient.name, query),
+  );
+  const searchQuery = query.trim();
+  const emptyNotice =
+    searchQuery === ''
+      ? 'Nenhum ingrediente cadastrado. Use "Novo ingrediente" para cadastrar o primeiro.'
+      : `Nenhum ingrediente para "${searchQuery}".`;
 
   const handleToggleStock = async (ingredient: TIngredient): Promise<void> => {
     setActionError(null);
@@ -44,11 +59,22 @@ export function IngredientsTab({
 
   return (
     <div>
-      <div className="mt-6 flex justify-end">
-        <Button onClick={() => setOpenDialog({ kind: 'create' })}>
-          Novo ingrediente
-        </Button>
-      </div>
+      <SearchField
+        id={SEARCH_ID}
+        label="Buscar ingrediente"
+        placeholder="Buscar ingrediente"
+        value={query}
+        onChange={setQuery}
+        className="w-full sm:w-64"
+      />
+      <p className="mt-3 text-sm text-stone-600">
+        {formatCount(
+          visibleIngredients.length,
+          ingredients.length,
+          'ingrediente',
+          'ingredientes',
+        )}
+      </p>
       {actionError && (
         <p
           role="alert"
@@ -57,61 +83,97 @@ export function IngredientsTab({
           {actionError}
         </p>
       )}
-      <Card className="mt-4">
-        <ul className="divide-y divide-stone-100">
-          {ingredients.map((ingredient) => {
-            const busy = busyIngredientId === ingredient.id;
-            const stockLabel = ingredient.available
-              ? 'Marcar indisponível'
-              : 'Marcar disponível';
+      <Card className="mt-2 overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[40rem] text-left">
+            <thead>
+              <tr className="border-b border-stone-200 text-xs font-semibold tracking-wide text-stone-600 uppercase">
+                <th scope="col" className="py-2.5 pr-4 pl-6">
+                  Ingrediente
+                </th>
+                <th scope="col" className="px-4 py-2.5">
+                  Situação
+                </th>
+                <th scope="col" className="py-2.5 pr-6 pl-4 text-right">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {visibleIngredients.map((ingredient) => {
+                const busy = busyIngredientId === ingredient.id;
+                const stockLabel = ingredient.available
+                  ? 'Marcar indisponível'
+                  : 'Marcar disponível';
 
-            return (
-              <li
-                key={ingredient.id}
-                className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
-              >
-                <span className="font-medium text-stone-900">
-                  {ingredient.name}
-                </span>
-                {!ingredient.available && (
-                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
-                    Indisponível
-                  </span>
-                )}
-                <div className="ml-auto flex gap-2">
-                  <Button
-                    disabled={busy}
-                    onClick={() => handleToggleStock(ingredient)}
-                    className="px-3 py-1 text-sm"
+                return (
+                  <tr key={ingredient.id} className="hover:bg-stone-100">
+                    <th
+                      scope="row"
+                      className="py-3 pr-4 pl-6 font-medium text-stone-900"
+                    >
+                      {ingredient.name}
+                    </th>
+                    <td className="px-4 py-3">
+                      {!ingredient.available && (
+                        <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
+                          Indisponível
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-6 pl-4">
+                      <div className="flex justify-end gap-2">
+                        {/* Outlined, like every other repeated row action: a
+                            solid brand fill per row is a wall of red that
+                            drowns the data it sits beside. */}
+                        <Button
+                          variant="outline"
+                          disabled={busy}
+                          aria-label={`${stockLabel}: ${ingredient.name}`}
+                          onClick={() => handleToggleStock(ingredient)}
+                          className="px-3 py-1 text-sm"
+                        >
+                          {busy ? 'Atualizando…' : stockLabel}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          aria-label={`Renomear ${ingredient.name}`}
+                          onClick={() =>
+                            setOpenDialog({ kind: 'rename', ingredient })
+                          }
+                          className="px-3 py-1 text-sm"
+                        >
+                          Renomear
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          aria-label={`Excluir ${ingredient.name}`}
+                          onClick={() =>
+                            setOpenDialog({ kind: 'delete', ingredient })
+                          }
+                          className="px-3 py-1 text-sm"
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {visibleIngredients.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={COLUMN_COUNT}
+                    className="px-6 py-10 text-center text-stone-600"
                   >
-                    {busy ? 'Atualizando…' : stockLabel}
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      setOpenDialog({ kind: 'rename', ingredient })
-                    }
-                    className="px-3 py-1 text-sm"
-                  >
-                    Renomear
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      setOpenDialog({ kind: 'delete', ingredient })
-                    }
-                    variant="secondary"
-                    className="px-3 py-1 text-sm"
-                  >
-                    Excluir
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    <span role="status">{emptyNotice}</span>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </Card>
-      {openDialog.kind === 'create' && (
-        <IngredientFormDialog onClose={() => setOpenDialog({ kind: 'none' })} />
-      )}
       {openDialog.kind === 'rename' && (
         <IngredientFormDialog
           ingredient={openDialog.ingredient}

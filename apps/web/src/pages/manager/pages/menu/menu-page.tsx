@@ -1,20 +1,40 @@
 import { useState } from 'react';
-import { BackLink } from '@components/BackLink';
+import { Button } from '@components/Button';
 import { Card } from '@components/Card';
 import { LoadingRegion } from '@components/LoadingRegion';
 import { Skeleton } from '@components/Skeleton';
 import { toErrorMessage } from '@lib/errors';
+import { IngredientFormDialog } from '../../components/IngredientFormDialog';
+import { ItemFormDialog } from '../../components/ItemFormDialog';
 import { useCatalog } from '../../hooks/use-catalog';
 import { IngredientsTab } from './parts/IngredientsTab';
 import { MenuTab } from './parts/MenuTab';
-
-type TActiveTab = 'items' | 'ingredients';
+import { MenuTabs, type TMenuTabId } from './parts/MenuTabs';
 
 const ROW_PLACEHOLDERS = [1, 2, 3, 4, 5] as const;
 
+// The header action belongs to the page, not to the tab: both tabs create a
+// record of the catalog, and keeping the button here is what lets it hold the
+// same corner as "Adicionar mesa" and "Novo pedido de entrega" do on theirs.
+const CREATE_LABELS: Record<TMenuTabId, string> = {
+  items: 'Novo item',
+  ingredients: 'Novo ingrediente',
+};
+
 export function MenuPage(): React.ReactNode {
   const { menuQuery, ingredientsQuery } = useCatalog();
-  const [activeTab, setActiveTab] = useState<TActiveTab>('items');
+  const [activeTab, setActiveTab] = useState<TMenuTabId>('items');
+  const [creating, setCreating] = useState(false);
+
+  const menu = menuQuery.data;
+  const ingredients = ingredientsQuery.data;
+
+  const changeTab = (tab: TMenuTabId): void => {
+    setActiveTab(tab);
+    // A dialog left open over the tab it was opened from would otherwise
+    // reappear, retargeted, when that tab comes back.
+    setCreating(false);
+  };
 
   const renderBody = (): React.ReactNode => {
     if (menuQuery.isPending || ingredientsQuery.isPending) {
@@ -32,51 +52,50 @@ export function MenuPage(): React.ReactNode {
         </LoadingRegion>
       );
     }
-    if (!menuQuery.data || !ingredientsQuery.data) {
+    if (!menu || !ingredients) {
       return (
         <p role="alert" className="text-red-700">
           {toErrorMessage(menuQuery.error ?? ingredientsQuery.error)}
         </p>
       );
     }
-    return activeTab === 'items' ? (
-      <MenuTab items={menuQuery.data} ingredients={ingredientsQuery.data} />
-    ) : (
-      <IngredientsTab ingredients={ingredientsQuery.data} />
+    return (
+      <MenuTabs active={activeTab} onChange={changeTab}>
+        {activeTab === 'items' ? (
+          <MenuTab items={menu} ingredients={ingredients} />
+        ) : (
+          <IngredientsTab ingredients={ingredients} />
+        )}
+      </MenuTabs>
     );
   };
 
   return (
     <div className="space-y-4">
-      <BackLink to="/manager" label="Painel do gerente" />
-      <h1 className="text-2xl font-bold text-stone-900">Cardápio e estoque</h1>
-      {/* The tab choice is local state, not payload, so it holds its place
-          while the catalog loads. */}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab('items')}
-          className={
-            activeTab === 'items'
-              ? 'rounded-full bg-red-700 px-3 py-1 text-sm font-medium text-white'
-              : 'rounded-full bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700'
-          }
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-stone-900">
+          Cardápio e estoque
+        </h1>
+        {/* Disabled until the catalog has landed: the item form pre-checks
+            ingredients, and a dialog opened over a catalogue it never saw would
+            offer an empty list. */}
+        <Button
+          onClick={() => setCreating(true)}
+          disabled={!menu || !ingredients}
         >
-          Itens
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('ingredients')}
-          className={
-            activeTab === 'ingredients'
-              ? 'rounded-full bg-red-700 px-3 py-1 text-sm font-medium text-white'
-              : 'rounded-full bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700'
-          }
-        >
-          Ingredientes
-        </button>
+          {CREATE_LABELS[activeTab]}
+        </Button>
       </div>
       {renderBody()}
+      {creating && menu && ingredients && activeTab === 'items' && (
+        <ItemFormDialog
+          ingredients={ingredients}
+          onClose={() => setCreating(false)}
+        />
+      )}
+      {creating && ingredients && activeTab === 'ingredients' && (
+        <IngredientFormDialog onClose={() => setCreating(false)} />
+      )}
     </div>
   );
 }

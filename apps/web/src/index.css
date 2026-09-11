@@ -46,9 +46,38 @@
   --color-item-preparing: #f0dca4;
 }
 
+@layer base {
+  /* One focus ring for the app. The browser default is a blue that belongs to
+     no palette, and the surfaces that needed a visible one were each
+     hand-rolling the same ring. */
+  :focus-visible {
+    outline: 2px solid var(--color-red-600);
+    outline-offset: 2px;
+  }
+
+  /* The caret and the selection are surfaces too. Left at their defaults they
+     are the platform's blue on a page that never uses it. */
+  input,
+  select,
+  textarea {
+    caret-color: var(--color-red-700);
+  }
+
+  ::selection {
+    background-color: var(--color-red-100);
+  }
+
+  /* A `type="search"` field ships a clear control the browser draws and names
+     itself. `SearchField` draws and names its own, so the browser's must not
+     sit beside it. */
+  input[type='search']::-webkit-search-cancel-button {
+    appearance: none;
+  }
+}
+
 @layer components {
   .field-input {
-    @apply w-full rounded-md border border-stone-400 bg-white px-3 py-2 text-stone-900 outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20;
+    @apply w-full rounded-md border border-stone-400 bg-white px-3 py-2 text-stone-900 outline-none placeholder:text-stone-500 focus:border-red-600 focus:ring-2 focus:ring-red-600/20;
   }
 
   .field-label {

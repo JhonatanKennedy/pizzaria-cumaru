@@ -52,6 +52,16 @@ const ITEMS: TMenuListing = [
     available: true,
     ingredientIds: [],
   },
+  {
+    id: 'item-acai',
+    name: 'Açaí',
+    description: 'Com granola',
+    price: 18,
+    category: 'DESSERT',
+    requiresPreparation: false,
+    available: true,
+    ingredientIds: [],
+  },
 ];
 
 const INGREDIENTS: TIngredientListing = [
@@ -63,6 +73,10 @@ function renderTab(): ReturnType<typeof userEvent.setup> {
   return userEvent.setup();
 }
 
+function searchField(): HTMLElement {
+  return screen.getByRole('searchbox', { name: 'Buscar item' });
+}
+
 describe('MenuTab', () => {
   it('should list every item by default, across categories', () => {
     renderTab();
@@ -70,6 +84,8 @@ describe('MenuTab', () => {
     expect(screen.getByText('Calabresa')).toBeInTheDocument();
     expect(screen.getByText('Parmegiana de Frango')).toBeInTheDocument();
     expect(screen.getByText('Suco Natural')).toBeInTheDocument();
+    expect(screen.getByText('Açaí')).toBeInTheDocument();
+    expect(screen.getByText('4 itens')).toBeInTheDocument();
   });
 
   it('should filter the list by the picked category chip', async () => {
@@ -101,13 +117,85 @@ describe('MenuTab', () => {
     expect(screen.getByText('Suco Natural')).toBeInTheDocument();
   });
 
+  it('should find an item by name across every category', async () => {
+    const user = renderTab();
+
+    await user.type(searchField(), 'suco');
+
+    expect(screen.getByText('Suco Natural')).toBeInTheDocument();
+    expect(screen.queryByText('Calabresa')).not.toBeInTheDocument();
+    expect(screen.queryByText('Açaí')).not.toBeInTheDocument();
+    expect(screen.getByText('1 de 4 itens')).toBeInTheDocument();
+  });
+
+  it('should find an accented name typed without its accents', async () => {
+    const user = renderTab();
+
+    await user.type(searchField(), 'acai');
+
+    expect(screen.getByText('Açaí')).toBeInTheDocument();
+    expect(screen.queryByText('Calabresa')).not.toBeInTheDocument();
+  });
+
+  it('should compose the search with the picked category', async () => {
+    const user = renderTab();
+
+    await user.click(screen.getByRole('button', { name: 'Bebidas' }));
+    await user.type(searchField(), 'suco');
+
+    expect(screen.getByText('Suco Natural')).toBeInTheDocument();
+    expect(screen.getByText('1 de 4 itens')).toBeInTheDocument();
+  });
+
+  it('should offer a way out when the search is outside the picked category', async () => {
+    const user = renderTab();
+
+    await user.click(screen.getByRole('button', { name: 'Pizzas' }));
+    await user.type(searchField(), 'suco');
+
+    expect(
+      screen.getByText('Nenhum item em Pizzas para "suco".'),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Buscar em todas as categorias' }),
+    );
+
+    expect(screen.getByText('Suco Natural')).toBeInTheDocument();
+    expect(screen.queryByText('Calabresa')).not.toBeInTheDocument();
+  });
+
+  it('should not offer the way out when the dead end is the search alone', async () => {
+    const user = renderTab();
+
+    await user.type(searchField(), 'nada');
+
+    expect(screen.getByText('Nenhum item para "nada".')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Buscar em todas as categorias' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('should teach the empty catalog instead of blaming the search', () => {
+    render(<MenuTab items={[]} ingredients={INGREDIENTS} />);
+
+    expect(
+      screen.getByText(
+        'Nenhum item no cardápio. Use "Novo item" para cadastrar o primeiro.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Buscar em todas as categorias' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('should offer only the Editar and Excluir actions per row', () => {
     renderTab();
 
-    expect(screen.getAllByRole('button', { name: 'Editar' })).toHaveLength(
+    expect(screen.getAllByRole('button', { name: /^Editar / })).toHaveLength(
       ITEMS.length,
     );
-    expect(screen.getAllByRole('button', { name: 'Excluir' })).toHaveLength(
+    expect(screen.getAllByRole('button', { name: /^Excluir / })).toHaveLength(
       ITEMS.length,
     );
     expect(
@@ -121,7 +209,7 @@ describe('MenuTab', () => {
   it('should open the single edit dialog pre-filled with the item', async () => {
     const user = renderTab();
 
-    await user.click(screen.getAllByRole('button', { name: 'Editar' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Editar Calabresa' }));
 
     const dialog = screen.getByRole('dialog', { name: 'Editar item' });
     expect(dialog).toBeInTheDocument();
@@ -136,7 +224,7 @@ describe('MenuTab', () => {
     deleteItemMock.mockResolvedValue(undefined);
     const user = renderTab();
 
-    await user.click(screen.getAllByRole('button', { name: 'Excluir' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Excluir Calabresa' }));
 
     const dialog = screen.getByRole('dialog', { name: 'Excluir item' });
     await user.click(within(dialog).getByRole('button', { name: 'Excluir' }));

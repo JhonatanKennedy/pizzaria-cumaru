@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import type { TTableListingEntry } from '@api/tables.api';
-import { BackLink } from '@components/BackLink';
 import { Button } from '@components/Button';
 import { Card } from '@components/Card';
 import { LoadingRegion } from '@components/LoadingRegion';
+import { SearchField } from '@components/SearchField';
 import { Skeleton } from '@components/Skeleton';
 import { toErrorMessage } from '@lib/errors';
-import { formatBRL } from '@lib/format';
+import { formatBRL, formatCount } from '@lib/format';
+import { matchesSearch } from '@lib/search';
 import { useTables } from '../../hooks/use-tables';
+import { tableLabel } from '../../business/labels';
 import { RegisterTableDialog } from './parts/RegisterTableDialog';
 import { RemoveTableDialog } from './parts/RemoveTableDialog';
 import { RenameTableDialog } from './parts/RenameTableDialog';
@@ -19,6 +21,8 @@ type TOpenDialog =
   | { kind: 'remove'; table: TTableListingEntry };
 
 const ROW_PLACEHOLDERS = [1, 2, 3, 4, 5] as const;
+const SEARCH_ID = 'manager-table-search';
+const COLUMN_COUNT = 4;
 
 function sortByNumber(
   tables: readonly TTableListingEntry[],
@@ -29,6 +33,7 @@ function sortByNumber(
 export function TablesPage(): React.ReactNode {
   const tablesQuery = useTables();
   const [openDialog, setOpenDialog] = useState<TOpenDialog>({ kind: 'none' });
+  const [query, setQuery] = useState('');
 
   const renderBody = (): React.ReactNode => {
     if (tablesQuery.isPending) {
@@ -55,61 +60,117 @@ export function TablesPage(): React.ReactNode {
     }
 
     const tables = sortByNumber(tablesQuery.data);
-    if (tables.length === 0) {
-      return <p className="text-stone-600">Nenhuma mesa cadastrada.</p>;
-    }
+    const searchQuery = query.trim();
+    const visibleTables = tables.filter((table) =>
+      matchesSearch(tableLabel(table), searchQuery),
+    );
+    const emptyNotice =
+      searchQuery === ''
+        ? 'Nenhuma mesa cadastrada.'
+        : `Nenhuma mesa para "${searchQuery}".`;
 
     return (
-      <Card>
-        <ul className="divide-y divide-stone-100">
-          {tables.map((table) => (
-            <li
-              key={table.id}
-              className="flex flex-wrap items-center gap-3 py-3"
-            >
-              <span className="font-medium text-stone-900">
-                Mesa {table.number}
-              </span>
-              {table.openOrder ? (
-                <>
-                  <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
-                    Ocupada
-                  </span>
-                  <span className="text-sm text-stone-600">
-                    {formatBRL(table.openOrder.totalPrice)}
-                  </span>
-                </>
-              ) : (
-                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
-                  Livre
-                </span>
-              )}
-              <div className="ml-auto flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setOpenDialog({ kind: 'rename', table })}
-                  className="px-3 py-1 text-sm"
-                >
-                  Renumerar
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setOpenDialog({ kind: 'remove', table })}
-                  className="px-3 py-1 text-sm"
-                >
-                  Remover
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </Card>
+      <div>
+        <SearchField
+          id={SEARCH_ID}
+          label="Buscar mesa"
+          placeholder="Buscar mesa"
+          value={query}
+          onChange={setQuery}
+          className="w-full sm:w-64"
+        />
+        <p className="mt-3 text-sm text-stone-600">
+          {formatCount(visibleTables.length, tables.length, 'mesa', 'mesas')}
+        </p>
+        <Card className="mt-2 overflow-hidden p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[40rem] text-left">
+              <thead>
+                <tr className="border-b border-stone-200 text-xs font-semibold tracking-wide text-stone-600 uppercase">
+                  <th scope="col" className="py-2.5 pr-4 pl-6">
+                    Mesa
+                  </th>
+                  <th scope="col" className="px-4 py-2.5">
+                    Situação
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 text-right">
+                    Consumo
+                  </th>
+                  <th scope="col" className="py-2.5 pr-6 pl-4 text-right">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {visibleTables.map((table) => (
+                  <tr key={table.id} className="hover:bg-stone-100">
+                    <th
+                      scope="row"
+                      className="py-3 pr-4 pl-6 font-medium text-stone-900"
+                    >
+                      {tableLabel(table)}
+                    </th>
+                    <td className="px-4 py-3">
+                      {/* A pill marks the state worth noticing; a free table is
+                          the resting state and needs no badge to say so. */}
+                      {table.openOrder && (
+                        <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
+                          Ocupada
+                        </span>
+                      )}
+                      {!table.openOrder && (
+                        <span className="text-sm text-stone-600">Livre</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums text-stone-700">
+                      {table.openOrder && formatBRL(table.openOrder.totalPrice)}
+                    </td>
+                    <td className="py-3 pr-6 pl-4">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          aria-label={`Renumerar ${tableLabel(table)}`}
+                          onClick={() =>
+                            setOpenDialog({ kind: 'rename', table })
+                          }
+                          className="px-3 py-1 text-sm"
+                        >
+                          Renumerar
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          aria-label={`Remover ${tableLabel(table)}`}
+                          onClick={() =>
+                            setOpenDialog({ kind: 'remove', table })
+                          }
+                          className="px-3 py-1 text-sm"
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {visibleTables.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={COLUMN_COUNT}
+                      className="px-6 py-10 text-center text-stone-600"
+                    >
+                      <span role="status">{emptyNotice}</span>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
     );
   };
 
   return (
     <div className="space-y-4">
-      <BackLink to="/manager" label="Painel do gerente" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-stone-900">Mesas</h1>
         <Button onClick={() => setOpenDialog({ kind: 'register' })}>

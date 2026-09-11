@@ -1,5 +1,6 @@
 import { CATEGORY_ORDER, categoryLabel } from '@lib/catalog';
 import { PAYMENT_TYPES, paymentLabel } from '@lib/payment-labels';
+import { Chip } from '@components/Chip';
 import { orderTypeLabel } from '@pages/manager/business/labels';
 import { REPORT_TYPES, type TReportType } from '@pages/manager/api/reports.api';
 import type { TDaySalesFilters } from '@pages/manager/business/filter-sales';
@@ -19,12 +20,6 @@ interface ChipGroupProps<T> {
   onChange(value: T | null): void;
 }
 
-function chipClass(active: boolean): string {
-  return active
-    ? 'rounded-full bg-red-700 px-3 py-1 text-sm font-medium text-white'
-    : 'rounded-full bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700';
-}
-
 function ChipGroup<T extends string>({
   label,
   options,
@@ -34,24 +29,17 @@ function ChipGroup<T extends string>({
 }: ChipGroupProps<T>): React.ReactNode {
   return (
     <div role="group" aria-label={label} className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        className={chipClass(selected === null)}
-        aria-pressed={selected === null}
-        onClick={() => onChange(null)}
-      >
+      <Chip selected={selected === null} onClick={() => onChange(null)}>
         Todos
-      </button>
+      </Chip>
       {options.map((option) => (
-        <button
+        <Chip
           key={option}
-          type="button"
-          className={chipClass(selected === option)}
-          aria-pressed={selected === option}
+          selected={selected === option}
           onClick={() => onChange(option)}
         >
           {optionLabel(option)}
-        </button>
+        </Chip>
       ))}
     </div>
   );

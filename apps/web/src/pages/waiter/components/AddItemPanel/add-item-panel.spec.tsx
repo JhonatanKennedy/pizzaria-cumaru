@@ -88,6 +88,48 @@ describe('AddItemPanel', () => {
     expect(screen.queryByText('Chocolate G')).not.toBeInTheDocument();
   });
 
+  it('should reach the whole catalog through the Todas chip', async () => {
+    const user = renderPanel();
+
+    await user.click(screen.getByRole('button', { name: 'Todas' }));
+
+    expect(screen.getByText('Chocolate G')).toBeInTheDocument();
+    expect(screen.getByText('Água')).toBeInTheDocument();
+  });
+
+  it('should offer the whole catalog when the search is outside the picked category', async () => {
+    const user = renderPanel();
+
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Buscar item' }),
+      'agua',
+    );
+
+    expect(
+      screen.getByText('Nenhum item em Pizzas para "agua".'),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Buscar em todas as categorias' }),
+    );
+
+    expect(screen.getByText('Água')).toBeInTheDocument();
+    expect(screen.queryByText('Chocolate G')).not.toBeInTheDocument();
+  });
+
+  it('should say what the search looked for when it finds nothing', async () => {
+    const user = renderPanel();
+
+    await user.type(
+      screen.getByRole('searchbox', { name: 'Buscar item' }),
+      'xyz',
+    );
+
+    expect(
+      screen.getByText('Nenhum item em Pizzas para "xyz".'),
+    ).toBeInTheDocument();
+  });
+
   it('should block unavailable items', () => {
     renderPanel();
 
