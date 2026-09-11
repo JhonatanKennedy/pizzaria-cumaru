@@ -80,7 +80,7 @@ loadEnv({ path: '.env.local' });
 ## What never justifies a comment
 
 - **Section banners** (`// —————— Use-cases ——————`): split the file instead.
-- **Todos about the current task**: that's what the task list, the PR description or the debt section of [08-conventions.md](08-conventions.md) is for. The two remaining stubs (`split-bill.ts`, `create-delivery-order.ts`) each carry a `// TODO` — they are the exception that proves the rule, because the stub body is otherwise empty and would read as a mistake.
+- **Todos about the current task**: that's what the task list, the PR description or the debt section of [08-conventions.md](08-conventions.md) is for. An empty class with a `// TODO` in it does not read as a plan — it reads as abandoned code, and git keeps it alive for free. Record the gap in that debt section instead, the way split bill is recorded today.
 - **Attribution or history**: git blame has it.
 - **JSDoc on every method**: entity getters, DTOs and repository methods are typed and named; document only when the contract has a caveat.
 

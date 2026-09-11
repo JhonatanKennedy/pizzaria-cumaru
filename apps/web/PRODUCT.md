@@ -43,9 +43,9 @@ An internal tool shaped by one restaurant's actual service ritual rather than a 
 
 ## Capabilities and Constraints
 
-**Working today:** login and role-based routing; the waiter's floor view, table order, add items with flavors and observations, per-row quantity, item and whole-order cancellation; the kitchen panel with two queues, start/finish, and cancel-preparation; manager menu and stock (items, ingredients, the item↔ingredient link); manager table management; manager delivery orders from creation to Delivered; the daily earnings report with the day's sales list and filters; close-order with payment type.
+**Working today:** login and role-based routing; the waiter's floor view, table order, add items with flavors and observations, per-row quantity, item and whole-order cancellation; the kitchen panel with two queues, start/finish, and cancel-preparation; the manager board (salão, cozinha, entregas, cardápio — each line its state and the record waiting longest, under a rail that follows the manager onto every screen they can reach); manager menu and stock (items, ingredients, the item↔ingredient link); manager table management; manager delivery orders from creation to Delivered; the daily earnings report with the day's sales list and filters; close-order with payment type.
 
-**Not built / open:** the `/manager` hub is still a placeholder screen; split bill is specified but unimplemented; the backend's `SplitBillUseCase` and `CreateDeliveryOrderUseCase` are stubs. `04_delivery_order` is manager-only in the SPA while the Gherkin still casts the flow in the waiter's hands — a reconciliation that is still open. There is no e2e suite.
+**Not built / open:** split bill is specified but unimplemented. `04_delivery_order` is manager-only in the SPA while the Gherkin still casts the flow in the waiter's hands — a reconciliation that is still open. There is no e2e suite.
 
 **Technical constraints that shape UI work:** React 19 + TypeScript + Vite, Tailwind v4 (no config file — shared classes and `@theme` tokens live in `src/index.css`); TanStack Query owns all server state; React Hook Form + Zod own forms; TS enums are a compile error (`erasableSyntaxOnly`), so closed sets are `as const` arrays with derived unions. Screens live in bounded contexts under `src/pages/` and nothing leaks between contexts.
 

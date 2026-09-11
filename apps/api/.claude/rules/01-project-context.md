@@ -22,16 +22,16 @@
 
 ## Commands
 
-| Command                       | Purpose                                                                                             |
-| ----------------------------- | --------------------------------------------------------------------------------------------------- |
-| `npm run start` / `start:dev` | Run in development (`NODE_ENV=development`, reads `.env.local`); dev is watch mode                  |
-| `npm run start:prod`          | Run the built app in production (`NODE_ENV=production`, real env vars only)                         |
-| `npm run build`               | Nest build to `dist/`                                                                               |
-| `npm test`                    | Unit + integration tests (Vitest, picks up `**/*.spec.ts`)                                          |
-| `npm run test:e2e`            | E2e tests (`**/*.e2e-spec.ts`, `vitest.config.e2e.ts` points `DATABASE_URL` at `TEST_DATABASE_URL`) |
-| `npm run test:cov`            | Coverage                                                                                            |
-| `npm run lint`                | oxlint over `src/ test/`                                                                            |
-| `npm run format`              | Prettier write over `src/ test/`                                                                    |
+| Command                       | Purpose                                                                                                                     |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `npm run start` / `start:dev` | Run in development (`NODE_ENV=development`, reads `.env.local`); dev is watch mode                                          |
+| `npm run start:prod`          | Run the built app in production (`NODE_ENV=production`, real env vars only)                                                 |
+| `npm run build`               | Nest build to `dist/`                                                                                                       |
+| `npm test`                    | Unit + integration tests (Vitest, picks up `**/*.spec.ts`)                                                                  |
+| `npm run test:e2e`            | E2e tests (`**/*.e2e-spec.ts`, `vitest.config.e2e.ts` points `DATABASE_URL` at `TEST_DATABASE_URL`)                         |
+| `npm run test:cov`            | Coverage                                                                                                                    |
+| `npm run lint`                | oxlint over `src/ test/`                                                                                                    |
+| `npm run format`              | Prettier write over `src/ test/`                                                                                            |
 | `npm run seed`                | Build + seed the three profile users and the catalog (ingredients, items, links); refuses to run when `NODE_ENV=production` |
 
 Postgres runs via `docker-compose.yml` (`prisma`/`prisma`, db `pizzaria_cumaru`, port `5432`).
@@ -62,30 +62,30 @@ Cross-cutting areas:
 
 ### Module wiring
 
-| Module          | Imports                                         | Controllers (routes)                                                   | Notes                                                                                                                           |
-| --------------- | ----------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `AppModule`     | Config, Observe, Prisma, Orders, Kitchen, Users | —                                                                      | Registers the three global providers: `DomainErrorFilter`, `ValidationPipe({ whitelist: true, transform: true })`, `RolesGuard` |
-| `OrdersModule`  | Catalog                                         | `OrdersController` (`/orders`), `ReportsController` (`/reports`)       | 15 use-case files (13 wired; `SplitBillUseCase` and `CreateDeliveryOrderUseCase` are unwired stubs — see [08-conventions.md](08-conventions.md)) + `ORDERS_REPOSITORY` → `PrismaOrdersRepository`; exports the repo and the five use-cases kitchen drives |
-| `CatalogModule` | —                                               | `ItemsController` (`/items`), `IngredientsController` (`/ingredients`) | 10 use-cases + `CATALOG_REPOSITORY` → `PrismaCatalogRepository`                                                                 |
-| `KitchenModule` | Orders, Catalog                                 | `KitchenQueueController` (`/kitchen`)                                  | `ListKitchenQueueUseCase` only — no domain/infrastructure of its own                                                            |
-| `TablesModule`  | Orders                                          | `TablesController` (`/tables`)                                         | 4 use-cases + `TABLES_REPOSITORY` → `PrismaTablesRepository`; imports orders for the busy map and the delete block              |
-| `UsersModule`   | `JwtModule.registerAsync` (`JWT_SECRET`)        | `AuthController` (`/auth`)                                             | `AuthenticateUserUseCase`, `LogoutUserUseCase`, `USER_REPOSITORY` → `PrismaUserRepository`; exports repo + `JwtModule`          |
+| Module          | Imports                                         | Controllers (routes)                                                   | Notes                                                                                                                                 |
+| --------------- | ----------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `AppModule`     | Config, Observe, Prisma, Orders, Kitchen, Users | —                                                                      | Registers the three global providers: `DomainErrorFilter`, `ValidationPipe({ whitelist: true, transform: true })`, `RolesGuard`       |
+| `OrdersModule`  | Catalog                                         | `OrdersController` (`/orders`), `ReportsController` (`/reports`)       | 13 use-case files, all wired + `ORDERS_REPOSITORY` → `PrismaOrdersRepository`; exports the repo and the five use-cases kitchen drives |
+| `CatalogModule` | —                                               | `ItemsController` (`/items`), `IngredientsController` (`/ingredients`) | 10 use-cases + `CATALOG_REPOSITORY` → `PrismaCatalogRepository`                                                                       |
+| `KitchenModule` | Orders, Catalog                                 | `KitchenQueueController` (`/kitchen`)                                  | `ListKitchenQueueUseCase` only — no domain/infrastructure of its own                                                                  |
+| `TablesModule`  | Orders                                          | `TablesController` (`/tables`)                                         | 4 use-cases + `TABLES_REPOSITORY` → `PrismaTablesRepository`; imports orders for the busy map and the delete block                    |
+| `UsersModule`   | `JwtModule.registerAsync` (`JWT_SECRET`)        | `AuthController` (`/auth`)                                             | `AuthenticateUserUseCase`, `LogoutUserUseCase`, `USER_REPOSITORY` → `PrismaUserRepository`; exports repo + `JwtModule`                |
 
 ### Routes exposed today
 
-| Controller               | Routes                                                                                                                                                                             | Roles               |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| `AuthController`         | `POST /auth/login` (`@Public`), `POST /auth/logout`                                                                                                                                | any / authenticated |
+| Controller               | Routes                                                                                                                                                                                                                                   | Roles               |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `AuthController`         | `POST /auth/login` (`@Public`), `POST /auth/logout`                                                                                                                                                                                      | any / authenticated |
 | `OrdersController`       | `POST /orders`, `GET /orders`, `POST /orders/:orderId/items`, `PATCH /orders/:orderId/status`, `PATCH /orders/:orderId/items/:itemId/quantity`, `POST /orders/:orderId/cancellation`, `POST /orders/:orderId/items/:itemId/cancellation` | Waiter, Manager     |
-|                          | `POST /orders/:orderId/close`                                                                                                                                                      | Manager only        |
-| `ReportsController`      | `GET /reports/daily-earnings`, `GET /reports/daily-sales`                                                                                                                           | Manager only        |
-| `ItemsController`        | `GET /items`                                                                                                                                                                       | Waiter, Manager     |
-|                          | `POST /items`, `PATCH /items/:itemId`, `DELETE /items/:itemId`                                                                                                                         | Manager only        |
-| `IngredientsController`  | `GET /ingredients`                                                                                                                                                                 | Waiter, Manager     |
-|                          | `POST /ingredients`, `PATCH /ingredients/:ingredientId`, `PATCH /ingredients/:ingredientId/stock`, `DELETE /ingredients/:ingredientId`                                             | Manager only        |
-| `KitchenQueueController` | `GET /kitchen/queue`, `POST /kitchen/orders/:orderId/items/:orderItemId/start` / `finish` / `cancel`                                                                               | Cook, Manager       |
-| `TablesController`      | `GET /tables`                                                                                                                                                                       | Waiter, Manager     |
-|                         | `POST /tables`, `PATCH /tables/:tableId`, `DELETE /tables/:tableId`                                                                                                                | Manager only        |
+|                          | `POST /orders/:orderId/close`                                                                                                                                                                                                            | Manager only        |
+| `ReportsController`      | `GET /reports/daily-earnings`, `GET /reports/daily-sales`                                                                                                                                                                                | Manager only        |
+| `ItemsController`        | `GET /items`                                                                                                                                                                                                                             | Waiter, Manager     |
+|                          | `POST /items`, `PATCH /items/:itemId`, `DELETE /items/:itemId`                                                                                                                                                                           | Manager only        |
+| `IngredientsController`  | `GET /ingredients`                                                                                                                                                                                                                       | Waiter, Manager     |
+|                          | `POST /ingredients`, `PATCH /ingredients/:ingredientId`, `PATCH /ingredients/:ingredientId/stock`, `DELETE /ingredients/:ingredientId`                                                                                                   | Manager only        |
+| `KitchenQueueController` | `GET /kitchen/queue`, `POST /kitchen/orders/:orderId/items/:orderItemId/start` / `finish` / `cancel`                                                                                                                                     | Cook, Manager       |
+| `TablesController`       | `GET /tables`                                                                                                                                                                                                                            | Waiter, Manager     |
+|                          | `POST /tables`, `PATCH /tables/:tableId`, `DELETE /tables/:tableId`                                                                                                                                                                      | Manager only        |
 
 ## Domain model (current state)
 

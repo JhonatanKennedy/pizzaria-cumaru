@@ -65,7 +65,7 @@ src/
     layout/AppLayout/index.tsx  # the app shell (brand home link, user chip, logout) and,
                                 # for a Manager, the rail beside whatever is routed
     home-redirect.tsx, not-found-page.tsx, query-client.ts
-  components/         # shared UI kit only: Button/, Card/, TextField/, FeaturePlaceholder/,
+  components/         # shared UI kit only: Button/, Card/, TextField/,
                       # FlavorComposer/, Skeleton/, LoadingRegion/, Chip/, SearchField/
                       # (each with index.tsx)
   api/http-client.ts  # the HTTP seam: fetch wrapper, ApiError, configureApiClient

@@ -8,7 +8,6 @@ export const ORDERS_QUERY_KEY = ['orders'];
 // Mirrors the backend's EOrderType (orders/domain/enums/order-type.ts) —
 // sent as-is in create payloads and asserted in the Gherkin specs.
 export const ORDER_TYPES = ['Local', 'Delivery'] as const;
-export type TOrderType = (typeof ORDER_TYPES)[number];
 
 // A flavor part of a split pizza: the flavor names a registered pizza item
 // (same size as the base) and the pieces are the fatias it occupies.

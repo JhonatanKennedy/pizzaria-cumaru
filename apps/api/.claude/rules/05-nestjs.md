@@ -117,7 +117,7 @@ export class OrdersService {
 
 ## 6. Controllers call use-cases — don't skip the application layer
 
-Controllers call use-cases in `application/use-cases/`; use-cases orchestrate domain entities and repository interfaces; repositories (in `infrastructure/`) hit Prisma. Use the layer even where a use-case is a one-line delegate — the boundary is what keeps controllers thin and domain rules testable. `OrdersModule` exports its preparation use-cases so `KitchenModule` can drive them. Two orders use-cases are still unimplemented stubs (`SplitBillUseCase`, `CreateDeliveryOrderUseCase`) — fill them, don't route around them.
+Controllers call use-cases in `application/use-cases/`; use-cases orchestrate domain entities and repository interfaces; repositories (in `infrastructure/`) hit Prisma. Use the layer even where a use-case is a one-line delegate — the boundary is what keeps controllers thin and domain rules testable. `OrdersModule` exports its preparation use-cases so `KitchenModule` can drive them.
 
 ## 7. Config via `ConfigService`
 

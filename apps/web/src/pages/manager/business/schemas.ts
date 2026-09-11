@@ -70,8 +70,6 @@ export const priceFormSchema = z.object({
   price: z.number().positive('Preço deve ser maior que zero'),
 });
 
-export type TPriceFormValues = z.infer<typeof priceFormSchema>;
-
 export const ingredientNameFormSchema = z.object({
   name: z.string().trim().min(1, 'Nome é obrigatório'),
 });
