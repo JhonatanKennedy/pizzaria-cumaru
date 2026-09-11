@@ -1,7 +1,17 @@
 import { REMOVED_ITEM_LABEL } from '@lib/catalog';
 import type { TMenuListing } from '@api/catalog.api';
+import type { TTableListing } from '@api/tables.api';
 import type { TDaySale } from '../api/daily-sales.api';
 import { enrichDaySales } from './enrich-sales';
+
+const TABLES: TTableListing = [
+  { id: 'table-uuid-5', number: 5, openOrder: null },
+  { id: 'table-uuid-7', number: 7, openOrder: null },
+];
+
+// The sale above names its table by the id the floor listing is keyed on, which
+// is the shape the wire actually carries — a uuid, never the number.
+const SALE_TABLE_ID = 'table-uuid-5';
 
 const MENU: TMenuListing = [
   {
@@ -32,7 +42,7 @@ const SALE: TDaySale = {
   type: 'Local',
   status: 'Closed',
   paymentType: 'Pix',
-  tableId: '5',
+  tableId: SALE_TABLE_ID,
   createdAt: '2026-09-07T14:30:00.000Z',
   closedAt: '2026-09-07T14:30:00.000Z',
   deliveredAt: null,
@@ -45,7 +55,7 @@ const SALE: TDaySale = {
 
 describe('enrichDaySales', () => {
   it('should attach name, category and unit price from the menu to each line', () => {
-    const [sale] = enrichDaySales([SALE], MENU);
+    const [sale] = enrichDaySales([SALE], MENU, TABLES);
 
     expect(sale.items[0]).toEqual({
       ...SALE.items[0],
@@ -62,7 +72,7 @@ describe('enrichDaySales', () => {
   });
 
   it('should keep the sale fields untouched', () => {
-    const [sale] = enrichDaySales([SALE], MENU);
+    const [sale] = enrichDaySales([SALE], MENU, TABLES);
 
     expect(sale.id).toBe('sale-local');
     expect(sale.waiterName).toBe('João Garçom');
@@ -77,7 +87,11 @@ describe('enrichDaySales', () => {
       quantity: 1,
       status: 'Pending',
     };
-    const [sale] = enrichDaySales([{ ...SALE, items: [removedLine] }], MENU);
+    const [sale] = enrichDaySales(
+      [{ ...SALE, items: [removedLine] }],
+      MENU,
+      TABLES,
+    );
 
     expect(sale.items[0]).toEqual({
       ...removedLine,
@@ -85,5 +99,31 @@ describe('enrichDaySales', () => {
       category: null,
       unitPrice: null,
     });
+  });
+
+  it('should resolve a local sale to the number its table carries', () => {
+    const [sale] = enrichDaySales([SALE], MENU, TABLES);
+
+    expect(sale.tableNumber).toBe(5);
+  });
+
+  it('should leave the number null when the sale names no table', () => {
+    const [sale] = enrichDaySales(
+      [{ ...SALE, type: 'Delivery', tableId: undefined }],
+      MENU,
+      TABLES,
+    );
+
+    expect(sale.tableNumber).toBeNull();
+  });
+
+  it('should leave the number null when the table is not on the floor', () => {
+    const [sale] = enrichDaySales(
+      [{ ...SALE, tableId: 'table-uuid-gone' }],
+      MENU,
+      TABLES,
+    );
+
+    expect(sale.tableNumber).toBeNull();
   });
 });

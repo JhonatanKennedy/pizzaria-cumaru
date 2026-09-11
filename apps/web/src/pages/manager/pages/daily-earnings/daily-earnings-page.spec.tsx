@@ -10,16 +10,20 @@ const {
   earningsMock,
   salesMock,
   menuMock,
+  tablesMock,
   earningsRefetchMock,
   salesRefetchMock,
   menuRefetchMock,
+  tablesRefetchMock,
 } = vi.hoisted(() => ({
   earningsMock: vi.fn(),
   salesMock: vi.fn(),
   menuMock: vi.fn(),
+  tablesMock: vi.fn(),
   earningsRefetchMock: vi.fn(),
   salesRefetchMock: vi.fn(),
   menuRefetchMock: vi.fn(),
+  tablesRefetchMock: vi.fn(),
 }));
 
 vi.mock('../../hooks/use-daily-earnings', () => ({
@@ -32,6 +36,10 @@ vi.mock('../../hooks/use-day-sales', () => ({
 
 vi.mock('../../hooks/use-catalog', () => ({
   useCatalog: () => ({ menuQuery: menuMock() }),
+}));
+
+vi.mock('../../hooks/use-tables', () => ({
+  useTables: () => tablesMock(),
 }));
 
 const CALABRESA = {
@@ -48,13 +56,21 @@ const COCA = {
 };
 const MENU = [CALABRESA, COCA];
 
+// The floor listing the cards resolve their table numbers from. The sales below
+// carry these ids, not the numbers — the wire's shape, and the one that made the
+// fixtures' old bare "5"/"7" hide that the card was printing an id.
+const TABLES = [
+  { id: 'table-uuid-5', number: 5, openOrder: null },
+  { id: 'table-uuid-7', number: 7, openOrder: null },
+];
+
 const LOCAL_SALE: TDaySale = {
   id: 'sale-local',
   waiterName: 'João',
   type: 'Local',
   status: 'Completed',
   paymentType: 'Pix',
-  tableId: '5',
+  tableId: 'table-uuid-5',
   createdAt: '2026-09-09T13:00:00Z',
   closedAt: '2026-09-09T15:00:00Z',
   deliveredAt: null,
@@ -81,7 +97,7 @@ const CASH_SALE: TDaySale = {
   type: 'Local',
   status: 'Completed',
   paymentType: 'Cash',
-  tableId: '7',
+  tableId: 'table-uuid-7',
   createdAt: '2026-09-09T12:00:00Z',
   closedAt: '2026-09-09T14:00:00Z',
   deliveredAt: null,
@@ -139,6 +155,7 @@ function renderPage(
     earnings?: QueryOverrides;
     sales?: QueryOverrides;
     menu?: QueryOverrides;
+    tables?: QueryOverrides;
   } = {},
 ): void {
   earningsMock.mockImplementation((type?: TReportType) => ({
@@ -161,6 +178,13 @@ function renderPage(
     error: null,
     refetch: menuRefetchMock,
     ...(overrides.menu ?? {}),
+  }));
+  tablesMock.mockImplementation(() => ({
+    data: TABLES,
+    isPending: false,
+    error: null,
+    refetch: tablesRefetchMock,
+    ...(overrides.tables ?? {}),
   }));
   render(
     <MemoryRouter>
@@ -329,6 +353,7 @@ describe('DailyEarningsPage', () => {
     expect(earningsRefetchMock).toHaveBeenCalledTimes(1);
     expect(salesRefetchMock).toHaveBeenCalledTimes(1);
     expect(menuRefetchMock).toHaveBeenCalledTimes(1);
+    expect(tablesRefetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('should surface the earnings error verbatim', () => {
@@ -355,6 +380,29 @@ describe('DailyEarningsPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Falha ao buscar o cardápio',
     );
+  });
+
+  it('should surface a floor listing failure', () => {
+    renderPage({
+      tables: {
+        data: null,
+        error: new ApiError(500, 'Falha ao buscar as mesas'),
+      },
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Falha ao buscar as mesas',
+    );
+  });
+
+  it('should show no table when the floor listing does not carry it', () => {
+    renderPage({ tables: { data: [] } });
+
+    expect(screen.queryByText('Mesa 5')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mesa 7')).not.toBeInTheDocument();
+    // The sale carries the table's id, and an id is never a label: the card
+    // has to decline the number rather than fall back to the uuid.
+    expect(screen.queryByText(/table-uuid-5/)).not.toBeInTheDocument();
   });
 
   it('should keep the totals and show an empty message when nothing sold yet', () => {

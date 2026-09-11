@@ -14,28 +14,34 @@ const MENU_IDS = {
 };
 
 function enrich(sales: TDaySale[]): TEnrichedSale[] {
-  return enrichDaySales(sales, [
-    {
-      id: MENU_IDS.pizza,
-      name: 'Calabresa',
-      description: 'Mussarela e calabresa',
-      price: 45,
-      category: 'PIZZA',
-      requiresPreparation: true,
-      available: true,
-      ingredientIds: [],
-    },
-    {
-      id: MENU_IDS.drink,
-      name: 'Coca-Cola',
-      description: 'Lata 350ml',
-      price: 8,
-      category: 'DRINK',
-      requiresPreparation: false,
-      available: true,
-      ingredientIds: [],
-    },
-  ]);
+  // No floor listing: the sales below carry no tableId, and these specs are
+  // about narrowing, not about the table number a card prints.
+  return enrichDaySales(
+    sales,
+    [
+      {
+        id: MENU_IDS.pizza,
+        name: 'Calabresa',
+        description: 'Mussarela e calabresa',
+        price: 45,
+        category: 'PIZZA',
+        requiresPreparation: true,
+        available: true,
+        ingredientIds: [],
+      },
+      {
+        id: MENU_IDS.drink,
+        name: 'Coca-Cola',
+        description: 'Lata 350ml',
+        price: 8,
+        category: 'DRINK',
+        requiresPreparation: false,
+        available: true,
+        ingredientIds: [],
+      },
+    ],
+    [],
+  );
 }
 
 function makeSale(overrides: Partial<TDaySale>): TDaySale {

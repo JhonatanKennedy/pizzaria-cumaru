@@ -17,8 +17,8 @@ export function SaleCard({ sale }: SaleCardProps): React.ReactNode {
           <span className="rounded bg-stone-100 px-2 py-0.5 font-medium text-stone-800">
             {orderTypeLabel(sale.type)}
           </span>
-          {sale.type === 'Local' && sale.tableId !== undefined && (
-            <span>Mesa {sale.tableId}</span>
+          {sale.type === 'Local' && sale.tableNumber !== null && (
+            <span>Mesa {sale.tableNumber}</span>
           )}
           <span>
             {sale.paymentType !== null ? paymentLabel(sale.paymentType) : '—'}

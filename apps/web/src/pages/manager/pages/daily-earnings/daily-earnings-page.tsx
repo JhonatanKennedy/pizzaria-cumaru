@@ -17,6 +17,7 @@ import { ORDER_TYPE_LABELS as TYPE_LABELS } from '../../business/labels';
 import { useCatalog } from '../../hooks/use-catalog';
 import { useDailyEarnings } from '../../hooks/use-daily-earnings';
 import { useDaySales } from '../../hooks/use-day-sales';
+import { useTables } from '../../hooks/use-tables';
 import { CategoryStrip } from './parts/CategoryStrip';
 import { SaleCard } from './parts/SaleCard';
 import { SalesFilters } from './parts/SalesFilters';
@@ -54,6 +55,8 @@ export function DailyEarningsPage(): React.ReactNode {
   const earningsQuery = useDailyEarnings(filters.type ?? undefined);
   const salesQuery = useDaySales();
   const { menuQuery } = useCatalog();
+  // Read for the table numbers the cards print: a sale names its table by id.
+  const tablesQuery = useTables();
 
   const setType = (type: TReportType | null): void =>
     setFilters((current) => ({ ...current, type }));
@@ -66,7 +69,8 @@ export function DailyEarningsPage(): React.ReactNode {
     if (
       earningsQuery.isPending ||
       salesQuery.isPending ||
-      menuQuery.isPending
+      menuQuery.isPending ||
+      tablesQuery.isPending
     ) {
       // The day's totals and its sales list, in the shape the filters open on.
       return (
@@ -82,14 +86,22 @@ export function DailyEarningsPage(): React.ReactNode {
         </LoadingRegion>
       );
     }
-    if (!earningsQuery.data || !salesQuery.data || !menuQuery.data) {
+    if (
+      !earningsQuery.data ||
+      !salesQuery.data ||
+      !menuQuery.data ||
+      !tablesQuery.data
+    ) {
       return (
         <div
           role="alert"
           className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
         >
           {toErrorMessage(
-            earningsQuery.error ?? salesQuery.error ?? menuQuery.error,
+            earningsQuery.error ??
+              salesQuery.error ??
+              menuQuery.error ??
+              tablesQuery.error,
           )}
           <div className="mt-2">
             <Button
@@ -98,6 +110,7 @@ export function DailyEarningsPage(): React.ReactNode {
                 void earningsQuery.refetch();
                 void salesQuery.refetch();
                 void menuQuery.refetch();
+                void tablesQuery.refetch();
               }}
             >
               Tentar novamente
@@ -107,7 +120,10 @@ export function DailyEarningsPage(): React.ReactNode {
       );
     }
     const sales = sortSalesNewestFirst(
-      filterDaySales(enrichDaySales(salesQuery.data, menuQuery.data), filters),
+      filterDaySales(
+        enrichDaySales(salesQuery.data, menuQuery.data, tablesQuery.data),
+        filters,
+      ),
     );
     return (
       <>

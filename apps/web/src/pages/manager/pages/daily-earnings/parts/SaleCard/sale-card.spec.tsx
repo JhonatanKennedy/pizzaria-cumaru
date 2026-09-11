@@ -9,7 +9,10 @@ const LOCAL_SALE: TEnrichedSale = {
   type: 'Local',
   status: 'Closed',
   paymentType: 'Pix',
-  tableId: '5',
+  // The wire carries the table's id, which is a uuid — the number the card
+  // prints comes from the floor listing, not from here.
+  tableId: 'table-uuid-5',
+  tableNumber: 5,
   createdAt: '2026-09-07T14:30:00.000Z',
   closedAt: '2026-09-07T14:30:00.000Z',
   deliveredAt: null,
@@ -42,6 +45,7 @@ const DELIVERY_SALE: TEnrichedSale = {
   type: 'Delivery',
   status: 'Delivered',
   paymentType: null,
+  tableNumber: null,
   createdAt: '2026-09-07T19:00:00.000Z',
   closedAt: null,
   deliveredAt: '2026-09-07T19:00:00.000Z',
@@ -99,5 +103,14 @@ describe('SaleCard', () => {
 
     const card = screen.getByRole('article');
     expect(within(card).getByText('—')).toBeInTheDocument();
+  });
+
+  it('should show no table for a local sale whose table did not resolve', () => {
+    render(<SaleCard sale={{ ...LOCAL_SALE, tableNumber: null }} />);
+
+    const card = screen.getByRole('article');
+    expect(within(card).queryByText(/Mesa/)).not.toBeInTheDocument();
+    // The id is never a label: it is a uuid, and it must not reach the card.
+    expect(within(card).queryByText(/table-uuid-5/)).not.toBeInTheDocument();
   });
 });
